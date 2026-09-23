@@ -1,5 +1,8 @@
-# contracts/ (shared)
+# contracts/ — FROZEN after this commit (schema_version 1.0)
 
-Schemas land here next: `incident.py`, `events.py`, `call_brief.py`.
+Files:
+- `incident.py` — IncidentRecord, states, 6-class tokens, severity
+- `events.py` — WebSocket event types (no pixel payloads)
+- `call_brief.py` — facts-only brief for voice tools
 
-Frozen after Tuesday night. Ayush writes; anyone else must message the group before changing.
+Do not add or rename fields without messaging the group first.

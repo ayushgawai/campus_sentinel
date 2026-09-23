@@ -1,0 +1,50 @@
+"""Shared frozen contracts for Campus Sentinel services."""
+
+from .call_brief import CallBrief, call_brief_to_dict
+from .events import (
+    BBox,
+    CallTranscriptDelta,
+    CameraOnline,
+    DemoControl,
+    EventType,
+    HealthStrip,
+    IncidentStateChange,
+    IncidentUpsert,
+    OverlayBoxes,
+    SocketEvent,
+    ToolCallLive,
+    event_to_dict,
+)
+from .incident import (
+    IncidentClass,
+    IncidentRecord,
+    IncidentState,
+    Severity,
+    TimelineEvent,
+    incident_to_dict,
+    utcnow,
+)
+
+__all__ = [
+    "BBox",
+    "CallBrief",
+    "CallTranscriptDelta",
+    "CameraOnline",
+    "DemoControl",
+    "EventType",
+    "HealthStrip",
+    "IncidentClass",
+    "IncidentRecord",
+    "IncidentState",
+    "IncidentStateChange",
+    "IncidentUpsert",
+    "OverlayBoxes",
+    "Severity",
+    "SocketEvent",
+    "TimelineEvent",
+    "ToolCallLive",
+    "call_brief_to_dict",
+    "event_to_dict",
+    "incident_to_dict",
+    "utcnow",
+]

@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-23 (ayush) — piece 1: repo skeleton
+Last updated: 2026-09-23 (ayush) — piece 2: contracts/ frozen v1.0
 
 ## HARD RULES (do not skip)
 1. **Pull before push.** Always `git pull --rebase origin main` before every push. No exceptions.
@@ -8,16 +8,16 @@ Last updated: 2026-09-23 (ayush) — piece 1: repo skeleton
 4. Keep this file under ~150 lines. State only — no design essays (those live in the playbook).
 
 ## How to run it right now
-Skeleton only. `make up` / `make demo` land after compose + services exist.
-
 ```bash
 git pull --rebase origin main
+cd /path/to/campus_sentinel && python3 -c "from contracts import IncidentRecord; print('ok')"
 ```
+Compose / demo still stubs.
 
 ## Ownership (paths)
 | Path | Owner |
 |------|--------|
-| `contracts/` | shared (Ayush writes; freeze Tue night) |
+| `contracts/` | shared — **frozen v1.0** (Ayush wrote; message group before edits) |
 | `services/brain/`, `services/api/`, compose, Makefile | Ayush |
 | `services/vision/`, `services/voice/` | Pratham |
 | `web/` | Manav |
@@ -25,21 +25,24 @@ git pull --rebase origin main
 | `services/mediamtx/` | deploy (Ayush) + clips from Naman |
 
 ## Done
-- Repo skeleton per playbook §06 (ayush)
-- `context.md` hard rules (ayush)
-- Stub Makefile + compose + `.gitignore` (ayush)
+- Repo skeleton (ayush)
+- `contracts/` v1.0: incident / events / call_brief — reviewed by Kiro + Codex (ayush)
 
 ## In progress
-- Next piece: freeze `contracts/` (incident, events, call_brief) — ayush
+- (none on ayush) — next: brain skeleton + ZRT client
 
 ## Blocked
 - (none)
 
 ## Decisions made since the playbook
-- Deployment is Docker Compose only. Scale = five services + one camera map + another box per campus.
+- Deployment is Docker Compose only.
+- VLM six-class set: FALL, FIGHT, THEFT, RUN, MEDICAL, BENIGN.
+- Severity: NONE | MINOR | SEVERE.
+- WS overlays are `overlay.boxes` only (no pixel frames on the socket).
+- Timestamps must be timezone-aware UTC.
 
 ## Next up
-1. Ayush: write and push `contracts/`
-2. Pratham: ZRT serve Qwen3-VL FP8
-3. Manav: dashboard shell on mock events
-4. Naman: pull datasets / chase footage hunt
+1. Ayush: brain skeleton (sampler, ZRT client, state machine start)
+2. Pratham: ZRT serve Qwen3-VL FP8 + vision decode path
+3. Manav: dashboard shell on mock `incident.upsert` events
+4. Naman: clips / camera_map / chase footage decision
