@@ -1,0 +1,3 @@
+# Stub — services filled in as each piece lands.
+# Target: mediamtx, vision, brain, voice, api (+ ZRT on host).
+services: {}

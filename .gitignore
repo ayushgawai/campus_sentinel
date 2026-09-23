@@ -1,0 +1,15 @@
+._*
+.DS_Store
+data/clips/*
+!data/clips/.gitkeep
+*.pt
+*.onnx
+*.safetensors
+*.bin
+.env
+.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+node_modules/

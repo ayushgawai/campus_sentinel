@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light dark}html,body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Campus Sentinel Playbook</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+  :root{
+    --ink:#121A24; --ink-2:#3A4959; --muted:#69798B; --faint:#93A2B2;
+    --ground:#F3F6F9; --surface:#FFFFFF; --surface-2:#E9EEF4;
+    --line:#D5DEE7; --line-strong:#AFBECD;
+    --accent:#0F5BA8; --accent-soft:#E2EDF8; --accent-line:#9CC2E6;
+    --amber:#A96F0C; --amber-soft:#FAF0DC; --amber-line:#E0BE7C;
+    --red:#A83527; --red-soft:#FAE8E5; --red-line:#E3ABA2;
+    --green:#1A6E4B; --green-soft:#E0F1E9; --green-line:#9BCFB6;
+    --shadow:0 1px 2px rgba(18,26,36,.05), 0 8px 24px -16px rgba(18,26,36,.22);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#E6EDF5; --ink-2:#BCC9D8; --muted:#8A99AB; --faint:#68778A;
+      --ground:#0B1118; --surface:#131C26; --surface-2:#1B2733;
+      --line:#25323F; --line-strong:#3B4B5C;
+      --accent:#6BADE9; --accent-soft:#12293E; --accent-line:#27496B;
+      --amber:#E0A542; --amber-soft:#2C2313; --amber-line:#57441F;
+      --red:#E88070; --red-soft:#2F1A19; --red-line:#5C3029;
+      --green:#55C295; --green-soft:#0E2A20; --green-line:#1F5140;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#E6EDF5; --ink-2:#BCC9D8; --muted:#8A99AB; --faint:#68778A;
+    --ground:#0B1118; --surface:#131C26; --surface-2:#1B2733;
+    --line:#25323F; --line-strong:#3B4B5C;
+    --accent:#6BADE9; --accent-soft:#12293E; --accent-line:#27496B;
+    --amber:#E0A542; --amber-soft:#2C2313; --amber-line:#57441F;
+    --red:#E88070; --red-soft:#2F1A19; --red-line:#5C3029;
+    --green:#55C295; --green-soft:#0E2A20; --green-line:#1F5140;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    background:var(--ground); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    font-size:15.5px; line-height:1.62; margin:0;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding-inline:20px; padding-block:0 72px}
+  @media (max-width:520px){ .wrap{padding-inline:16px} }
+
+  h1,h2,h3{font-family:Archivo,"IBM Plex Sans",sans-serif; text-wrap:balance; margin:0}
+  h1{font-size:clamp(1.85rem,5.2vw,2.5rem); font-weight:700; letter-spacing:-.022em; line-height:1.12}
+  h2{font-size:1.12rem; font-weight:700; letter-spacing:-.008em}
+  h3{font-size:.97rem; font-weight:600}
+  p{margin:0}
+  a{color:var(--accent)}
+
+  .mono{font-family:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+  .eyebrow{
+    font-family:"IBM Plex Mono",monospace; font-size:.68rem; font-weight:600;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--accent);
+  }
+
+  /* ---------- masthead ---------- */
+  header.mast{
+    border-bottom:1px solid var(--line);
+    background:var(--surface);
+  }
+  .mast-in{max-width:860px; margin:0 auto; padding-inline:20px; padding-block:44px 0}
+  @media (max-width:520px){ .mast-in{padding-inline:16px; padding-block:32px 0} }
+  .mast h1{margin-top:12px}
+  .lede{color:var(--ink-2); font-size:1.03rem; margin-top:14px; max-width:60ch}
+  .facts{
+    display:flex; flex-wrap:wrap; gap:0; margin-top:30px;
+    border-top:1px solid var(--line);
+  }
+  .fact{
+    flex:1 1 150px; padding:14px 18px 16px 0; border-right:1px solid var(--line);
+  }
+  .fact:last-child{border-right:0}
+  .fact dt{
+    font-family:"IBM Plex Mono",monospace; font-size:.66rem; font-weight:500;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--faint);
+  }
+  .fact dd{margin:4px 0 0; font-size:.9rem; font-weight:600; color:var(--ink)}
+  .fact dd.hot{color:var(--red)}
+  @media (max-width:520px){ .fact{flex-basis:calc(50% - 1px); border-right:0} }
+
+  /* ---------- sections ---------- */
+  section{padding-top:52px}
+  .sec-head{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:8px}
+  .sec-head .num{
+    font-family:"IBM Plex Mono",monospace; font-size:.7rem; font-weight:600;
+    color:var(--faint); letter-spacing:.08em;
+  }
+  .sec-note{color:var(--muted); font-size:.92rem; max-width:64ch; margin-top:6px}
+  section > p{margin-top:14px; max-width:66ch}
+  section > p + p{margin-top:12px}
+
+  /* ---------- figure ---------- */
+  figure{margin:26px 0 0}
+  .scroller{
+    overflow-x:auto; background:var(--surface);
+    border:1px solid var(--line); border-radius:4px; padding:18px 16px;
+    box-shadow:var(--shadow);
+  }
+  .scroller svg{display:block; min-width:660px; width:100%; height:auto}
+  figcaption{
+    margin-top:10px; font-size:.82rem; color:var(--muted);
+    font-family:"IBM Plex Mono",monospace; line-height:1.55;
+  }
+
+  /* svg type */
+  .n-title{font-family:Archivo,sans-serif; font-size:13px; font-weight:600; fill:var(--ink)}
+  .n-sub{font-family:"IBM Plex Mono",monospace; font-size:10.5px; fill:var(--muted)}
+  .n-tier{font-family:"IBM Plex Mono",monospace; font-size:9.5px; font-weight:600; letter-spacing:.14em; fill:var(--faint)}
+  .n-edge{font-family:"IBM Plex Mono",monospace; font-size:10px; fill:var(--muted)}
+  .n-edge-em{font-family:"IBM Plex Mono",monospace; font-size:10px; font-weight:600; fill:var(--accent)}
+  .n-field{font-family:"IBM Plex Mono",monospace; font-size:10.5px; fill:var(--ink-2)}
+
+  /* ---------- stage list ---------- */
+  .stages{margin:26px 0 0; padding:0; list-style:none; counter-reset:st}
+  .stage{
+    display:grid; grid-template-columns:40px 1fr; gap:0 16px;
+    padding:18px 0; border-top:1px solid var(--line);
+  }
+  .stage:last-child{border-bottom:1px solid var(--line)}
+  .stage .idx{
+    font-family:"IBM Plex Mono",monospace; font-size:.78rem; font-weight:600;
+    color:var(--faint); padding-top:2px; font-variant-numeric:tabular-nums;
+  }
+  .stage h3{margin-bottom:5px}
+  .stage p{color:var(--ink-2); font-size:.94rem}
+  .cand{
+    margin-top:9px; font-family:"IBM Plex Mono",monospace; font-size:.78rem;
+    color:var(--muted); line-height:1.6; padding-left:11px;
+    border-left:2px solid var(--accent-line);
+  }
+  .cand b{color:var(--accent); font-weight:600}
+
+  /* ---------- table ---------- */
+  .tbl-wrap{overflow-x:auto; margin-top:22px}
+  table{border-collapse:collapse; width:100%; min-width:520px; font-size:.88rem}
+  th,td{text-align:left; padding:11px 14px 11px 0; border-bottom:1px solid var(--line); vertical-align:top}
+  th{
+    font-family:"IBM Plex Mono",monospace; font-size:.66rem; font-weight:600;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--faint);
+    border-bottom:1px solid var(--line-strong);
+  }
+  td.num{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums; white-space:nowrap}
+  td b{font-weight:600}
+
+  /* ---------- open decisions ---------- */
+  .open{margin-top:24px; display:flex; flex-direction:column; gap:2px}
+  .q{
+    background:var(--surface); border-left:3px solid var(--amber-line);
+    padding:16px 18px; border-radius:0 3px 3px 0;
+  }
+  .q .qid{
+    font-family:"IBM Plex Mono",monospace; font-size:.68rem; font-weight:600;
+    letter-spacing:.1em; color:var(--amber); text-transform:uppercase;
+  }
+  .q h3{margin:5px 0 7px}
+  .q p{font-size:.91rem; color:var(--ink-2)}
+  .q .need{
+    margin-top:9px; font-size:.84rem; color:var(--muted);
+    font-family:"IBM Plex Mono",monospace; line-height:1.6;
+  }
+  .q .need b{color:var(--amber); font-weight:600}
+
+  /* ---------- rules columns ---------- */
+  .cols{display:grid; grid-template-columns:1fr 1fr; gap:28px; margin-top:22px}
+  @media (max-width:620px){ .cols{grid-template-columns:1fr; gap:24px} }
+  .cols ul{margin:10px 0 0; padding-left:0; list-style:none; font-size:.91rem; color:var(--ink-2)}
+  .cols li{padding:6px 0 6px 20px; position:relative; border-bottom:1px solid var(--line)}
+  .cols li:before{
+    position:absolute; left:0; top:6px; font-family:"IBM Plex Mono",monospace;
+    font-size:.8rem; font-weight:600;
+  }
+  .yes li:before{content:"+"; color:var(--green)}
+  .no li:before{content:"\00d7"; color:var(--red)}
+  .col-h{
+    font-family:"IBM Plex Mono",monospace; font-size:.68rem; font-weight:600;
+    letter-spacing:.11em; text-transform:uppercase;
+  }
+  .yes .col-h{color:var(--green)} .no .col-h{color:var(--red)}
+
+  /* ---------- rubric bars ---------- */
+  .rubric{margin-top:22px; display:flex; flex-direction:column; gap:11px}
+  .rr{display:grid; grid-template-columns:minmax(120px,1fr) 2fr 40px; gap:12px; align-items:center; font-size:.87rem}
+  .rr .bar{height:7px; background:var(--surface-2); border-radius:9999px; overflow:hidden}
+  .rr .fill{height:100%; background:var(--accent); border-radius:9999px}
+  .rr .pts{font-family:"IBM Plex Mono",monospace; font-weight:600; text-align:right; color:var(--accent); font-variant-numeric:tabular-nums}
+  .rr.mine .fill{background:var(--amber)} .rr.mine .pts{color:var(--amber)}
+
+  /* ---------- risks ---------- */
+  .risks{margin-top:22px; display:flex; flex-direction:column; gap:0}
+  .risk{display:grid; grid-template-columns:auto 1fr; gap:0 14px; padding:15px 0; border-top:1px solid var(--line)}
+  .risk:last-child{border-bottom:1px solid var(--line)}
+  .sev{
+    font-family:"IBM Plex Mono",monospace; font-size:.62rem; font-weight:600;
+    letter-spacing:.09em; text-transform:uppercase; padding:3px 8px; border-radius:2px;
+    height:fit-content; margin-top:2px; white-space:nowrap;
+  }
+  .sev.hi{background:var(--red-soft); color:var(--red)}
+  .sev.md{background:var(--amber-soft); color:var(--amber)}
+  .sev.lo{background:var(--surface-2); color:var(--muted)}
+  .risk h3{margin-bottom:4px}
+  .risk p{font-size:.9rem; color:var(--ink-2)}
+  .risk .fix{margin-top:6px; font-size:.86rem; color:var(--muted)}
+  .risk .fix b{color:var(--ink-2); font-weight:600}
+
+  footer{
+    margin-top:56px; padding-top:22px; border-top:1px solid var(--line);
+    font-family:"IBM Plex Mono",monospace; font-size:.76rem; color:var(--faint); line-height:1.7;
+  }
+  hr.rule{border:0; border-top:1px solid var(--line); margin:0}
+
+  /* ---------- memory budget ---------- */
+  .budget{margin-top:24px}
+  .budget-bar{display:flex; height:46px; border-radius:3px; overflow:hidden; border:1px solid var(--line-strong)}
+  .budget-bar span{display:block; height:100%}
+  .budget-key{display:flex; flex-wrap:wrap; gap:6px 20px; margin-top:12px; font-size:.82rem; color:var(--ink-2)}
+  .budget-key i{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:7px; vertical-align:-1px}
+  .budget-key b{font-family:"IBM Plex Mono",monospace; font-weight:600; font-variant-numeric:tabular-nums}
+  .budget-cap{margin-top:8px; font-family:"IBM Plex Mono",monospace; font-size:.74rem; color:var(--faint); display:flex; justify-content:space-between}
+
+  /* ---------- callout ---------- */
+  .callout{
+    margin-top:24px; background:var(--accent-soft); border:1px solid var(--accent-line);
+    border-radius:4px; padding:18px 20px;
+  }
+  .callout .ct{
+    font-family:"IBM Plex Mono",monospace; font-size:.68rem; font-weight:600;
+    letter-spacing:.11em; text-transform:uppercase; color:var(--accent);
+  }
+  .callout p{margin-top:7px; font-size:.93rem; color:var(--ink-2)}
+  .callout p + p{margin-top:9px}
+
+  /* ---------- code ---------- */
+  pre{
+    margin:16px 0 0; background:var(--surface); border:1px solid var(--line);
+    border-left:3px solid var(--line-strong); border-radius:0 3px 3px 0;
+    padding:14px 16px; overflow-x:auto; font-family:"IBM Plex Mono",monospace;
+    font-size:.79rem; line-height:1.75; color:var(--ink-2);
+  }
+  pre b{color:var(--accent); font-weight:600}
+  pre i{color:var(--faint); font-style:normal}
+
+  /* ---------- lane chart ---------- */
+  .lane-name{font-family:Archivo,sans-serif; font-size:12px; font-weight:600; fill:var(--ink)}
+  .lane-role{font-family:"IBM Plex Mono",monospace; font-size:9px; fill:var(--faint)}
+  .lane-task{font-family:"IBM Plex Sans",sans-serif; font-size:10.5px; fill:var(--ink-2)}
+  .lane-day{font-family:"IBM Plex Mono",monospace; font-size:9.5px; font-weight:600; letter-spacing:.12em; fill:var(--faint)}
+  .lane-gate{font-family:"IBM Plex Mono",monospace; font-size:9px; font-weight:600; fill:var(--red)}
+
+  /* ---------- schedule blocks ---------- */
+  .day{border-top:1px solid var(--line-strong); padding-top:20px; margin-top:34px}
+  .day-head{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap}
+  .day-head h3{font-size:1.05rem}
+  .day-when{font-family:"IBM Plex Mono",monospace; font-size:.72rem; color:var(--faint); letter-spacing:.06em; text-transform:uppercase}
+  .gate{
+    margin-top:14px; background:var(--red-soft); border:1px solid var(--red-line);
+    border-radius:3px; padding:11px 14px; font-size:.88rem; color:var(--ink-2);
+  }
+  .gate b{color:var(--red); font-family:"IBM Plex Mono",monospace; font-size:.7rem; letter-spacing:.09em; text-transform:uppercase; display:block; margin-bottom:3px}
+  .owner{margin-top:16px; display:flex; flex-direction:column; gap:0}
+  .ow{display:grid; grid-template-columns:96px 1fr; gap:0 16px; padding:11px 0; border-top:1px solid var(--line)}
+  .ow:last-child{border-bottom:1px solid var(--line)}
+  .ow .who{font-family:"IBM Plex Mono",monospace; font-size:.78rem; font-weight:600; color:var(--accent)}
+  .ow ul{margin:0; padding-left:0; list-style:none; font-size:.9rem; color:var(--ink-2)}
+  .ow li{padding:2px 0 2px 16px; position:relative}
+  .ow li:before{content:"\203a"; position:absolute; left:0; color:var(--faint)}
+  @media (max-width:520px){ .ow{grid-template-columns:1fr; gap:4px} }
+
+  /* ---------- timeline script ---------- */
+  .beats{margin-top:20px; display:flex; flex-direction:column; gap:0}
+  .beat{display:grid; grid-template-columns:76px 1fr; gap:0 16px; padding:12px 0; border-top:1px solid var(--line)}
+  .beat:last-child{border-bottom:1px solid var(--line)}
+  .beat .t{font-family:"IBM Plex Mono",monospace; font-size:.78rem; font-weight:600; color:var(--accent); font-variant-numeric:tabular-nums}
+  .beat p{font-size:.91rem; color:var(--ink-2)}
+  .beat .say{margin-top:5px; font-size:.86rem; color:var(--muted); font-style:italic}
+
+  /* ---------- cut list ---------- */
+  .cuts{margin-top:20px; counter-reset:c}
+  .cut{display:grid; grid-template-columns:34px 1fr; gap:0 14px; padding:12px 0; border-top:1px solid var(--line)}
+  .cut:last-child{border-bottom:1px solid var(--line)}
+  .cut .n{font-family:"IBM Plex Mono",monospace; font-size:.78rem; font-weight:600; color:var(--amber); font-variant-numeric:tabular-nums}
+  .cut p{font-size:.9rem; color:var(--ink-2)}
+  .cut .cost{margin-top:4px; font-size:.83rem; color:var(--muted); font-family:"IBM Plex Mono",monospace}
+
+  /* ---------- check ---------- */
+  .check{margin-top:20px; display:flex; flex-direction:column; gap:0}
+  .ck{display:grid; grid-template-columns:20px 1fr 92px; gap:0 12px; padding:11px 0; border-top:1px solid var(--line); align-items:start}
+  .ck:last-child{border-bottom:1px solid var(--line)}
+  .ck .box{width:13px; height:13px; border:1.5px solid var(--line-strong); border-radius:2px; margin-top:4px}
+  .ck .lbl{font-size:.9rem; color:var(--ink-2)}
+  .ck .lbl b{color:var(--ink)}
+  .ck .own{font-family:"IBM Plex Mono",monospace; font-size:.75rem; color:var(--accent); text-align:right}
+
+  /* ---------- code ---------- */
+  pre{
+    margin:16px 0 0; background:var(--surface); border:1px solid var(--line);
+    border-left:3px solid var(--line-strong); border-radius:0 3px 3px 0;
+    padding:14px 16px; overflow-x:auto; font-family:"IBM Plex Mono",monospace;
+    font-size:.78rem; line-height:1.7; color:var(--ink-2);
+  }
+  pre b{color:var(--accent); font-weight:600}
+  pre i{color:var(--faint); font-style:normal}
+
+  .callout{
+    margin-top:22px; background:var(--accent-soft); border:1px solid var(--accent-line);
+    border-radius:4px; padding:18px 20px;
+  }
+  .callout .ct{
+    font-family:"IBM Plex Mono",monospace; font-size:.68rem; font-weight:600;
+    letter-spacing:.11em; text-transform:uppercase; color:var(--accent);
+  }
+  .callout p{margin-top:7px; font-size:.93rem; color:var(--ink-2)}
+  .callout p + p{margin-top:9px}
+  .callout.warn{background:var(--amber-soft); border-color:var(--amber-line)}
+  .callout.warn .ct{color:var(--amber)}
+
+  /* ---------- budget bar ---------- */
+  .budget{margin-top:24px}
+  .budget-bar{display:flex; height:46px; border-radius:3px; overflow:hidden; border:1px solid var(--line-strong)}
+  .budget-bar span{display:block; height:100%}
+  .budget-key{display:flex; flex-wrap:wrap; gap:6px 20px; margin-top:12px; font-size:.82rem; color:var(--ink-2)}
+  .budget-key i{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:7px; vertical-align:-1px}
+  .budget-key b{font-family:"IBM Plex Mono",monospace; font-weight:600; font-variant-numeric:tabular-nums}
+  .budget-cap{margin-top:8px; font-family:"IBM Plex Mono",monospace; font-size:.74rem; color:var(--faint); display:flex; justify-content:space-between}
+
+  /* ---------- hard rules ---------- */
+  .rules{margin-top:20px; display:flex; flex-direction:column; gap:0}
+  .rule{display:grid; grid-template-columns:auto 1fr; gap:0 14px; padding:13px 0; border-top:1px solid var(--line)}
+  .rule:last-child{border-bottom:1px solid var(--line)}
+  .rule .mark{
+    font-family:"IBM Plex Mono",monospace; font-size:.7rem; font-weight:600;
+    padding:3px 9px; border-radius:2px; height:fit-content; margin-top:1px; white-space:nowrap;
+  }
+  .rule .mark.must{background:var(--green-soft); color:var(--green)}
+  .rule .mark.never{background:var(--red-soft); color:var(--red)}
+  .rule p{font-size:.92rem; color:var(--ink-2)}
+  .rule p b{color:var(--ink)}
+
+  /* ---------- repo table ---------- */
+  .repo td:first-child{font-family:"IBM Plex Mono",monospace; font-size:.83rem; white-space:nowrap; color:var(--accent); font-weight:500}
+
+  /* ---------- toc ---------- */
+  .toc{margin-top:26px; display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:2px 28px}
+  .toc a{
+    display:grid; grid-template-columns:26px 1fr; gap:0 8px; padding:7px 0;
+    border-bottom:1px solid var(--line); text-decoration:none; font-size:.89rem; color:var(--ink-2);
+  }
+  .toc a:hover{color:var(--accent)}
+  .toc a span{font-family:"IBM Plex Mono",monospace; font-size:.74rem; color:var(--faint)}
+
+  .svc{font-family:"IBM Plex Mono",monospace; font-size:10px; fill:var(--muted)}
+  .big-h{font-family:Archivo,sans-serif; font-size:15px; font-weight:700; fill:var(--ink)}
+  .big-s{font-family:"IBM Plex Sans",sans-serif; font-size:12px; fill:var(--ink-2)}
+  .big-k{font-family:"IBM Plex Sans",sans-serif; font-size:12px; font-weight:600; fill:var(--red)}
+  .d-band{font-family:"IBM Plex Mono",monospace; font-size:9.5px; font-weight:600; letter-spacing:.14em; fill:var(--faint)}
+  .d-h{font-family:Archivo,sans-serif; font-size:12px; font-weight:600; fill:var(--ink)}
+  .d-s{font-family:"IBM Plex Mono",monospace; font-size:9.5px; fill:var(--muted)}
+  .d-a{font-family:"IBM Plex Mono",monospace; font-size:9px; fill:var(--muted)}
+  .d-idx{font-family:"IBM Plex Mono",monospace; font-size:9px; font-weight:600; fill:var(--faint)}
+  .budget{margin-top:24px}
+  .budget-bar{display:flex; height:46px; border-radius:3px; overflow:hidden; border:1px solid var(--line-strong)}
+  .budget-bar span{display:block; height:100%}
+  .budget-key{display:flex; flex-wrap:wrap; gap:6px 20px; margin-top:12px; font-size:.82rem; color:var(--ink-2)}
+  .budget-key i{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:7px; vertical-align:-1px}
+  .budget-key b{font-family:"IBM Plex Mono",monospace; font-weight:600}
+  .rules{margin-top:20px; display:flex; flex-direction:column; gap:0}
+  .rule{display:grid; grid-template-columns:auto 1fr; gap:0 14px; padding:13px 0; border-top:1px solid var(--line)}
+  .rule:last-child{border-bottom:1px solid var(--line)}
+  .rule .mark{font-family:"IBM Plex Mono",monospace; font-size:.7rem; font-weight:600; padding:3px 9px; border-radius:2px; height:fit-content; margin-top:1px; white-space:nowrap}
+  .rule .mark.must{background:var(--green-soft); color:var(--green)}
+  .rule .mark.never{background:var(--red-soft); color:var(--red)}
+  .rule p{font-size:.92rem; color:var(--ink-2)}
+  .rule p b{color:var(--ink)}
+  .repo td:first-child{font-family:"IBM Plex Mono",monospace; font-size:.83rem; white-space:nowrap; color:var(--accent); font-weight:500}
+  .toc{margin-top:26px; display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:2px 28px}
+  .toc a{display:grid; grid-template-columns:26px 1fr; gap:0 8px; padding:7px 0; border-bottom:1px solid var(--line); text-decoration:none; font-size:.89rem; color:var(--ink-2)}
+  .toc a:hover{color:var(--accent)}
+  .toc a span{font-family:"IBM Plex Mono",monospace; font-size:.74rem; color:var(--faint)}
+  .tierbox{margin-top:22px; border:1px solid var(--line-strong); border-radius:4px; overflow:hidden}
+  .tierbox h3{background:var(--surface-2); padding:12px 16px; margin:0; font-size:.95rem}
+  .tierbox ol{margin:0; padding:8px 16px 14px 34px; font-size:.91rem; color:var(--ink-2)}
+  .tierbox ol li{padding:5px 0}
+  .tierbox ol li b{color:var(--ink)}
+  .tierbox .why{padding:12px 16px; background:var(--accent-soft); border-top:1px solid var(--accent-line); font-size:.88rem; color:var(--ink-2)}
+  .tierbox .why b{color:var(--accent); font-family:"IBM Plex Mono",monospace; font-size:.68rem; letter-spacing:.09em; text-transform:uppercase; display:block; margin-bottom:4px}
+</style>
+
+</head>
+<body>
+<header class="mast">
+  <div class="mast-in">
+    <span class="eyebrow">Complete build plan &middot; v3 &middot; commit as PLAYBOOK.md</span>
+    <h1>Campus Sentinel Playbook</h1>
+    <p class="lede">Everything the four of us and our coding agents need: the rules, the architecture, the repo, who owns what, and what has to exist by Friday at 8pm. If you are a coding agent, read section 00 first.</p>
+    <dl class="facts">
+      <div class="fact"><dt>Track</dt><dd>Local Agentic Systems</dd></div>
+      <div class="fact"><dt>Feature freeze</dt><dd>Thu 8:00 PM</dd></div>
+      <div class="fact"><dt>Submit by</dt><dd>Fri 7:00 PM</dd></div>
+      <div class="fact"><dt>Hard deadline</dt><dd class="hot">Fri 8:00 PM</dd></div>
+    </dl>
+  </div>
+</header>
+
+<div class="wrap">
+
+<section id="s00">
+  <div class="sec-head"><span class="num">00</span><h2>Start here</h2></div>
+  <p><b>Humans:</b> read 01 to 04 once, then live in 07 through 10.</p>
+  <p><b>Coding agents:</b> read this file, then read <span class="mono">context.md</span> in the repo root. That file is the living state of the project and it is more current than this one. Update it before every push.</p>
+
+  <div class="callout">
+    <span class="ct">Three principles that override everything else</span>
+    <p><b>Simple beats clever.</b> Fewer files, fewer services, fewer dependencies. If a thing can be a function instead of a service, make it a function. Delete anything nobody is using.</p>
+    <p><b>The video is the product.</b> Not the codebase. If work does not show up in two minutes of footage or make something in it more believable, it is not on the plan.</p>
+    <p><b>Hardcoding is permitted and expected.</b> The judges said so directly. Build every scenario so it can be forced deterministically, from day one, not patched in on Friday.</p>
+  </div>
+
+  <div class="toc">
+    <a href="#s01"><span>01</span>The problem</a>
+    <a href="#s02"><span>02</span>Hard rules and scoring</a>
+    <a href="#s03"><span>03</span>How it works, plain</a>
+    <a href="#s04"><span>04</span>The four tiers</a>
+    <a href="#s05"><span>05</span>Services and deployment</a>
+    <a href="#s06"><span>06</span>Repo structure</a>
+    <a href="#s07"><span>07</span>context.md protocol</a>
+    <a href="#s08"><span>08</span>Git and ownership</a>
+    <a href="#s09"><span>09</span>Who does what</a>
+    <a href="#s10"><span>10</span>Schedule</a>
+    <a href="#s11"><span>11</span>Demo safety</a>
+    <a href="#s12"><span>12</span>Cut list</a>
+    <a href="#s13"><span>13</span>Deliverables</a>
+    <a href="#s14"><span>14</span>Q&amp;A answers</a>
+    <a href="#s15"><span>15</span>Still open</a>
+  </div>
+</section>
+
+<section id="s01">
+  <div class="sec-head"><span class="num">01</span><h2>The problem</h2></div>
+  <p class="sec-note">For the pitch, the video, and anyone non-technical. This is the whole argument.</p>
+
+  <figure>
+    <div class="scroller">
+      <svg viewBox="0 0 1000 340" role="img" aria-label="A campus has hundreds of cameras and very few officers, and at night nobody is watching the screens at all. Campus Sentinel watches every camera continuously and decides on its own. Minor incidents become a message to campus security who decide whether to escalate. Severe incidents call 911 immediately and broadcast to security at the same time.">
+        <defs>
+          <marker id="p1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--line-strong)"/></marker>
+          <marker id="p2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--red)"/></marker>
+        </defs>
+
+        <text class="d-band" x="24" y="28">TODAY</text>
+        <rect x="24" y="44" width="240" height="56" rx="4" fill="var(--surface)" stroke="var(--line-strong)"/>
+        <text class="big-s" x="40" y="70">Hundreds of cameras</text>
+        <text class="svc" x="40" y="88">recording everything, all the time</text>
+
+        <rect x="24" y="112" width="240" height="56" rx="4" fill="var(--surface)" stroke="var(--line-strong)"/>
+        <text class="big-s" x="40" y="138">Two officers on shift</text>
+        <text class="svc" x="40" y="156">who cannot watch more than a few</text>
+
+        <rect x="24" y="180" width="240" height="70" rx="4" fill="var(--red-soft)" stroke="var(--red-line)" stroke-width="1.5"/>
+        <text class="big-k" x="40" y="206">At 3am, nobody is</text>
+        <text class="big-k" x="40" y="224">watching the screens</text>
+        <text class="svc" x="40" y="242" fill="var(--red)">so incidents are found late, or never</text>
+
+        <line x1="264" y1="148" x2="316" y2="148" stroke="var(--line-strong)" stroke-width="1.5" marker-end="url(#p1)"/>
+
+        <rect x="322" y="88" width="250" height="120" rx="4" fill="var(--accent-soft)" stroke="var(--accent-line)" stroke-width="2"/>
+        <text class="big-h" x="340" y="120" fill="var(--accent)">CAMPUS SENTINEL</text>
+        <text class="big-s" x="340" y="146">Watches every camera,</text>
+        <text class="big-s" x="340" y="164">continuously, and decides</text>
+        <text class="big-s" x="340" y="182">on its own.</text>
+        <text class="svc" x="340" y="200" fill="var(--accent)">no human has to notice first</text>
+
+        <path d="M572,130 L620,130 L620,72" fill="none" stroke="var(--line-strong)" stroke-width="1.5" marker-end="url(#p1)"/>
+        <path d="M572,168 L620,168 L620,232" fill="none" stroke="var(--red)" stroke-width="1.5" marker-end="url(#p2)"/>
+
+        <rect x="632" y="44" width="344" height="80" rx="4" fill="var(--surface)" stroke="var(--line-strong)"/>
+        <text class="big-h" x="650" y="72">Something minor</text>
+        <text class="big-s" x="650" y="96">A message goes to the campus security team.</text>
+        <text class="big-s" x="650" y="114">They look, and they decide whether to escalate.</text>
+
+        <rect x="632" y="204" width="344" height="96" rx="4" fill="var(--red-soft)" stroke="var(--red-line)" stroke-width="2"/>
+        <text class="big-h" x="650" y="232" fill="var(--red)">Something severe</text>
+        <text class="big-s" x="650" y="256">911 is called immediately, with the address,</text>
+        <text class="big-s" x="650" y="274">the location and a description of the person.</text>
+        <text class="big-s" x="650" y="292">Security is broadcast at the same moment.</text>
+      </svg>
+    </div>
+    <figcaption>fig. 1 &nbsp; The point is not better cameras. It is that nobody has to be watching.</figcaption>
+  </figure>
+
+  <p style="margin-top:22px">Two numbers make the case. A campus runs hundreds of cameras against a handful of officers, so most of it is unwatched most of the time. And the International Association of Chiefs of Police puts up to <b>98% of US security alarm activations</b> as false, which costs 36 million police calls a year and 10 to 20% of patrol officers' time. So the existing systems that do alert are mostly crying wolf, and operators stop trusting them.</p>
+  <p><b>Our target user is the campus security officer.</b> Sentinel gives them a system that watches everything they cannot, stays quiet unless it is sure, and acts on its own when waiting would cost time that matters.</p>
+</section>
+
+<section id="s02">
+  <div class="sec-head"><span class="num">02</span><h2>Hard rules and scoring</h2></div>
+  <p class="sec-note">From the organizers' student guide and the judging criteria. Breaking any of these disqualifies or costs points.</p>
+
+  <div class="rules">
+    <div class="rule"><span class="mark must">MUST</span><p><b>All AI inference runs on the event's ZGX Nano.</b> Not a laptop, not a cloud GPU.</p></div>
+    <div class="rule"><span class="mark never">NEVER</span><p><b>No cloud AI APIs for reasoning.</b> No OpenAI, Gemini, Anthropic, SageMaker, Vertex, Azure ML in the runtime path. Frontier models for planning and for vibe-coding the web pages are explicitly allowed, and we say so openly.</p></div>
+    <div class="rule"><span class="mark must">MUST</span><p><b>Models are vLLM-compatible.</b> Z Runtime wraps vLLM. If it does not serve under vLLM, it is not in the system.</p></div>
+    <div class="rule"><span class="mark must">MUST</span><p><b>Serve through HP Z Runtime, not raw Ollama.</b> HP integration is 25 of 100 points, the largest bucket, and a judge on every panel knows the difference on sight.</p></div>
+    <div class="rule"><span class="mark must">MUST</span><p><b>One explicit, defensible, measurable escalation decision.</b> Ours: all understanding is local, one calibrated threshold decides whether we reach outside the building, and what crosses is a voice and a text brief, never a frame.</p></div>
+    <div class="rule"><span class="mark never">NEVER</span><p><b>On a call, never infer a fact.</b> Addresses, coordinates, building names and medical status are read from the Call Brief and camera map. If it is not in the brief, the system says it cannot confirm it.</p></div>
+    <div class="rule"><span class="mark never">NEVER</span><p><b>Never dial a real emergency number.</b> Calls go only to a verified teammate's phone, and everything is labelled simulated in the UI, the README and the video.</p></div>
+    <div class="rule"><span class="mark never">NEVER</span><p><b>Never let Twilio do speech.</b> No <span class="mono">&lt;Say&gt;</span>, no <span class="mono">&lt;Gather input="speech"&gt;</span>. That would be cloud AI inference. We use Media Streams: Twilio carries raw audio, our models do all the speech work on the Nano.</p></div>
+    <div class="rule"><span class="mark must">MUST</span><p><b>Everything lives in the repo.</b> The Nano is wiped at the end of the event.</p></div>
+    <div class="rule"><span class="mark never">NEVER</span><p><b>Do not SSH into another team's device, saturate shared egress, or reboot and walk away.</b> A reboot kills Tailscale and needs someone physically in the lab.</p></div>
+  </div>
+
+  <h3 style="margin-top:34px">The 100-point rubric</h3>
+  <div class="rubric">
+    <div class="rr mine"><span>HP Product Integration</span><span class="bar"><span class="fill" style="width:100%"></span></span><span class="pts">25</span></div>
+    <div class="rr"><span>Technical Execution</span><span class="bar"><span class="fill" style="width:80%"></span></span><span class="pts">20</span></div>
+    <div class="rr"><span>Innovation &amp; Creativity</span><span class="bar"><span class="fill" style="width:80%"></span></span><span class="pts">20</span></div>
+    <div class="rr"><span>Real-World Impact</span><span class="bar"><span class="fill" style="width:80%"></span></span><span class="pts">20</span></div>
+    <div class="rr"><span>Demo &amp; Presentation</span><span class="bar"><span class="fill" style="width:60%"></span></span><span class="pts">15</span></div>
+  </div>
+  <p style="margin-top:16px"><b>Four things buy the 25 HP points,</b> none of them hard: serve every model with <span class="mono">zrt</span>, develop through the ZTK VS Code extension, show both on screen in the video, and use the MLflow that ZTK installs to track the router's before and after.</p>
+</section>
+<section id="s03">
+  <div class="sec-head"><span class="num">03</span><h2>How it works, plain</h2></div>
+  <p class="sec-note">The whole system in one paragraph, then one sentence.</p>
+  <p>Camera feeds arrive on the Nano. A cheap watcher screens every frame and throws almost all of them away for near-zero cost. The handful that look interesting get handed to a large vision model that actually looks and judges what is happening, how sure it is, where it is, and what the person looks like. Code, not a model, compares that confidence to a measured threshold and decides what happens: minor goes to campus security as a message for them to judge, severe places a call immediately and broadcasts to security at the same moment. Once a call is live, the system speaks for itself and answers the dispatcher's questions from facts it already holds. Meanwhile it follows the person from camera to camera and keeps the security timeline updated. Nothing that could identify a student ever leaves the building.</p>
+  <p style="margin-top:14px"><b>In one sentence:</b> a cheap guard watches everything and discards almost all of it, so that when something real happens an expensive expert can afford to look properly, and a human is only interrupted when the machine admits it is unsure.</p>
+</section>
+
+<section id="s04">
+  <div class="sec-head"><span class="num">04</span><h2>The four tiers</h2></div>
+  <p class="sec-note">All locked. Each box lists what runs, in order, and why the tier exists.</p>
+
+  <div class="tierbox">
+    <h3>C &middot; ROUTER &nbsp;&mdash;&nbsp; milliseconds, runs on everything</h3>
+    <ol>
+      <li><b>Frame scheduler.</b> Motion decides how often we look, never whether we look. Any person already being tracked is sampled regardless of motion.</li>
+      <li><b>YOLO26s-pose,</b> TensorRT, batched across cameras. One model giving boxes, 17 keypoints and confidence.</li>
+      <li><b>ByteTrack.</b> Turns boxes into continuous people, gives each one a direction of travel.</li>
+      <li><b>Rolling per-track state,</b> the last 1 to 2 seconds of box, keypoints, torso angle and vertical velocity.</li>
+      <li><b>Temporal rules.</b> A fall is a sequence: upright, fast descent, orientation flip, stays low. Also running, sudden acceleration, long dwell.</li>
+      <li><b>VadCLIP,</b> about 1 fps per tracked person. Catches what posture cannot: theft, fighting at distance.</li>
+      <li><b>Fusion score.</b> Fifteen lines of weighted sum, one threshold.</li>
+      <li><b>Escalate</b> the last 8 seconds from the ring buffer.</li>
+    </ol>
+    <div class="why"><b>Why it exists</b>Tuned loose on purpose. A wrong escalation costs seconds of GPU and disturbs nobody. A missed incident is invisible forever. Miss nothing, let the expensive model do the rejecting.</div>
+  </div>
+
+  <div class="tierbox">
+    <h3>D &middot; ADJUDICATE &nbsp;&mdash;&nbsp; seconds, runs rarely</h3>
+    <ol>
+      <li><b>Event-aware sampling.</b> 16 frames from the 8-second window, weighted toward the router's peak timestamp rather than spread evenly.</li>
+      <li><b>HP Z Runtime</b> on the Nano, OpenAI-compatible endpoint on :8000. Not replaced by bare vLLM.</li>
+      <li><b>Qwen3-VL-30B-A3B-Instruct-FP8,</b> the official Qwen checkpoint. NVFP4 tested day one as an upgrade if it loads clean.</li>
+      <li><b>Prefill once</b> with the frames plus factual metadata only: track_id, camera_id, peak timestamp, target person. <b>Never the router's scores.</b></li>
+      <li><b>Completion A:</b> a single token from the six-class set. Read the logprobs, temperature-calibrate them.</li>
+      <li><b>Completion B:</b> constrained JSON for description and location, reusing the cached prefix.</li>
+      <li><b>Fuse</b> the VLM probability with the router's score in code. This is the number the dispatch threshold reads.</li>
+      <li><b>Deduplicate</b> on track_id plus time window, then emit or update the IncidentRecord.</li>
+    </ol>
+    <div class="why"><b>Why independence matters</b>If we hand the VLM the router's verdict it will agree with the router, which defeats having two tiers. And since we fuse both scores afterwards, telling one about the other double-counts the same evidence and quietly breaks the calibration.</div>
+  </div>
+
+  <div class="tierbox">
+    <h3>E &middot; ACT &nbsp;&mdash;&nbsp; deterministic, no model in the decision</h3>
+    <ol>
+      <li><b>Entry:</b> IncidentRecord, fused calibrated probability, incident_id.</li>
+      <li><b>Thresholds,</b> plain code, three outcomes.</li>
+      <li><b>State machine</b> (<span class="mono">transitions</span>): NEW &#8594; ALERTED &#8594; DISPATCH_PENDING &#8594; DISPATCHED &#8594; TRACKING &#8594; RESOLVED, plus DISMISSED.</li>
+      <li><b>Idempotency:</b> every action keyed on incident_id plus action name. A retry never fires twice.</li>
+      <li><b>Guardrails:</b> one dispatch per incident ever, an hourly cap, a global kill switch on the dashboard.</li>
+      <li><b>Security notified always,</b> with the clip and the reasoning.</li>
+      <li><b>Incident timeline,</b> appended to by every event, rendered live.</li>
+      <li><b>Call Brief</b> assembled from record plus camera map plus tracking state. Lookups only.</li>
+      <li><b>Dispatch</b> via Twilio Media Streams to a verified teammate's phone. Browser console as the fallback.</li>
+      <li><b>Agentic loop during the call:</b> lookup_location, get_suspect_status, get_elapsed_time, get_person_description, repeat_last.</li>
+      <li><b>Audit log:</b> every action, reason, confidence, timestamp.</li>
+    </ol>
+    <div class="why"><b>The line for the pitch</b>No language model ever decides to call for help. Code does, from a calibrated number, once, with a rate limit. The model's job starts after that decision, and it is only allowed to describe what it actually saw.</div>
+  </div>
+
+  <div class="tierbox">
+    <h3>F &middot; SURFACE &nbsp;&mdash;&nbsp; what the judges actually see</h3>
+    <ol>
+      <li><b>Camera wall,</b> six MJPEG panes with server-drawn overlays: boxes, track IDs, live router score.</li>
+      <li><b>Campus map,</b> twelve pins. During a chase the path draws itself and <b>the predicted next camera lights up before the person arrives</b>, then confirms.</li>
+      <li><b>Incident queue,</b> severity colour and state badge.</li>
+      <li><b>Incident detail:</b> the 8-second clip on loop, the model's reasoning in its own words, calibrated confidence, which rules fired.</li>
+      <li><b>Call console:</b> both transcripts side by side, the Call Brief visible, and <b>tool calls appearing live</b>, which is the proof of the agentic loop.</li>
+      <li><b>Health strip:</b> cameras online, models resident, GPU utilization, p95, and the running counter of frames screened and escalated.</li>
+      <li><b>Demo control,</b> hidden behind a key: reset to zero, scenario picker, pre-warm indicator.</li>
+    </ol>
+    <div class="why"><b>Design for the quiet state</b>99% of operation, and the first 15 seconds of our video. Six panes with boxes tracking calmly, the counter climbing, everything green, no alerts. It should look like a system working hard and finding nothing, because that is what it is.</div>
+  </div>
+</section>
+
+<section id="s05">
+  <div class="sec-head"><span class="num">05</span><h2>Services and deployment</h2></div>
+  <p class="sec-note">Five containers, one host service. Reproducibility is a scoring metric, so one command has to bring the whole thing up on any machine.</p>
+
+  <figure>
+    <div class="scroller">
+      <svg viewBox="0 0 1000 420" role="img" aria-label="Five containers on the Nano: mediamtx serves RTSP to the vision service, which sends escalations to the brain service and frames to the api service. Brain talks to HP Z Runtime on the host and to the voice service, and out to Twilio. The api service serves the dashboard over WebSocket and MJPEG.">
+        <defs>
+          <marker id="s1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--line-strong)"/></marker>
+          <marker id="s2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--red)"/></marker>
+        </defs>
+
+        <rect x="16" y="30" width="800" height="370" rx="6" fill="none" stroke="var(--accent-line)" stroke-width="1.5" stroke-dasharray="6 5"/>
+        <text class="d-band" x="30" y="50" fill="var(--accent)">ON THE ZGX NANO &nbsp;&middot;&nbsp; NOTHING HERE TOUCHES THE INTERNET</text>
+
+        <rect x="36" y="76" width="160" height="72" rx="3" fill="var(--surface)" stroke="var(--line-strong)"/>
+        <text class="d-h" x="48" y="100">mediamtx</text>
+        <text class="svc" x="48" y="118">RTSP replay :8554</text>
+        <text class="svc" x="48" y="134">12 streams from clips</text>
+
+        <rect x="246" y="76" width="200" height="110" rx="3" fill="var(--surface)" stroke="var(--accent-line)" stroke-width="1.5"/>
+        <text class="d-h" x="258" y="100">vision</text>
+        <text class="svc" x="258" y="118">decode + ring buffer</text>
+        <text class="svc" x="258" y="134">YOLO26s-pose, ByteTrack</text>
+        <text class="svc" x="258" y="150">rules, VadCLIP, fusion</text>
+        <text class="svc" x="258" y="172">tracking + OSNet + graph</text>
+
+        <rect x="496" y="76" width="200" height="110" rx="3" fill="var(--surface)" stroke="var(--accent-line)" stroke-width="1.5"/>
+        <text class="d-h" x="508" y="100">brain</text>
+        <text class="svc" x="508" y="118">clip sampler, adjudicate</text>
+        <text class="svc" x="508" y="134">calibrate, fuse, dedup</text>
+        <text class="svc" x="508" y="150">state machine, Call Brief</text>
+        <text class="svc" x="508" y="172">audit log, guardrails</text>
+
+        <rect x="746" y="76" width="60" height="110" rx="3" fill="var(--surface)" stroke="var(--line-strong)"/>
+        <text class="d-h" x="756" y="100">api</text>
+        <text class="svc" x="756" y="118">:8080</text>
+        <text class="svc" x="756" y="134">ws +</text>
+        <text class="svc" x="756" y="150">mjpeg</text>
+
+        <rect x="246" y="250" width="200" height="80" rx="3" fill="var(--amber-soft)" stroke="var(--amber-line)" stroke-width="1.5"/>
+        <text class="d-h" x="258" y="274">HP Z Runtime</text>
+        <text class="svc" x="258" y="292">host snap, not a container</text>
+        <text class="svc" x="258" y="308">:8000/v1 &nbsp;Qwen3-VL-30B-A3B</text>
+
+        <rect x="496" y="250" width="200" height="80" rx="3" fill="var(--surface)" stroke="var(--line-strong)"/>
+        <text class="d-h" x="508" y="274">voice</text>
+        <text class="svc" x="508" y="292">:8010</text>
+        <text class="svc" x="508" y="308">Parakeet in, Kokoro out</text>
+
+        <rect x="852" y="76" width="132" height="110" rx="3" fill="var(--surface-2)" stroke="var(--line-strong)"/>
+        <text class="d-h" x="862" y="100">browser</text>
+        <text class="svc" x="862" y="118">officer dashboard</text>
+        <text class="svc" x="862" y="134">camera wall, map,</text>
+        <text class="svc" x="862" y="150">call console</text>
+
+        <rect x="852" y="250" width="132" height="80" rx="3" fill="var(--red-soft)" stroke="var(--red-line)" stroke-width="1.5"/>
+        <text class="d-h" x="862" y="274" fill="var(--red)">Twilio</text>
+        <text class="svc" x="862" y="292" fill="var(--red)">carrier only</text>
+        <text class="svc" x="862" y="308" fill="var(--red)">raw audio, no AI</text>
+
+        <line x1="196" y1="112" x2="240" y2="112" stroke="var(--line-strong)" marker-end="url(#s1)"/>
+        <text class="d-a" x="198" y="104">RTSP</text>
+        <line x1="446" y1="112" x2="490" y2="112" stroke="var(--line-strong)" marker-end="url(#s1)"/>
+        <text class="d-a" x="448" y="104">escalation</text>
+        <line x1="696" y1="112" x2="740" y2="112" stroke="var(--line-strong)" marker-end="url(#s1)"/>
+        <text class="d-a" x="698" y="104">events</text>
+        <path d="M346,186 L346,220 L800,220 L800,140 L806,140" fill="none" stroke="var(--line-strong)" marker-end="url(#s1)"/>
+        <text class="d-a" x="560" y="214">annotated frames &#8594; MJPEG</text>
+        <line x1="580" y1="186" x2="580" y2="244" stroke="var(--line-strong)" marker-end="url(#s1)"/>
+        <text class="d-a" x="586" y="216">speech</text>
+        <path d="M520,186 L420,186 L360,244" fill="none" stroke="var(--amber)" stroke-width="1.5" marker-end="url(#s1)"/>
+        <text class="d-a" x="400" y="238" fill="var(--amber)">/v1</text>
+        <line x1="806" y1="140" x2="846" y2="140" stroke="var(--line-strong)" marker-end="url(#s1)"/>
+        <text class="d-a" x="808" y="132">ws</text>
+        <path d="M696,160 L830,160 L830,254" fill="none" stroke="var(--red)" stroke-width="1.5" marker-end="url(#s2)"/>
+        <text class="d-a" x="700" y="176" fill="var(--red)">media streams</text>
+
+        <text class="d-a" x="24" y="394">Only the red line leaves the building, and it carries a voice and a text brief. Never a frame.</text>
+      </svg>
+    </div>
+    <figcaption>fig. 2 &nbsp; Five containers, Z Runtime on the host, Twilio as a dumb carrier outside the boundary.</figcaption>
+  </figure>
+
+  <h3 style="margin-top:30px">Why five services and not nine</h3>
+  <p style="margin-top:10px">Vision keeps decode, router and tracking together because they share GPU context and frame buffers, and splitting them means shipping frames over IPC for no benefit. Brain keeps adjudication, the state machine and the Call Brief together because they share incident state. Everything else is genuinely separate. Fewer boundaries, fewer bugs, fewer things to restart at 2am.</p>
+
+  <h3 style="margin-top:30px">Deployment: Docker Compose, nothing else</h3>
+  <p style="margin-top:10px"><b>One machine, one compose file.</b> <span class="mono">docker compose up</span> brings up all five services with GPU passthrough. That satisfies the "script to run it on another machine" deliverable completely, it works anywhere Docker and the NVIDIA runtime exist, and it cannot fail in a way that costs us Friday.</p>
+  <p><b>Compose is the whole deployment story.</b> Five services, one file, GPU passthrough, reproducible on any machine with Docker and the NVIDIA runtime. Nothing else ships.</p>
+  <p><b>The scale story is the shape,</b> not another platform: five stateless services, one config file, one camera map. One box is one deployment. Another campus is another box. We say that plainly, and it is true.</p>
+
+  <pre><i># the only three commands anyone needs</i>
+<b>make up</b>       <i># docker compose up, pulls models if missing, waits for health</i>
+<b>make demo</b>     <i># pre-warm, load scenario, open the dashboard</i>
+<b>make reset</b>    <i># back to t=0, clear incidents, keep models warm</i></pre>
+</section>
+<section id="s06">
+  <div class="sec-head"><span class="num">06</span><h2>Repo structure</h2></div>
+  <p class="sec-note">Flat, obvious, nothing speculative. If a directory has no files in it by Thursday, delete it.</p>
+  <pre>sentinel/
+├── <b>PLAYBOOK.md</b>            <i># this document</i>
+├── <b>context.md</b>             <i># living state, every agent updates it</i>
+├── README.md                <i># setup, how local inference works, how to run</i>
+├── Makefile                 <i># up / demo / reset / bench</i>
+├── docker-compose.yml
+├── <b>contracts/</b>             <i># SHARED. frozen after Tuesday night</i>
+│   ├── incident.py          <i># IncidentRecord schema</i>
+│   ├── events.py            <i># socket message types</i>
+│   └── call_brief.py
+├── <b>services/</b>
+│   ├── mediamtx/            <i># config only</i>
+│   ├── vision/              <i># decode, router, tracking</i>
+│   ├── brain/               <i># adjudicate, calibrate, state machine, call brief</i>
+│   ├── voice/               <i># parakeet, kokoro</i>
+│   └── api/                 <i># websocket, mjpeg, rest</i>
+├── <b>web/</b>                   <i># dashboard, plain HTML + JS</i>
+├── <b>data/</b>
+│   ├── clips/               <i># gitignored, pulled by a script</i>
+│   ├── camera_map.json
+│   └── scenarios/           <i># demo timelines</i>
+├── <b>bench/</b>                 <i># benchmark scripts + committed raw results</i>
+└── docs/                    <i># deck, diagrams, metrics writeup</i></pre>
+
+  <div class="callout warn">
+    <span class="ct">Keep it clean</span>
+    <p>No <span class="mono">utils.py</span> graveyards, no half-finished experiments left in the tree, no commented-out blocks. If an experiment did not work, delete it and note the finding in <span class="mono">context.md</span>. Judges read the repo, and a clean one reads as competence.</p>
+  </div>
+</section>
+
+<section id="s07">
+  <div class="sec-head"><span class="num">07</span><h2>context.md protocol</h2></div>
+  <p class="sec-note">Four people and four coding agents working in parallel. This file is how they stay in sync. It is not optional.</p>
+
+  <div class="rules">
+    <div class="rule"><span class="mark must">ALWAYS</span><p><b>Read it at the start of every agent session,</b> right after PLAYBOOK.md. It is more current than the playbook.</p></div>
+    <div class="rule"><span class="mark must">ALWAYS</span><p><b>Update it before every push.</b> Move what you finished into Done, add what you started to In progress with your name, record any decision you made.</p></div>
+    <div class="rule"><span class="mark must">ALWAYS</span><p><b>Keep it under about 150 lines.</b> Prune completed items aggressively. A stale context file is worse than none, because people trust it.</p></div>
+    <div class="rule"><span class="mark never">NEVER</span><p><b>Do not put design rationale here.</b> That belongs in the playbook. This file is state, not reasoning.</p></div>
+  </div>
+
+  <h3 style="margin-top:30px">The template</h3>
+  <pre><b># context.md</b>
+<i>Last updated: 2026-09-23 14:02 by pratham</i>
+
+<b>## How to run it right now</b>
+make up && make demo
+Known issue: voice service needs 20s after boot before the first call works.
+
+<b>## Done</b>
+- contracts/ frozen (ayush, Tue 23:40)
+- zrt serving Qwen3-VL-30B-A3B-FP8 on :8000, 41 tok/s, TTFT 1.8s (pratham, Tue 23:10)
+- dashboard shell on mock events (manav, Tue 23:55)
+
+<b>## In progress</b>
+- vision: ByteTrack wiring &mdash; pratham &mdash; branch feat/pratham/tracker
+- brain: state machine &mdash; ayush &mdash; branch feat/ayush/statemachine
+
+<b>## Blocked</b>
+- chase footage still not found &mdash; naman &mdash; decide by Wed noon or we shoot our own
+
+<b>## Decisions made since the playbook</b>
+- NVFP4 quant failed to load under zrt, staying on FP8. Do not retry.
+- Camera 7 clip was too dark, swapped for clip 11.
+
+<b>## Next up</b>
+- brain: calibration on held-out slice
+- web: incident detail view</pre>
+
+  <h3 style="margin-top:30px">Prompt for your coding agent</h3>
+  <p style="margin-top:10px">Paste this at the start of any agent session with your name and task filled in.</p>
+  <pre>You are working in the Campus Sentinel repo for Edge AI SJSUHack.
+
+First, read <b>PLAYBOOK.md</b>, then read <b>context.md</b>. context.md is the
+current state of the project and is more up to date than the playbook.
+
+I am <b>&lt;YOUR NAME&gt;</b>. Only create or modify files under the directories
+listed as mine in the ownership table. Do not touch contracts/ at all.
+If a change is needed outside my directories, stop and tell me.
+
+Use the skills available to you rather than writing everything from
+scratch. Prefer the simplest thing that works. Fewer files, fewer
+dependencies, no speculative abstraction. Delete anything unused.
+
+Before every push:
+  1. update context.md (Done / In progress / Blocked / Decisions)
+  2. git pull --rebase origin main
+  3. commit in small pieces with clear messages
+
+Hard rules you must not break:
+- Every model call goes to the local ZRT endpoint. Never a cloud AI API.
+- Never place a real call to an emergency number. The dispatch path is a
+  simulation and stays labelled as one.
+- Never use Twilio &lt;Say&gt; or &lt;Gather input="speech"&gt;. Speech happens on
+  our box only.
+- On a call, never infer an address, a location or a medical fact. Read
+  them from the Call Brief.
+- Conform exactly to the schemas in contracts/. Do not add or rename fields.
+- Do not commit model weights or video files.
+
+Build every demo path so it can be forced deterministically from a
+scenario file. Hardcoding the demo is permitted and expected.
+
+My task right now is: <b>&lt;TASK&gt;</b></pre>
+</section>
+
+<section id="s08">
+  <div class="sec-head"><span class="num">08</span><h2>Git and ownership</h2></div>
+  <div class="tbl-wrap">
+    <table class="repo">
+      <thead><tr><th>Path</th><th>Owner</th><th>Contents</th></tr></thead>
+      <tbody>
+        <tr><td>contracts/</td><td><b>shared</b></td><td>Frozen after Tuesday night. Changes need a message to the group first</td></tr>
+        <tr><td>services/vision/</td><td>Pratham</td><td>Decode, ring buffer, YOLO, ByteTrack, rules, VadCLIP, tracking</td></tr>
+        <tr><td>services/brain/</td><td>Ayush</td><td>Sampler, adjudication, calibration, state machine, Call Brief, audit</td></tr>
+        <tr><td>services/voice/</td><td>Pratham</td><td>Parakeet, Kokoro, dispatcher prompt, Twilio bridge</td></tr>
+        <tr><td>services/api/</td><td>Ayush</td><td>WebSocket, MJPEG, REST</td></tr>
+        <tr><td>web/</td><td>Manav</td><td>Dashboard, camera wall, map, call console</td></tr>
+        <tr><td>data/</td><td>Naman</td><td>Clips, camera map, scenario timelines</td></tr>
+        <tr><td>bench/</td><td>Naman</td><td>Benchmark scripts and committed results</td></tr>
+        <tr><td>compose, Makefile</td><td>Ayush</td><td>Deployment</td></tr>
+        <tr><td>docs/</td><td>Naman</td><td>Deck, metrics writeup, diagrams</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="rules" style="margin-top:28px">
+    <div class="rule"><span class="mark must">ALWAYS</span><p><b>git pull --rebase origin main before every push.</b> Four people, one repo, no exceptions.</p></div>
+    <div class="rule"><span class="mark must">ALWAYS</span><p><b>Update context.md in the same commit</b> as the work it describes.</p></div>
+    <div class="rule"><span class="mark must">ALWAYS</span><p><b>Push at least hourly.</b> Work sitting on a laptop at 6pm Friday does not exist.</p></div>
+    <div class="rule"><span class="mark must">ALWAYS</span><p><b>Branch per person,</b> <span class="mono">feat/&lt;name&gt;/&lt;thing&gt;</span>, merged to main the same day. No branch lives overnight.</p></div>
+    <div class="rule"><span class="mark never">NEVER</span><p><b>No model weights, no video, no clips in git.</b> A script pulls them.</p></div>
+    <div class="rule"><span class="mark never">NEVER</span><p><b>Do not edit another owner's directory</b> without telling them. Especially contracts/.</p></div>
+  </div>
+</section>
+
+<section id="s09">
+  <div class="sec-head"><span class="num">09</span><h2>Who does what</h2></div>
+  <div class="owner">
+    <div class="ow"><span class="who">Ayush</span><ul>
+      <li>Owns: contracts, brain, api, deployment, integration</li>
+      <li>Writes the schemas first, tonight, before anyone else starts</li>
+      <li>State machine, guardrails, Call Brief assembly, audit log</li>
+      <li>Compose, Makefile, README, the clean-clone check</li>
+      <li>Runs the two daily gates and calls the cuts</li>
+    </ul></div>
+    <div class="ow"><span class="who">Pratham</span><ul>
+      <li>Owns: vision, voice, all models</li>
+      <li>Gets ZRT serving tonight. This is the one day-one risk in the plan</li>
+      <li>Router: YOLO, ByteTrack, rules, VadCLIP, fusion</li>
+      <li>Voice loop: Parakeet, Kokoro, dispatcher prompt, Twilio bridge</li>
+      <li>Records model numbers as he goes, they go straight into the deck</li>
+    </ul></div>
+    <div class="ow"><span class="who">Manav</span><ul>
+      <li>Owns: the entire frontend and the video</li>
+      <li>Builds the shell tonight against mock events, before any pipeline exists</li>
+      <li>Camera wall with overlays, map with the prediction animation, call console with live tool calls</li>
+      <li>Thursday night: records the backup run. Friday: shoots and cuts the 2 minutes</li>
+    </ul></div>
+    <div class="ow"><span class="who">Naman</span><ul>
+      <li>Owns: data, benchmarks, docs. Everything here is decoupled, so nothing waits on him</li>
+      <li>Datasets tonight, chase footage hunt is the blocking asset</li>
+      <li>Camera map with real coordinates and addresses, scenario timelines</li>
+      <li>Thursday: runs all five benchmarks, writes why each was chosen</li>
+      <li>Friday: deck, Drive upload, socials with every organizer tag</li>
+    </ul></div>
+  </div>
+</section>
+<section id="s10">
+  <div class="sec-head"><span class="num">10</span><h2>Schedule</h2></div>
+  <p class="sec-note">Three gates. Each one has a decision attached, not just a checkpoint.</p>
+
+  <div class="day">
+    <div class="day-head"><h3>Tonight</h3><span class="day-when">Tue, what is left of it</span></div>
+    <p style="margin-top:10px">Prove the risky thing and unblock everyone. Nobody builds features tonight.</p>
+    <div class="owner">
+      <div class="ow"><span class="who">Ayush</span><ul><li>Repo skeleton with the structure in section 06, public from the start</li><li>contracts/ written and pushed before anything else</li><li>context.md created from the template</li><li>mediamtx replaying six clips deterministically</li></ul></div>
+      <div class="ow"><span class="who">Pratham</span><ul><li><span class="mono">zrt pull</span> and <span class="mono">zrt serve</span> Qwen3-VL-30B-A3B-Instruct-FP8</li><li>Hit the endpoint with a still frame, confirm it answers</li><li>Record tokens/sec and TTFT into context.md</li><li>If time: test the NVFP4 build as an upgrade</li></ul></div>
+      <div class="ow"><span class="who">Manav</span><ul><li>Dashboard shell driven entirely by mock events</li><li>Six panes and a twelve-pin map, no real video needed</li></ul></div>
+      <div class="ow"><span class="who">Naman</span><ul><li>Pull UCF-Crime, RWF-2000, a campus set</li><li>Start the chase footage hunt. This is the blocking asset</li></ul></div>
+    </div>
+    <div class="gate"><b>Gate 1, before sleep</b>Does the model serve through ZRT on aarch64? If FP8 fails too, we are in real trouble and need to know tonight, not Wednesday. Write the answer in context.md either way.</div>
+  </div>
+
+  <div class="day">
+    <div class="day-head"><h3>Wednesday</h3><span class="day-when">The vertical slice</span></div>
+    <p style="margin-top:10px">One incident travels the whole length of the system. Depth before breadth, one camera before six.</p>
+    <div class="owner">
+      <div class="ow"><span class="who">Ayush</span><ul><li>Morning: brain skeleton, clip sampler, ZRT client, record validation</li><li>Afternoon: state machine, thresholds, guardrails, audit log</li><li>Scenario runner reading the timeline file</li></ul></div>
+      <div class="ow"><span class="who">Pratham</span><ul><li>Morning: decode, ring buffer, YOLO26s-pose, ByteTrack emitting tracks</li><li>Afternoon: rolling state, temporal rules, VadCLIP, fusion score</li><li>Two completions against one prefill, logprobs read out</li></ul></div>
+      <div class="ow"><span class="who">Manav</span><ul><li>Dashboard on real events over the socket</li><li>Overlays on the camera panes, incident detail view, confirm and dismiss</li></ul></div>
+      <div class="ow"><span class="who">Naman</span><ul><li>Cut the two demo scenarios to length</li><li>camera_map.json with real coordinates, addresses, entrances, adjacency</li><li>Benchmark harness scaffold</li></ul></div>
+    </div>
+    <div class="gate"><b>Gate 2, Wednesday night</b>One clip in, one alert out on the dashboard, with a real IncidentRecord behind it. If this has not happened by midnight, start cutting from section 12 on Thursday morning rather than Thursday night.</div>
+  </div>
+
+  <div class="day">
+    <div class="day-head"><h3>Thursday</h3><span class="day-when">The two moments, then integration</span></div>
+    <p style="margin-top:10px">Morning is the call and the chase, the two things the video is built around. Afternoon is nothing but making it run together.</p>
+    <div class="owner">
+      <div class="ow"><span class="who">Ayush</span><ul><li>Morning: Call Brief assembly, dispatch path, Twilio bridge or browser fallback</li><li>Afternoon: scenario mode hardened, pre-warm, cached fallback, reset button</li><li>Evening: clean-clone check on another machine</li></ul></div>
+      <div class="ow"><span class="who">Pratham</span><ul><li>Morning: Parakeet in, Kokoro out, dispatcher prompt, the five call tools</li><li>Afternoon: OSNet, camera graph, handoff. Then latency tuning</li></ul></div>
+      <div class="ow"><span class="who">Manav</span><ul><li>Morning: call console with both transcripts and live tool calls</li><li>Afternoon: map prediction animation, health strip, polish</li><li>Evening: record the backup run</li></ul></div>
+      <div class="ow"><span class="who">Naman</span><ul><li>Run all five benchmarks, commit raw output</li><li>Draft the metrics section: how and why each was chosen</li></ul></div>
+    </div>
+    <div class="gate"><b>Gate 3, Thursday 8:00 PM, feature freeze</b>The full demo runs start to finish with nobody touching anything but reset, under two minutes. After this only bug fixes, copy and documentation.</div>
+  </div>
+
+  <div class="day">
+    <div class="day-head"><h3>Friday</h3><span class="day-when">Deliverables only</span></div>
+    <p style="margin-top:10px">No new features, no refactors, no quick improvements. Friday turns a working system into submitted artefacts and it always takes longer than anyone expects.</p>
+    <div class="owner">
+      <div class="ow"><span class="who">Morning</span><ul><li>Shoot and cut the video. Multiple takes, pick the clean one</li><li>README, Makefile, compose, repo public, verified from a clean clone</li><li>Deck with the three required visuals: architecture, evidence, impact</li></ul></div>
+      <div class="ow"><span class="who">Afternoon</span><ul><li>YouTube upload, URL tested in an incognito window</li><li>SJSU Drive: brief, video, links, diagrams, photos</li><li>Socials with every organizer tag</li></ul></div>
+      <div class="ow"><span class="who">By 7:00 PM</span><ul><li>Everything submitted. The last hour is buffer, not working time</li></ul></div>
+    </div>
+  </div>
+</section>
+
+<section id="s11">
+  <div class="sec-head"><span class="num">11</span><h2>Demo safety</h2></div>
+  <p class="sec-note">The judges endorsed hardcoding the demo. Build it in from Tuesday, not Friday.</p>
+  <div class="check">
+    <div class="ck"><span class="box"></span><span class="lbl"><b>A scenario file drives everything.</b> Which clip, which camera, which second. Identical every run. One file, not logic scattered through the code.</span><span class="own">Ayush</span></div>
+    <div class="ck"><span class="box"></span><span class="lbl"><b>Every stage has a forced mode.</b> Any component can be told to produce a known output. That is how we keep the demo alive when one piece misbehaves at 7pm Thursday.</span><span class="own">all</span></div>
+    <div class="ck"><span class="box"></span><span class="lbl"><b>Pre-warm everything.</b> Models loaded and one dummy inference run before the demo starts, so the first real one is not the cold one.</span><span class="own">Pratham</span></div>
+    <div class="ck"><span class="box"></span><span class="lbl"><b>Cached fallback on the hero clip.</b> Live inference by default. If it exceeds its budget, the cached adjudication takes over and the demo never stalls. Documented in the README.</span><span class="own">Ayush</span></div>
+    <div class="ck"><span class="box"></span><span class="lbl"><b>Dispatcher questions scripted, our answers live.</b> The interesting half stays real, the unpredictable half does not.</span><span class="own">Pratham</span></div>
+    <div class="ck"><span class="box"></span><span class="lbl"><b>Reset button.</b> One click back to t=0, models stay warm.</span><span class="own">Manav</span></div>
+    <div class="ck"><span class="box"></span><span class="lbl"><b>Nothing ever dials a real emergency number.</b> Verified teammate only, labelled simulated in UI, README and video.</span><span class="own">all</span></div>
+    <div class="ck"><span class="box"></span><span class="lbl"><b>Backup recording Thursday night.</b> Even if the live run is expected to work, have footage of it working before Friday.</span><span class="own">Manav</span></div>
+  </div>
+</section>
+
+<section id="s12">
+  <div class="sec-head"><span class="num">12</span><h2>Cut list</h2></div>
+  <p class="sec-note">If we fall behind, drop in this order. Decided now, while nobody is tired or attached.</p>
+  <div class="cuts">
+    <div class="cut"><span class="n">01</span><div><p>On-device LoRA fine-tune of the router</p><p class="cost">costs half a day, buys HP points and one chart.</p></div></div>
+    <div class="cut"><span class="n">02</span><div><p>Twilio, fall back to the browser console</p><p class="cost">looks nearly identical on video. removes the tunnel risk entirely.</p></div></div>
+    <div class="cut"><span class="n">03</span><div><p>Cross-camera chase beyond two cameras</p><p class="cost">two handoffs proves the algorithm. four is just longer.</p></div></div>
+    <div class="cut"><span class="n">04</span><div><p>Live dispatcher dialogue</p><p class="cost">pre-rendered audio with a live transcript. nearly identical on video.</p></div></div>
+    <div class="cut"><span class="n">05</span><div><p>VadCLIP</p><p class="cost">temporal rules alone. medical still fires reliably, theft scenario weakens.</p></div></div>
+  </div>
+  <div class="callout warn">
+    <span class="ct">What never gets cut</span>
+    <p>One camera wall with overlays, one confirmed incident, one outbound call with a voice, and the numbers. That is the minimum that still reads as a system rather than a model demo, and it is reachable by Wednesday night.</p>
+  </div>
+</section>
+
+<section id="s13">
+  <div class="sec-head"><span class="num">13</span><h2>Deliverables and metrics</h2></div>
+  <div class="check">
+    <div class="ck"><span class="box"></span><span class="lbl"><b>Public GitHub</b> with README, Makefile, compose file, and a description of how local inference is implemented. Verified from a clean clone on another machine</span><span class="own">Ayush</span></div>
+    <div class="ck"><span class="box"></span><span class="lbl"><b>Metrics</b> with how and why each was chosen, raw output committed alongside</span><span class="own">Naman</span></div>
+    <div class="ck"><span class="box"></span><span class="lbl"><b>2-minute video</b> on public YouTube, URL tested incognito, file submitted too. Aimed at a non-technical person with the problem</span><span class="own">Manav</span></div>
+    <div class="ck"><span class="box"></span><span class="lbl"><b>Interactive presentation</b>, dynamic not static, carrying architecture, evidence and impact</span><span class="own">Manav, Naman</span></div>
+    <div class="ck"><span class="box"></span><span class="lbl"><b>5-minute demo</b> ready on the Nano over SSH or a tunneled port, plus the Thursday backup recording</span><span class="own">Ayush</span></div>
+    <div class="ck"><span class="box"></span><span class="lbl"><b>SJSU Google Drive</b>: brief, video, links, presentation, diagrams, photos</span><span class="own">Naman</span></div>
+    <div class="ck"><span class="box"></span><span class="lbl"><b>Socials</b> throughout, tagging @SJSUAppliedDataScience @SJSUAIInstitute @HackSJSU @HPInc @ZbyHP @NVIDIA @Arm @Canonical @Salesforce @iTradeNetwork @EdgeAI @LocalAgentic</span><span class="own">Naman</span></div>
+  </div>
+
+  <h3 style="margin-top:32px">The five measurements</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Measurement</th><th>What it proves</th></tr></thead>
+      <tbody>
+        <tr><td>Precision against threshold</td><td>Where the dispatch line sits, and why that number rather than a guess</td></tr>
+        <tr><td>Cameras against p95 latency</td><td>The operating ceiling and the utilization claim</td></tr>
+        <tr><td>Router escalation rate and cost per escalation</td><td>That the cascade pays for itself</td></tr>
+        <tr><td>False positive rate before and after the LoRA</td><td>That the learning loop works</td></tr>
+        <tr><td>Local against cloud round trip and cost per camera-year</td><td>Why inference stays inside the building</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="s14">
+  <div class="sec-head"><span class="num">14</span><h2>Answers to have ready</h2></div>
+  <p class="sec-note">Everyone should be able to give these without thinking.</p>
+  <div class="owner">
+    <div class="ow"><span class="who">Cloud</span><ul><li>All understanding is local. One boundary, one calibrated decision, and what crosses is a voice and a text brief, never a frame. You cannot make a phone ring from a local network without a carrier, which is exactly why Twilio is there and why it never touches AI.</li></ul></div>
+    <div class="ow"><span class="who">Novelty</span><ul><li>NVIDIA VSS is the reference architecture for video analytics agents and we know it. We diverge on three things it does not do: a cheap ML router in front of the VLM, autonomous outbound dispatch with live dialogue, and cross-camera pursuit.</li></ul></div>
+    <div class="ow"><span class="who">Competitors</span><ul><li>Volt AI, Verkada, Rhombus and Spot AI all solve false alarms by putting humans in a cloud operations center to verify alerts. We solve it with a cascade that runs in the building. No video leaving, no per-seat monitoring cost.</li></ul></div>
+    <div class="ow"><span class="who">Confidence</span><ul><li>It is not a number the model wrote. We constrain the class to one token, read the logprobs, and temperature-scale them on a held-out slice. Here is the reliability curve.</li></ul></div>
+    <div class="ow"><span class="who">Why 30B</span><ul><li>GB10 is bandwidth bound. A Mixture-of-Experts model reads 3B of 30B per token, so it measured faster than a dense 8B while carrying far more capacity. Dense of comparable quality costs roughly ten times the bandwidth here.</li></ul></div>
+    <div class="ow"><span class="who">Ethics</span><ul><li>No identity database, no roster matching, appearance only, short retention, and nothing identifying crosses the boundary. Every action is in an audit log with its reason and its confidence. Say it on a slide before anyone asks.</li></ul></div>
+    <div class="ow"><span class="who">Scale</span><ul><li>Five stateless services, one compose file, one camera map. One box is one deployment. Another campus is another box, not a reconfiguration.</li></ul></div>
+  </div>
+</section>
+
+<section id="s15">
+  <div class="sec-head"><span class="num">15</span><h2>Still open</h2></div>
+  <div class="open">
+    <div class="q">
+      <span class="qid">open 01 &middot; blocking</span>
+      <h3>Chase footage</h3>
+      <p>The pursuit needs the same person visibly leaving one camera and entering another, which almost no public anomaly dataset gives cleanly. First choice is real multi-camera or news footage. Fallback is splitting one continuous clip into overlapping segments treated as separate cameras, which demonstrates the algorithm honestly. Last resort is shooting thirty seconds ourselves.</p>
+      <p class="need"><b>Naman, decide by Wednesday noon.</b></p>
+    </div>
+    <div class="q">
+      <span class="qid">open 02 &middot; tonight</span>
+      <h3>Does the model serve through ZRT on aarch64</h3>
+      <p>FP8 is the official checkpoint and the safe baseline. NVFP4 would be roughly 29% faster and 7 GB smaller if a build loads cleanly.</p>
+      <p class="need"><b>Pratham, tonight.</b> Record the answer and the numbers in context.md.</p>
+    </div>
+    <div class="q">
+      <span class="qid">open 03 &middot; thursday</span>
+      <h3>Twilio Media Streams on a trial account</h3>
+      <p>Trial gives 75 voice minutes to 5 verified numbers. Media Streams needs a publicly reachable WebSocket, so a tunnel out of the Nano, and availability on trial is unconfirmed.</p>
+      <p class="need"><b>Pratham, Thursday morning.</b> Browser console is built regardless and is the fallback.</p>
+    </div>
+    <div class="q">
+      <span class="qid">open 04 &middot; measured</span>
+      <h3>The threshold and the camera count</h3>
+      <p>Both come out of benchmarks, not choice. The threshold from the precision curve, the camera count set just under the measured p95 ceiling so it holds on stage.</p>
+      <p class="need"><b>Naman, Thursday.</b></p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Campus Sentinel Playbook v3 &middot; supersedes all earlier plans<br>
+  Freeze Thu 8:00 PM &middot; submit Fri 7:00 PM &middot; hard deadline Fri 8:00 PM<br>
+  Read context.md before you start. Update it before you push. Always <span class="mono">git pull --rebase origin main</span>.
+</footer>
+
+</div>
+
+</body>
+</html>
