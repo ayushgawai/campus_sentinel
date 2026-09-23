@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-23 (pratham) — vision slice: decode / ring / YOLO / ByteTrack
+Last updated: 2026-09-23 (pratham) — 16-frame ring bundle for brain classify
 
 ## HARD RULES (do not skip)
 1. **Pull before push.** Always `git pull --rebase origin main` before every push. No exceptions.
@@ -13,6 +13,8 @@ Last updated: 2026-09-23 (pratham) — vision slice: decode / ring / YOLO / Byte
 git pull --rebase origin main
 python3 services/brain/check.py
 services/vision/.venv/bin/python services/vision/check.py
+# VLM (needs zrt group): zrt status
+# API: http://127.0.0.1:8000/v1  model Qwen/Qwen3-VL-30B-A3B-Instruct-FP8
 ```
 
 ## Ownership (paths)
@@ -29,12 +31,14 @@ services/vision/.venv/bin/python services/vision/check.py
 - `contracts/` v1.0 (ayush; Kiro+Codex review)
 - `services/brain/` skeleton: sampler, ZRT client (forced), state machine, placeholder thresholds (ayush; Kiro+Codex review)
 - `services/vision/` Wed-morning slice: synthetic decode, 8s ring, YOLO26s-pose TensorRT, ByteTrack → `overlay.boxes` (pratham)
+- **Gate 1 YES:** `zrt` 0.30.7 serves `Qwen/Qwen3-VL-30B-A3B-Instruct-FP8` on aarch64 `:8000`. Still frame answered. Cold TTFT 18.4s (image prefill); warm TTFT 0.12s, ~43 tok/s wall / ~54 tok/s decode. NVFP4 not tried. (pratham)
+- Vision `FrameBundle`: 16 peak-weighted frames from the 8s ring via `brain.sampler`. `to_classify_kwargs()` matches `ZRTClient.classify`. No scores. Ayush still needs to send `frames` on the wire. (pratham)
 
 ## In progress
 - (none)
 
 ## Blocked
-- Live multimodal ZRT classify needs vision's 16-frame bundle into brain + ZRT up (Pratham Gate 1 — zrt not installed yet)
+- Live ZRT classify: vision bundle is ready (`VisionRouter.bundle` / `to_classify_kwargs`); brain `zrt_client.classify` still raises until Ayush wires `frames`
 - Real decode/RTSP waits on Naman clips + mediamtx
 - Real severity thresholds need Naman bench curve
 
@@ -46,13 +50,16 @@ services/vision/.venv/bin/python services/vision/check.py
 - **Brain state machine:** after DISPATCHED, must go TRACKING before RESOLVED (chase path). ALERTED→RESOLVED kept for MINOR close-without-dispatch (three ACT outcomes). Not a playbook rewrite — clarifies the graph.
 - **Thresholds:** `severity_from_fused(..., allow_placeholder=True)` required; numbers are not operational until bench.
 - **ZRT skeleton:** only forced/demo classify works; live classify raises until 16-frame multimodal prefill is wired (no metadata-only fake).
+- **ZRT local:** `proxy.auth.type=none`, `proxy.tls.enabled=false`, `proxy.port=8000`. User must be in `zrt` group (`newgrp zrt`).
 - **Vision input:** synthetic frames until Naman clips/mediamtx. No RTSP invented.
-- **Vision emit:** `overlay.boxes` only. No new contract fields. Keypoints + direction stay internal.
+- **Vision emit:** `overlay.boxes` only on the socket. Escalation bundle is in-process Python (`FrameBundle`), not a new contract. Keypoints + direction stay internal.
+- **16-frame sample:** vision calls `services.brain.sampler.sample_from_timestamps`. Peak defaults to newest ring ts until fusion exists.
 - **YOLO26s-pose:** official Ultralytics `yolo26s-pose.pt` + TensorRT engine (batch=2, pad if fewer cameras). Weights in `services/vision/weights/` (gitignored).
 - **ByteTrack this slice:** IoU high/low match, no Kalman — keeps forced path dependency-free.
 
 ## Next up
 1. Ayush: wire brain escalate→IncidentRecord path + audit log stub; then api
-2. Pratham: Gate 1 `zrt serve` Qwen3-VL; then 16-frame ring → brain sampler; Wed afternoon rules / VadCLIP / fusion
-3. Manav: dashboard on mock incident.upsert
-4. Naman: clips / camera_map / thresholds bench
+2. Ayush: wire `ZRTClient.classify` live path from `FrameBundle.to_classify_kwargs()`
+3. Pratham: Wed afternoon rules / VadCLIP / fusion; optional NVFP4
+4. Manav: dashboard on mock incident.upsert
+5. Naman: clips / camera_map / thresholds bench

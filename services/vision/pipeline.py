@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from contracts import BBox, OverlayBoxes
 
+from .bundle import FrameBundle, build_bundle
 from .decode import SyntheticSource
 from .detector import PoseDetector
 from .ring import RingBuffer
@@ -42,6 +45,7 @@ class VisionRouter:
         self._trackers: dict[str, ByteTracker] = {
             cid: ByteTracker() for cid in camera_ids
         }
+        self._last_tracks: dict[str, list[Track]] = {cid: [] for cid in camera_ids}
 
     def step(self) -> list[OverlayBoxes]:
         frames = self.source.next_frames()
@@ -51,5 +55,28 @@ class VisionRouter:
         overlays: list[OverlayBoxes] = []
         for fr, cam_dets in zip(frames, dets):
             tracks = self._trackers[fr.camera_id].update(cam_dets)
+            self._last_tracks[fr.camera_id] = tracks
             overlays.append(tracks_to_overlay(fr.camera_id, fr.ts, tracks))
         return overlays
+
+    def bundle(
+        self,
+        camera_id: str,
+        *,
+        peak_ts: datetime | None = None,
+        track_id: str = "",
+        person_hint: str = "",
+        k: int = 16,
+    ) -> FrameBundle:
+        """16 peak-weighted frames for brain.zrt_client.classify (no scores)."""
+        if not track_id:
+            live = self._last_tracks.get(camera_id) or []
+            track_id = live[0].track_id if live else ""
+        return build_bundle(
+            self.ring,
+            camera_id,
+            peak_ts=peak_ts,
+            track_id=track_id,
+            person_hint=person_hint,
+            k=k,
+        )

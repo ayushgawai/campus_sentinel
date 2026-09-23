@@ -14,6 +14,8 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from contracts import BBox, EventType, OverlayBoxes, event_to_dict  # noqa: E402
+from services.brain.sampler import sample_from_timestamps  # noqa: E402
+from services.vision.bundle import build_bundle  # noqa: E402
 from services.vision.decode import SyntheticSource  # noqa: E402
 from services.vision.detector import DEFAULT_PT, N_KPTS, PoseDetector  # noqa: E402
 from services.vision.pipeline import VisionRouter  # noqa: E402
@@ -54,6 +56,30 @@ def main() -> None:
     span = (w[-1].ts - w[0].ts).total_seconds()
     assert span <= 8.01, span
 
+    # 16-frame peak-weighted bundle (brain sampler, no scores on the wire)
+    peak = w[len(w) // 2].ts
+    bundle = build_bundle(
+        ring, "cam-1", peak_ts=peak, track_id="t-1", person_hint="moving figure"
+    )
+    assert len(bundle.images) == 16
+    assert bundle.indices == sample_from_timestamps(
+        [i.ts.timestamp() for i in w], peak.timestamp(), k=16
+    )
+    near = sum(1 for i in bundle.indices if abs(i - len(w) // 2) <= 8)
+    far = sum(1 for i in bundle.indices if abs(i - len(w) // 2) >= 12)
+    assert near > far, (bundle.indices, near, far)
+    kw = bundle.to_classify_kwargs()
+    assert set(kw) == {
+        "track_id",
+        "camera_id",
+        "peak_ts_iso",
+        "person_hint",
+        "frames",
+    }
+    assert "router_score" not in bundle.fact_text()
+    assert "fused_prob" not in bundle.fact_text()
+    assert len(kw["frames"]) == 16
+
     # Full pipeline → frozen overlay.boxes only
     router = VisionRouter(["cam-1"], forced=True, fps=15.0)
     overlays = None
@@ -70,6 +96,13 @@ def main() -> None:
     assert wire["type"] == "overlay.boxes"
     assert "keypoints" not in wire
     assert set(wire["boxes"][0]) == {"x", "y", "w", "h", "track_id", "label", "score"}
+
+    for _ in range(20):
+        router.step()
+    routed = router.bundle("cam-1", person_hint="moving figure")
+    assert routed.track_id.startswith("t-")
+    assert len(routed.images) == 16
+    assert routed.camera_id == "cam-1"
 
     if DEFAULT_PT.is_file():
         live = PoseDetector(forced=False)
