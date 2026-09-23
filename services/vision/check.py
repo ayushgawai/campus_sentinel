@@ -13,13 +13,18 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from contracts import BBox, EventType, OverlayBoxes, event_to_dict  # noqa: E402
+from datetime import timedelta  # noqa: E402
+
+from contracts import BBox, EventType, OverlayBoxes, event_to_dict, utcnow  # noqa: E402
 from services.brain.sampler import sample_from_timestamps  # noqa: E402
 from services.vision.bundle import build_bundle  # noqa: E402
 from services.vision.decode import SyntheticSource  # noqa: E402
 from services.vision.detector import DEFAULT_PT, N_KPTS, PoseDetector  # noqa: E402
+from services.vision.fusion import fuse, should_escalate  # noqa: E402
 from services.vision.pipeline import VisionRouter  # noqa: E402
 from services.vision.ring import RingBuffer  # noqa: E402
+from services.vision.rules import FALL, RUN, evaluate  # noqa: E402
+from services.vision.state import PoseSample, TrackMemory  # noqa: E402
 from services.vision.tracker import ByteTracker  # noqa: E402
 
 
@@ -103,6 +108,57 @@ def main() -> None:
     assert routed.track_id.startswith("t-")
     assert len(routed.images) == 16
     assert routed.camera_id == "cam-1"
+
+    # Fall sequence on rolling state (not fire — no FIRE class)
+    mem = TrackMemory()
+    t0 = utcnow()
+    for i in range(12):
+        frac = i / 11
+        mem.push(
+            PoseSample(
+                ts=t0 + timedelta(seconds=i / 15),
+                x=100,
+                y=80 + 90 * frac,
+                w=56,
+                h=140 - 70 * frac,
+                score=0.9,
+                vx=1.0,
+                vy=4.0 + 12 * frac,
+                torso_deg=15 + 70 * frac,
+                cx=128,
+                cy=150 + 90 * frac,
+            )
+        )
+    assert FALL in evaluate(mem)
+    assert should_escalate(fuse(0.9, [FALL]))
+
+    fall_router = VisionRouter(["cam-1"], forced=True, fps=15.0, forced_rule=FALL)
+    for _ in range(10):
+        fall_router.step()
+    assert fall_router.last_escalations
+    assert FALL in fall_router.last_escalations[0].rules
+    assert fall_router.bundle("cam-1").track_id
+
+    # Sliding synthetic person should be able to trip run (not only fall)
+    run_mem = TrackMemory()
+    t1 = utcnow()
+    for i in range(20):
+        run_mem.push(
+            PoseSample(
+                ts=t1 + timedelta(seconds=i / 15),
+                x=40 + i * 20,
+                y=200,
+                w=56,
+                h=140,
+                score=0.9,
+                vx=20.0,
+                vy=0.0,
+                torso_deg=10.0,
+                cx=68 + i * 20,
+                cy=270,
+            )
+        )
+    assert RUN in evaluate(run_mem, fps=15.0)
 
     if DEFAULT_PT.is_file():
         live = PoseDetector(forced=False)
