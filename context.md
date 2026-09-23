@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-23 (pratham) — 16-frame ring bundle for brain classify
+Last updated: 2026-09-23 (pratham) — router rules + fusion (no FIRE class)
 
 ## HARD RULES (do not skip)
 1. **Pull before push.** Always `git pull --rebase origin main` before every push. No exceptions.
@@ -33,6 +33,7 @@ services/vision/.venv/bin/python services/vision/check.py
 - `services/vision/` Wed-morning slice: synthetic decode, 8s ring, YOLO26s-pose TensorRT, ByteTrack → `overlay.boxes` (pratham)
 - **Gate 1 YES:** `zrt` 0.30.7 serves `Qwen/Qwen3-VL-30B-A3B-Instruct-FP8` on aarch64 `:8000`. Still frame answered. Cold TTFT 18.4s (image prefill); warm TTFT 0.12s, ~43 tok/s wall / ~54 tok/s decode. NVFP4 not tried. (pratham)
 - Vision `FrameBundle`: 16 peak-weighted frames from the 8s ring via `brain.sampler`. `to_classify_kwargs()` matches `ZRTClient.classify`. No scores. Ayush still needs to send `frames` on the wire. (pratham)
+- Router rolling 1–2s state + rules `fall|run|sudden_acceleration|long_dwell` + loose fusion. Overlay `score` is fused. Peak for the 16-frame bundle is the max fused ts. VadCLIP weight 0 (cut 05). No FIRE — not in frozen six-class. (pratham)
 
 ## In progress
 - (none)
@@ -53,13 +54,14 @@ services/vision/.venv/bin/python services/vision/check.py
 - **ZRT local:** `proxy.auth.type=none`, `proxy.tls.enabled=false`, `proxy.port=8000`. User must be in `zrt` group (`newgrp zrt`).
 - **Vision input:** synthetic frames until Naman clips/mediamtx. No RTSP invented.
 - **Vision emit:** `overlay.boxes` only on the socket. Escalation bundle is in-process Python (`FrameBundle`), not a new contract. Keypoints + direction stay internal.
-- **16-frame sample:** vision calls `services.brain.sampler.sample_from_timestamps`. Peak defaults to newest ring ts until fusion exists.
+- **16-frame sample:** vision calls `services.brain.sampler.sample_from_timestamps`. Peak is the camera's max fused score ts (else newest ring ts).
+- **Router classes:** pose rules cover fall/run/accel/dwell. Fight/theft wait on VadCLIP + VLM. FIRE is not a contract class — do not add without a group message.
 - **YOLO26s-pose:** official Ultralytics `yolo26s-pose.pt` + TensorRT engine (batch=2, pad if fewer cameras). Weights in `services/vision/weights/` (gitignored).
 - **ByteTrack this slice:** IoU high/low match, no Kalman — keeps forced path dependency-free.
 
 ## Next up
 1. Ayush: wire brain escalate→IncidentRecord path + audit log stub; then api
 2. Ayush: wire `ZRTClient.classify` live path from `FrameBundle.to_classify_kwargs()`
-3. Pratham: Wed afternoon rules / VadCLIP / fusion; optional NVFP4
+3. Pratham: optional VadCLIP (cut 05) / NVFP4; Thursday voice + OSNet
 4. Manav: dashboard on mock incident.upsert
 5. Naman: clips / camera_map / thresholds bench
