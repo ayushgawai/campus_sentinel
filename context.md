@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-24 (pratham) — upscale tiny clips + run_clips --to-vlm
+Last updated: 2026-09-24 (ayush) — live pipeline lab (real YOLO/VadCLIP/Qwen)
 
 ## HARD RULES
 1. `git pull --rebase origin main` before every push. Work on **main**.
@@ -18,28 +18,26 @@ Last updated: 2026-09-24 (pratham) — upscale tiny clips + run_clips --to-vlm
 
 ## How to run (stable)
 ```bash
-# ONE GPU job only
-CS_VISION_SEVILLE=1 CS_VISION_STEP_S=0.45 CS_VISION_COOLDOWN_S=12 \
+# ZRT/Qwen on :8000 uses most VRAM — run YOLO/CLIP on CPU beside it:
+CS_VISION_SEVILLE=1 CS_VISION_YOLO=pt CS_VISION_DEVICE=cpu \
+  CS_VISION_STEP_S=0.6 CS_VISION_COOLDOWN_S=15 \
   services/vision/.venv/bin/python -m services.api --host 127.0.0.1 --port 8080
-# Mac tunnel: ssh -L 8080:127.0.0.1:8080 zgx-b505
-# Ambient fillers (CPU): make ambient
+# Mac: ssh -L 8080:127.0.0.1:8080 zgx-b505
+# Lab: cd web && python3 -m http.server 8000 → http://127.0.0.1:8000/lab.html
 ```
 
-## Done (Ayush + filled Pratham/Naman gaps except UI)
-- contracts v1.1 WEAPON divert + brain adjudicate/fuse/audit/from_vision
-- CallBrief assembler (`services/brain/call_brief.py`) — facts only; 6-cam map
-- api WS/MJPEG + throttled Seville vision bridge (normalized boxes)
-- Voice forced/demo (`services/voice/`) — transcript + tools; hub starts on SEVERE
-- Ambient placeholders cam-04..06 (`make ambient`, media outside git)
-- `bench/thresholds.json` loaded by `services/brain/thresholds.py`
-- OSNet stub digest affinity (no weights / no GPU)
-- compose: api + mediamtx stub paths cam01..06 under profile `full`
+## Done
+- contracts v1.1 WEAPON + brain adjudicate/fuse/CallBrief
+- api WS/MJPEG + throttled Seville vision bridge → live ZRT when healthy
+- Voice on any SEVERE upsert (live or scenario); transcript AI↔911 stand-in
+- Ambient cam-04..06 placeholders; bench thresholds; OSNet stub; mediamtx paths
+- **`web/lab.html`** live-only test UI (tracks, scores, 911, HITL broadcast)
+- Indraneel’s officer `web/index.html` untouched
 
-## Still open (not UI)
-- **Live ZRT classify wired** (pratham): 16-frame bundle → `:8000` Completion A. Smoke cam7: router fused 0.492 → VLM `MEDICAL` (forced=False). Forced hint only if ZRT down / no frames. Qwen FP8 Ready ~102GB. Do not also run full `run_seville.py`.
-- Real ambient CCTV + real OSNet weights + Parakeet/Kokoro
-- make up/demo end-to-end clean-clone
+## Still open
+- Real Parakeet/Kokoro (911 human later)
+- Real ambient CCTV + OSNet weights
+- make up/demo clean-clone
 
 ## Ownership
-Ayush: brain/api/compose · Pratham: vision/voice · Manav/Indraneel: web · Naman: data/bench
-UI left to Indraneel — do not edit `web/` for this fill.
+Ayush: brain/api/compose/lab · Pratham: vision/voice · Indraneel: officer web · Naman: data/bench

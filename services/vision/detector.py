@@ -77,15 +77,33 @@ class PoseDetector:
 
         engine = Path(os.environ.get("VISION_YOLO_ENGINE", DEFAULT_ENGINE))
         pt = self.weights or Path(os.environ.get("VISION_YOLO_PT", DEFAULT_PT))
-        path = engine if engine.is_file() else pt
+        prefer_pt = os.environ.get("CS_VISION_YOLO", "").strip().lower() in {
+            "pt",
+            "pytorch",
+            "cpu",
+        }
+        path = pt if prefer_pt and pt.is_file() else (engine if engine.is_file() else pt)
         if not path.is_file():
             raise FileNotFoundError(
                 f"YOLO26s-pose weights missing at {path}. "
                 "Run: python3 services/vision/pull_weights.py"
             )
-        self._model = YOLO(str(path))
-        self._loaded_path = path
+        try:
+            self._model = YOLO(str(path))
+            self._loaded_path = path
+        except Exception as exc:
+            # TensorRT often OOMs when ZRT/Qwen already owns the GPU — fall back to .pt
+            if path.suffix == ".engine" and pt.is_file():
+                print(f"[detector] engine load failed ({exc}); falling back to {pt}", flush=True)
+                self._model = YOLO(str(pt))
+                self._loaded_path = pt
+            else:
+                raise
         return self._model
+
+    @property
+    def device(self) -> str:
+        return os.environ.get("CS_VISION_DEVICE", "cuda:0")
 
     def detect_forced(self, frames: list[Frame]) -> list[list[Detection]]:
         batch: list[list[Detection]] = []
@@ -128,9 +146,16 @@ class PoseDetector:
         else:
             batches.append(images)
         results = []
+        device = self.device
         for b in batches:
             results.extend(
-                model.predict(b, conf=self.conf, verbose=False, batch=len(b))
+                model.predict(
+                    b,
+                    conf=self.conf,
+                    verbose=False,
+                    batch=len(b),
+                    device=device,
+                )
             )
         results = results[:n]
         out: list[list[Detection]] = []

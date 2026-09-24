@@ -71,6 +71,9 @@ class DemoHub:
 
     async def publish(self, ev: Any) -> None:
         await self.broadcast(event_to_dict(ev))
+        # Live Seville path publishes IncidentUpsert here — start 911 loop on SEVERE.
+        if isinstance(ev, IncidentUpsert) and ev.incident is not None:
+            await self._maybe_start_voice(ev.incident)
 
     def _voice_agent(self) -> VoiceAgent:
         if self._voice is None:
@@ -155,7 +158,6 @@ class DemoHub:
         )
         self.frames_escalated += 1
         await self.publish(IncidentUpsert(incident=result.record))
-        await self._maybe_start_voice(result.record)
         await self.publish(
             DemoControl(action="scenario", scenario_id=key, ts=_utcnow())
         )

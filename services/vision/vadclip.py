@@ -126,7 +126,14 @@ class VadClip:
         state = blob["state_dict"] if isinstance(blob, dict) and "state_dict" in blob else blob
         model.load_state_dict(state)
         model.eval()
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+        # Prefer CPU when ZRT owns the GPU (CS_VISION_DEVICE=cpu).
+        want = os.environ.get("CS_VISION_DEVICE", "").strip().lower()
+        if want.startswith("cpu"):
+            device = "cpu"
+        elif want.startswith("cuda"):
+            device = want
+        else:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
         model = model.to(device)
         tokenizer = open_clip.get_tokenizer(CLIP_ARCH)
         texts: list[str] = []
