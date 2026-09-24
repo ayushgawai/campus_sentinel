@@ -1,4 +1,25 @@
 {
-  "cameras": [],
-  "_note": "Naman fills coordinates, addresses, entrances, adjacency"
+  "cameras": [
+    {
+      "id": "cam-01",
+      "address": "TODO - pull real address from Seville feed json / fixtures.js",
+      "coordinates": null,
+      "entrances": ["TODO - pull real entrance name from fixtures.js"],
+      "adjacency": ["cam-02", "cam-03"]
+    },
+    {
+      "id": "cam-02",
+      "address": "TODO - pull real address from Seville feed json / fixtures.js",
+      "coordinates": null,
+      "entrances": ["TODO - pull real entrance name from fixtures.js"],
+      "adjacency": ["cam-01", "cam-03"]
+    },
+    {
+      "id": "cam-03",
+      "address": "TODO - pull real address from Seville feed json / fixtures.js",
+      "coordinates": null,
+      "entrances": ["TODO - pull real entrance name from fixtures.js"],
+      "adjacency": ["cam-01", "cam-02"]
+    }
+  ]
 }
