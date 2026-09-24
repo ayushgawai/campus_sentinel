@@ -1,7 +1,12 @@
-"""Run the live router on Naman's normalized staging clips. Not for git weights."""
+"""Run the live router on Naman's normalized staging clips. Not for git weights.
+
+  python services/vision/run_clips.py
+  python services/vision/run_clips.py --to-vlm
+"""
 
 from __future__ import annotations
 
+import argparse
 import sys
 from collections import Counter
 from pathlib import Path
@@ -18,7 +23,7 @@ STAGING = ROOT / "data" / "clips" / "staging" / "normalized"
 SKIP = {"wildtrack_cam1.mp4", "wildtrack_cam2.mp4"}
 
 
-def run_one(path: Path) -> dict:
+def run_one(path: Path, *, to_vlm: bool = False) -> dict:
     cam = path.stem
     src = FileSource({cam: str(path)})
     router = VisionRouter([cam], forced=False, source=src)
@@ -27,6 +32,7 @@ def run_one(path: Path) -> dict:
     rules: Counter[str] = Counter()
     escalations = 0
     max_people = 0
+    vlm = None
     try:
         while True:
             ovs = router.step()
@@ -41,6 +47,19 @@ def run_one(path: Path) -> dict:
                 escalations += 1
                 for r in esc.rules:
                     rules[r] += 1
+                if to_vlm and vlm is None:
+                    from services.brain.zrt_client import ZRTClient
+
+                    zrt = ZRTClient(forced=False, timeout_s=90.0)
+                    bundle = router.bundle(
+                        esc.camera_id, peak_ts=esc.ts, track_id=esc.track_id
+                    )
+                    result = zrt.classify(**bundle.to_classify_kwargs())
+                    vlm = {
+                        "class": result.class_token.value,
+                        "logprob": round(result.logprob, 3),
+                        "forced": result.forced,
+                    }
     finally:
         src.close()
     return {
@@ -60,15 +79,23 @@ def run_one(path: Path) -> dict:
                 "vadclip": round(router._peak[cam].vadclip, 3),
             }
         ),
+        "vlm": vlm,
     }
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--to-vlm",
+        action="store_true",
+        help="send the first escalation of each clip to live ZRT classify",
+    )
+    args = parser.parse_args()
     clips = sorted(p for p in STAGING.glob("*.mp4") if p.name not in SKIP)
     if not clips:
         raise SystemExit(f"no clips in {STAGING}")
-    print(f"clips={len(clips)} dir={STAGING}")
-    rows = [run_one(p) for p in clips]
+    print(f"clips={len(clips)} dir={STAGING} to_vlm={args.to_vlm}")
+    rows = [run_one(p, to_vlm=args.to_vlm) for p in clips]
     print(
         f"{'clip':22} {'frames':>6} {'tracks':>6} {'maxN':>4} "
         f"{'esc':>4}  peak_fused  vadclip  rules"
@@ -82,6 +109,7 @@ def main() -> None:
             f"{r['clip']:22} {r['frames']:6} {r['tracks']:6} "
             f"{r['max_people']:4} {r['escalations']:4}  {pf:>9}  {pv:>7}  "
             f"{pr} {r['rules']}"
+            + (f"  vlm={r['vlm']}" if r.get("vlm") else "")
         )
 
 

@@ -114,6 +114,13 @@ class FileSource:
         self._t0 = start or utcnow()
         self.width = int(next(iter(self._caps.values())).get(cv2.CAP_PROP_FRAME_WIDTH) or 640)
         self.height = int(next(iter(self._caps.values())).get(cv2.CAP_PROP_FRAME_HEIGHT) or 640)
+        # UCF fight/theft staging files are 64x64 — YOLO/CLIP miss them raw.
+        self._upscale = 1.0
+        short = min(self.width, self.height)
+        if short and short < 320:
+            self._upscale = 320.0 / short
+            self.width = int(self.width * self._upscale)
+            self.height = int(self.height * self._upscale)
 
     def next_frames(self) -> list[Frame]:
         import cv2
@@ -127,6 +134,12 @@ class FileSource:
             if not ok:
                 return []
             rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+            if getattr(self, "_upscale", 1.0) != 1.0:
+                rgb = cv2.resize(
+                    rgb,
+                    (self.width, self.height),
+                    interpolation=cv2.INTER_LINEAR,
+                )
             out.append(
                 Frame(
                     camera_id=cid,

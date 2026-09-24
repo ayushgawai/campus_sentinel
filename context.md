@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-24 (ayush) — voice/ambient/thresholds/osnet fill (non-UI)
+Last updated: 2026-09-24 (pratham) — upscale tiny clips + run_clips --to-vlm
 
 ## HARD RULES
 1. `git pull --rebase origin main` before every push. Work on **main**.
