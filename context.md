@@ -13,19 +13,20 @@ Last updated: 2026-09-24 (ayush) — SSHFS mount fix + Twilio .env on box
 - **schema_version:** IncidentRecord → **1.1**
 - Hero demo = **Seville armed chase / WEAPON**, not medical-fall (pose rule `fall` may still fire).
 
-## Runtime (GB10)
+## Runtime (GB10) — STABILITY FIRST
+See **`docs/STABILITY.md`**. Box had repeated **hard crashes** under Qwen+YOLO (NVRM OOM, no swap).
 ```bash
-zrt serve hf:Qwen/Qwen3-VL-30B-A3B-Instruct-FP8 --force --gpu-memory-fraction 0.55 \
+# Always: bash scripts/preflight_gb10.sh
+zrt serve hf:Qwen/Qwen3-VL-30B-A3B-Instruct-FP8 --force --gpu-memory-fraction 0.40 \
   --extra "--max-model-len=8192"
+# YOLO CUDA only after ZRT is healthy; or use CS_VISION_DEVICE=cpu for light tests
 CS_VISION_SEVILLE=1 CS_VISION_YOLO=pt CS_VISION_DEVICE=cuda:0 \
   CS_VISION_STEP_S=0.5 CS_VISION_COOLDOWN_S=12 \
   services/vision/.venv/bin/python -m services.api --host 0.0.0.0 --port 8080
-# Lab static (Mac + ZGX) — separate from API
-cd web && python3 -m http.server 8765 --bind 0.0.0.0
 ```
-- Qwen **0.55** required for YOLO coexistence. Does **not** change FP8 precision.
-- Lab: `http://100.83.170.35:8765/lab.html` (ZGX) · Mac Tailscale `:8765` · API `:8080`
-- Kill switch: `CS_KILL_SWITCH=1` blocks SEVERE voice dispatch.
+- Prefer **0.40** GPU fraction when coexisting (was 0.55 — left too little headroom).
+- **No swap today** — add 32G `/swapfile` with sudo (commands in STABILITY.md).
+- A.1 UI-only: do **not** start ZRT.
 
 ## Mac mount
 - `~/mnt/zgx-b505` = SSHFS of `/home/hp25` via **`zgx-up`** (must show in `mount`, not a local folder).
