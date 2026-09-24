@@ -32,13 +32,12 @@ cd web && python3 -m http.server 8765 --bind 0.0.0.0
 - **cam-04..06:** Naman `feeds/naman/demo_clips` — VLM-assigned (parking / lobby / walkway). See `docs/NAMAN_CLIPS.md` + `data/naman_ambient_assign.json`.
 - Placeholders remain as fallback if Naman pack missing.
 
-## Voice / Twilio handoff
-- Spec: **`docs/HANDOFF_VOICE_TWILIO.md`**
-- Scaffold ready: `services/voice/twilio_bridge.py` + `parakeet.py` + `kokoro.py`
-- Env template: **`.env.example`** — set `CS_TWILIO_ENABLED=1` + Twilio keys when Naman has them
-- Status: `GET /voice/status` · TwiML: `POST /twilio/voice`
-- Until keys: officer Q&A script + cam-02/03 whereabouts + `security_alert:*`
-- Self-check: `python3 -m services.voice.check`
+## Voice / Twilio
+- SID + token on ZGX **`.env` only** (gitignored). Parakeet/Kokoro = local stubs, no cloud keys.
+- **Blocked on trial:** must verify a personal phone in Twilio Console before buying `TWILIO_FROM`.
+- Then set `TWILIO_FROM`, `CS_DEMO_TO_NUMBER` (that verified cell), `CS_PUBLIC_BASE` (HTTPS tunnel to :8080).
+- Check: `bash scripts/check_twilio_env.sh` · `GET /voice/status`
+- Until complete: scripted 911 loop still runs on SEVERE.
 
 ## Done
 - Live C→D→E + Completion B + guardrails + AUDIT.md
@@ -49,7 +48,7 @@ cd web && python3 -m http.server 8765 --bind 0.0.0.0
 | Who | What |
 |-----|------|
 | **Naman** | Done for ambient — 3 clips wired. Optional: more natural basement/road later |
-| **Voice owner** | Drop keys into `.env` from `.env.example`; Media Stream WS still thin |
+| **Voice / Ayush** | SID+token in `.env`. Need: verify phone → buy FROM → set TO + public HTTPS |
 | **Indraneel** | Officer F1 polish (same WS events as lab) |
 | **Ayush / open** | OSNet weights · temp calibration fit · MediaMTX optional |
 

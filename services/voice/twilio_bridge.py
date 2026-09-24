@@ -87,9 +87,35 @@ def place_call(incident_id: str, *, config: TwilioConfig | None = None) -> dict[
 
 def status() -> dict[str, Any]:
     cfg = load_config()
+    missing: list[str] = []
+    if os.environ.get("CS_KILL_SWITCH", "").strip() in {"1", "true", "yes"}:
+        missing.append("kill_switch_on")
+    if os.environ.get("CS_TWILIO_ENABLED", "").strip() not in {"1", "true", "yes"}:
+        missing.append("CS_TWILIO_ENABLED")
+    for key in (
+        "TWILIO_ACCOUNT_SID",
+        "TWILIO_AUTH_TOKEN",
+        "TWILIO_FROM",
+        "CS_DEMO_TO_NUMBER",
+        "CS_PUBLIC_BASE",
+    ):
+        if not os.environ.get(key, "").strip():
+            missing.append(key)
     return {
         "configured": cfg is not None,
         "kill_switch": os.environ.get("CS_KILL_SWITCH", "").strip() in {"1", "true", "yes"},
+        "enabled_flag": os.environ.get("CS_TWILIO_ENABLED", "").strip() in {"1", "true", "yes"},
+        "sid_set": bool(os.environ.get("TWILIO_ACCOUNT_SID")),
+        "token_set": bool(os.environ.get("TWILIO_AUTH_TOKEN")),
+        "from_set": bool(os.environ.get("TWILIO_FROM")),
         "to_set": bool(os.environ.get("CS_DEMO_TO_NUMBER")),
         "public_base_set": bool(os.environ.get("CS_PUBLIC_BASE")),
+        "missing": missing,
+        "parakeet": bool(os.environ.get("CS_PARAKEET_URL")),
+        "kokoro": bool(os.environ.get("CS_KOKORO_URL")),
+        "note": (
+            "Trial Twilio: verify a personal phone in Console → buy Voice number "
+            "(TWILIO_FROM) → set CS_DEMO_TO_NUMBER to that verified handset → "
+            "set CS_PUBLIC_BASE to a public HTTPS tunnel to :8080."
+        ),
     }
