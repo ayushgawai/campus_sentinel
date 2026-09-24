@@ -1,19 +1,17 @@
-"""Router fusion — short weighted sum, one loose threshold (playbook C.7).
-
-VadCLIP is cut-list 05; weight stays 0 until a real head lands.
-"""
+"""Router fusion — short weighted sum, one loose threshold (playbook C.7)."""
 
 from __future__ import annotations
 
 from .rules import FALL, LONG_DWELL, RUN, SUDDEN_ACCEL
 
 # Tuned loose on purpose: a wrong escalate costs GPU seconds; a miss is forever.
+# VadCLIP is on so FIGHT/THEFT can escalate without a pose rule.
 W_DET = 0.20
 W_FALL = 0.40
 W_RUN = 0.20
 W_ACCEL = 0.10
 W_DWELL = 0.10
-W_VADCLIP = 0.0
+W_VADCLIP = 0.40
 ESCALATE_AT = 0.40
 
 

@@ -1,7 +1,8 @@
-"""Pull official YOLO26s-pose weights. Never commit the files.
+"""Pull official YOLO26s-pose and CLIP ViT-B/16 weights. Never commit the files.
 
 Ultralytics downloads yolo26s-pose.pt on first YOLO(...) load.
 TensorRT export is attempted when the engine is missing; .pt stays the fallback.
+CLIP ViT-B/16 (openai) is the live VadCLIP backbone.
 """
 
 from __future__ import annotations
@@ -14,9 +15,10 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from services.vision.detector import DEFAULT_ENGINE, DEFAULT_PT, WEIGHTS_DIR  # noqa: E402
+from services.vision.vadclip import CLIP_ARCH, CLIP_PRETRAINED, DEFAULT_CLIP  # noqa: E402
 
 
-def main() -> None:
+def pull_yolo() -> None:
     WEIGHTS_DIR.mkdir(parents=True, exist_ok=True)
     from ultralytics import YOLO
 
@@ -60,6 +62,27 @@ def main() -> None:
     except Exception as e:
         print(f"TensorRT export skipped ({type(e).__name__}: {e})")
         print("live detect will use yolo26s-pose.pt until an engine lands")
+
+
+def pull_clip() -> None:
+    import open_clip
+    import torch
+
+    WEIGHTS_DIR.mkdir(parents=True, exist_ok=True)
+    if DEFAULT_CLIP.is_file():
+        print(f"clip already present: {DEFAULT_CLIP}")
+        return
+    print(f"loading official {CLIP_ARCH} ({CLIP_PRETRAINED}) → {DEFAULT_CLIP}")
+    model, _, _ = open_clip.create_model_and_transforms(
+        CLIP_ARCH, pretrained=CLIP_PRETRAINED
+    )
+    torch.save(model.state_dict(), DEFAULT_CLIP)
+    print(f"clip ready: {DEFAULT_CLIP} ({DEFAULT_CLIP.stat().st_size} bytes)")
+
+
+def main() -> None:
+    pull_yolo()
+    pull_clip()
 
 
 if __name__ == "__main__":

@@ -8,12 +8,14 @@ from .pipeline import Escalation, VisionRouter, tracks_to_overlay
 from .ring import RingBuffer
 from .rules import FALL, LONG_DWELL, RUN, SUDDEN_ACCEL, evaluate
 from .tracker import ByteTracker, Track
+from .vadclip import FIGHT, THEFT, VadClip, VadScore
 
 __all__ = [
     "ByteTracker",
     "Detection",
     "Escalation",
     "FALL",
+    "FIGHT",
     "FileSource",
     "Frame",
     "FrameBundle",
@@ -23,7 +25,10 @@ __all__ = [
     "RingBuffer",
     "SUDDEN_ACCEL",
     "SyntheticSource",
+    "THEFT",
     "Track",
+    "VadClip",
+    "VadScore",
     "VisionRouter",
     "build_bundle",
     "evaluate",
