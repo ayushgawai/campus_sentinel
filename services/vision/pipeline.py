@@ -33,6 +33,7 @@ def tracks_to_overlay(
     ts,
     tracks: list[Track],
     scores: dict[str, float] | None = None,
+    labels: dict[str, str] | None = None,
 ) -> OverlayBoxes:
     boxes = [
         BBox(
@@ -41,7 +42,7 @@ def tracks_to_overlay(
             w=t.w,
             h=t.h,
             track_id=t.track_id,
-            label="person",
+            label=(labels or {}).get(t.track_id) or "person",
             score=(scores or {}).get(t.track_id, t.score),
         )
         for t in tracks
@@ -92,6 +93,7 @@ class VisionRouter:
             tracks = self._trackers[fr.camera_id].update(cam_dets)
             self._last_tracks[fr.camera_id] = tracks
             fused_by: dict[str, float] = {}
+            label_by: dict[str, str] = {}
             for tr in tracks:
                 key = (fr.camera_id, tr.track_id)
                 mem = self._mem.setdefault(key, TrackMemory())
@@ -104,6 +106,13 @@ class VisionRouter:
                 self._last_rules[key] = shown
                 fused = fuse(tr.score, rules, vadclip=vs.score)
                 fused_by[tr.track_id] = fused
+                # Surface VadCLIP / rule hit on the box so the lab can show WEAPON.
+                if vs.label:
+                    label_by[tr.track_id] = f"{vs.label}"
+                elif rules:
+                    label_by[tr.track_id] = str(rules[0])
+                else:
+                    label_by[tr.track_id] = "person"
                 prev = self._peak.get(fr.camera_id)
                 if prev is None or fused >= prev.fused:
                     self._peak[fr.camera_id] = Escalation(
@@ -126,7 +135,9 @@ class VisionRouter:
                         )
                     )
             overlays.append(
-                tracks_to_overlay(fr.camera_id, fr.ts, tracks, fused_by)
+                tracks_to_overlay(
+                    fr.camera_id, fr.ts, tracks, fused_by, labels=label_by
+                )
             )
         return overlays
 

@@ -185,13 +185,35 @@ class VisionBridge:
                     except Exception as exc:
                         print(f"[vision-bridge] bundle failed: {exc}", flush=True)
                     req = escalate_request_from_vision(esc, frames=frames)
-                    if not frames or not zrt.health():
+                    # Live path: frames + healthy ZRT/Qwen — never force a class token.
+                    # Offline fallback only when bundle empty or ZRT down.
+                    live_ok = bool(frames) and zrt.health()
+                    if live_ok:
+                        req.class_token_forced = None
+                        zrt_use = zrt
+                    else:
                         req.class_token_forced = class_hint_from_rules(
                             req.rules_fired
                         )
-                    result = adjudicate(req, zrt=zrt)
+                        zrt_use = ZRTClient(forced=True)
+                        print(
+                            f"[vision-bridge] fallback forced-classify "
+                            f"frames={len(frames)} zrt_ok={zrt.health()}",
+                            flush=True,
+                        )
+                    result = adjudicate(req, zrt=zrt_use)
                     self.hub.frames_escalated += 1
                     await self.hub.publish(IncidentUpsert(incident=result.record))
+                    print(
+                        f"[vision-bridge] upsert {result.record.incident_id} "
+                        f"{result.record.class_token.value} "
+                        f"sev={result.record.severity.value} "
+                        f"fused={result.fused_prob:.3f} "
+                        f"router={req.router_score:.3f} "
+                        f"vadclip={getattr(esc, 'vadclip', 0):.3f} "
+                        f"live={live_ok}",
+                        flush=True,
+                    )
                 self.hub.frames_screened += max(1, len(ovs))
                 await asyncio.sleep(step)
         except asyncio.CancelledError:

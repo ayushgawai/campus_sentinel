@@ -99,6 +99,10 @@ def adjudicate(
             if classify.class_token is not IncidentClass.BENIGN
             else "no actionable event"
         )
+    # Lab / audit: show whether Qwen live or offline forced classify ran.
+    tag = "zrt-live" if not classify.forced else "zrt-forced"
+    if f"[{tag}]" not in description:
+        description = f"{description} [{tag}]"
 
     machine = StateMachine(iid)
     if severity is Severity.NONE:
