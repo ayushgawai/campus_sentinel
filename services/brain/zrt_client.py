@@ -38,6 +38,18 @@ class ClassifyResult:
     raw: dict[str, Any] | None = None
 
 
+@dataclass
+class DescribeResult:
+    """Completion B — person appearance only.
+
+    Location stays from camera_map (invariant). Never trust the model for address.
+    """
+
+    person_description: str
+    forced: bool
+    raw: dict[str, Any] | None = None
+
+
 class ZRTClient:
     def __init__(
         self,
@@ -102,6 +114,69 @@ class ZRTClient:
             person_hint=person_hint,
             frames=list(frames or []),
         )
+
+    def describe(
+        self,
+        *,
+        track_id: str,
+        camera_id: str,
+        peak_ts_iso: str,
+        frames: list[Any] | None = None,
+        class_token: IncidentClass | None = None,
+    ) -> DescribeResult:
+        """Completion B: short person description JSON (no location inventing)."""
+        if self.forced or not frames:
+            hint = "Adult, clothing not confirmed from camera."
+            if class_token is IncidentClass.WEAPON:
+                hint = "Adult, dark clothing, long firearm visible on camera."
+            return DescribeResult(person_description=hint, forced=True)
+        return self._describe_live(
+            track_id=track_id,
+            camera_id=camera_id,
+            peak_ts_iso=peak_ts_iso,
+            frames=list(frames),
+            class_token=class_token,
+        )
+
+    def _describe_live(
+        self,
+        *,
+        track_id: str,
+        camera_id: str,
+        peak_ts_iso: str,
+        frames: list[Any],
+        class_token: IncidentClass | None,
+    ) -> DescribeResult:
+        cls = class_token.value if class_token else "UNKNOWN"
+        facts = (
+            f"camera_id={camera_id} track_id={track_id} "
+            f"peak_ts={peak_ts_iso} class_token={cls} n_frames={len(frames)}"
+        )
+        text = (
+            "Describe ONLY the visible person in this campus security clip. "
+            f"Facts: {facts}. "
+            "Reply with ONE JSON object and no other text: "
+            '{"person_description":"<short visual description, max 20 words>"}. '
+            "Do not invent a street address or building name. "
+            "If unsure about clothing or objects, say so briefly."
+        )
+        content: list[dict[str, Any]] = [{"type": "text", "text": text}]
+        for img in frames[:16]:
+            content.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": _jpeg_data_url(img)},
+                }
+            )
+        payload = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": content}],
+            "max_tokens": 80,
+            "temperature": 0.0,
+        }
+        raw = self._post_json("/v1/chat/completions", payload)
+        person = _parse_person_description(raw)
+        return DescribeResult(person_description=person, forced=False, raw=raw)
 
     def _classify_live(
         self,
@@ -207,3 +282,25 @@ def _parse_class_token(raw: dict[str, Any]) -> tuple[IncidentClass, float]:
         except (TypeError, ValueError):
             pass
     return token, logprob
+
+
+def _parse_person_description(raw: dict[str, Any]) -> str:
+    choice = (raw.get("choices") or [{}])[0]
+    text = str((choice.get("message") or {}).get("content") or "").strip()
+    if not text:
+        return "unknown"
+    # Prefer JSON object if present.
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        try:
+            obj = json.loads(text[start : end + 1])
+            if isinstance(obj, dict):
+                desc = obj.get("person_description") or obj.get("description")
+                if isinstance(desc, str) and desc.strip():
+                    return desc.strip()[:200]
+        except json.JSONDecodeError:
+            pass
+    # Fallback: first line of prose, strip fences.
+    line = text.splitlines()[0].strip().strip("`")
+    return (line or "unknown")[:200]

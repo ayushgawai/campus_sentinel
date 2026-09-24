@@ -66,6 +66,16 @@ def assemble_call_brief(
         or rec.location_text
         or rec.camera_id
     )
+    # Fold map-only logistics into spoken address facts (no contract change).
+    extras: list[str] = []
+    if entry.get("floor"):
+        extras.append(f"floor {entry['floor']}")
+    if entry.get("cross_streets"):
+        extras.append("near " + " / ".join(entry["cross_streets"]))
+    if entry.get("vehicle_access"):
+        extras.append(str(entry["vehicle_access"]))
+    if extras:
+        address = f"{address} ({'; '.join(extras)})"
     building = entry.get("building") or entry.get("name")
     coords = entry.get("coordinates")
     coord_t: tuple[float, float] | None = None
@@ -87,3 +97,8 @@ def assemble_call_brief(
         dispatched_ts=None,
         map_lookup_refs=[str(_DEFAULT_MAP.name)] if _DEFAULT_MAP.is_file() else [],
     )
+
+
+def unknowns_for_voice() -> list[str]:
+    """Facts the system must refuse to invent (spoken, not a contract field)."""
+    return ["breathing", "pulse", "name", "intent", "injuries"]

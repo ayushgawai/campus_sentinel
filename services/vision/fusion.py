@@ -5,10 +5,10 @@ from __future__ import annotations
 from .rules import FALL, LONG_DWELL, RUN, SUDDEN_ACCEL
 
 # Tuned loose on purpose: a wrong escalate costs GPU seconds; a miss is forever.
-# VadCLIP is on so FIGHT/THEFT can escalate without a pose rule.
+# VadCLIP is on so FIGHT/THEFT/WEAPON can escalate without a pose rule.
 W_DET = 0.20
-W_FALL = 0.40
-W_WEAPON = 0.45  # Seville primary
+W_FALL = 0.40  # pose rule name; may still fire → MEDICAL path via class hint
+W_WEAPON = 0.45  # Seville primary (VadCLIP / rules label)
 W_RUN = 0.20
 W_ACCEL = 0.10
 W_DWELL = 0.10

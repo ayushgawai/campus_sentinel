@@ -28,6 +28,7 @@ from contracts import (
 )
 from services.brain.adjudicate import EscalateRequest, adjudicate
 from services.brain.call_brief import assemble_call_brief
+from services.brain.guardrails import DEFAULT_GUARDRAILS
 from services.brain.zrt_client import ZRTClient
 from services.api.vision_bridge import vision_enabled
 from services.voice import VoiceAgent
@@ -83,6 +84,17 @@ class DemoHub:
     async def _maybe_start_voice(self, rec: Any) -> None:
         if getattr(rec, "severity", None) is not Severity.SEVERE:
             return
+        ok, reason = DEFAULT_GUARDRAILS.can_dispatch(rec.incident_id)
+        if not ok:
+            await self.publish(
+                DemoControl(
+                    action="scenario",
+                    scenario_id=f"dispatch_blocked:{reason}",
+                    ts=_utcnow(),
+                )
+            )
+            return
+        DEFAULT_GUARDRAILS.record_dispatch(rec.incident_id)
         brief = assemble_call_brief(rec)
         await self._voice_agent().start_call(rec, brief)
 

@@ -1,0 +1,40 @@
+{
+  "id": "demo_armed_chase_v1",
+  "purpose": "Identical demo timeline for Seville 3-cam locked pack (WEAPON hero).",
+  "feed": "seville_option1_3cam_locked",
+  "duration_s": 339,
+  "wall_cameras": ["cam-01", "cam-02", "cam-03"],
+  "ambient_cameras": ["cam-04", "cam-05", "cam-06"],
+  "timeline": [
+    {
+      "t_s": 0,
+      "event": "quiet",
+      "note": "All wall cams looping Seville; ambient placeholders idle"
+    },
+    {
+      "t_s": 15,
+      "event": "expect_tracks",
+      "cameras": ["cam-01"],
+      "note": "YOLO/ByteTrack should show person boxes"
+    },
+    {
+      "t_s": 45,
+      "event": "expect_escalate",
+      "cameras": ["cam-01", "cam-02"],
+      "class_hint": "WEAPON",
+      "note": "Router fuse may escalate; Qwen Completion A+B; SEVERE → voice"
+    },
+    {
+      "t_s": 90,
+      "event": "expect_cross_cam",
+      "cameras": ["cam-02", "cam-03"],
+      "note": "Chase continues east/west halls (OSNet stub only)"
+    },
+    {
+      "t_s": 300,
+      "event": "wind_down",
+      "note": "Clip near end; EOF rewinds FileSource"
+    }
+  ],
+  "_note": "Hardcoded demo is intentional. Do not scatter timing in code — edit this file."
+}

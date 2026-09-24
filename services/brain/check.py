@@ -123,9 +123,11 @@ def main() -> None:
     assert result.record.clip_uri == ""  # no fabricated path
     assert abs(result.record.class_logprob_calibrated - 0.0) < 1e-9  # log(1.0)
     assert result.fused_prob > 0.8
+    assert "firearm" in result.record.person_description.lower() or "adult" in result.record.person_description.lower()
     entries = audit.entries()
     assert len(entries) >= 2
     assert any(e.action == "adjudicate" for e in entries)
+    assert any(e.action == "describe" for e in entries)
     assert any(e.action.startswith("state:") for e in entries)
     # same track again → new incident id (no silent reuse)
     result2 = adjudicate(req, zrt=ZRTClient(forced=True), audit=audit)

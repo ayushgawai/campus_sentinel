@@ -87,6 +87,26 @@ def adjudicate(
         vlm_prob = 1.0 if classify.class_token is not IncidentClass.BENIGN else 0.05
         calibrated_logprob = math.log(vlm_prob)
 
+    # Completion B — person appearance only. Location always from map/caller.
+    person_desc = (req.person_description or "").strip()
+    if not person_desc or person_desc.lower() == "unknown":
+        described = zrt.describe(
+            track_id=req.track_id,
+            camera_id=req.camera_id,
+            peak_ts_iso=peak.isoformat(),
+            frames=list(req.frames) or None,
+            class_token=classify.class_token,
+        )
+        person_desc = described.person_description
+        audit.record(
+            incident_id=iid,
+            action="describe",
+            reason="completion_b_person",
+            confidence=vlm_prob,
+            detail={"forced": described.forced, "person_description": person_desc},
+            ts=now,
+        )
+
     fused = fuse_probs(req.router_score, vlm_prob)
     severity = severity_from_fused(
         fused, allow_placeholder=req.allow_placeholder_thresholds
@@ -126,7 +146,7 @@ def adjudicate(
         severity=severity,
         description=description,
         location_text=req.location_text or req.camera_id,
-        person_description=req.person_description or "unknown",
+        person_description=person_desc or "unknown",
         state=state,
         clip_uri=req.clip_uri,  # empty until vision supplies a real URI
         created_at=now,

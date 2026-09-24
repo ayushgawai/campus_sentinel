@@ -8,8 +8,15 @@
       "location": "Lobby entrance",
       "address": "North Library entrance, campus core",
       "building": "North Library",
+      "floor": "1",
       "coordinates": [37.3352, -121.8811],
       "entrances": ["Lobby revolving door", "East stairwell"],
+      "cross_streets": ["San Fernando St", "4th St"],
+      "vehicle_access": "Drop-off curb on San Fernando; no garage under lobby",
+      "neighbors": [
+        {"camera_id": "cam-02", "bearing": "ESE"},
+        {"camera_id": "cam-03", "bearing": "WSW"}
+      ],
       "adjacency": ["cam-02", "cam-03"],
       "on_wall": true,
       "feed": "seville_option1_3cam_locked",
@@ -24,8 +31,15 @@
       "location": "Yellow hallway east",
       "address": "Academic Walk east corridor",
       "building": "Academic Walk",
+      "floor": "1",
       "coordinates": [37.3355, -121.8805],
       "entrances": ["Hall east double doors"],
+      "cross_streets": ["4th St"],
+      "vehicle_access": "Service alley east of Academic Walk",
+      "neighbors": [
+        {"camera_id": "cam-01", "bearing": "WNW"},
+        {"camera_id": "cam-03", "bearing": "W"}
+      ],
       "adjacency": ["cam-01", "cam-03"],
       "on_wall": true,
       "feed": "seville_option1_3cam_locked",
@@ -40,8 +54,15 @@
       "location": "Yellow hallway west",
       "address": "Academic Walk west corridor",
       "building": "Academic Walk",
+      "floor": "1",
       "coordinates": [37.3356, -121.8815],
       "entrances": ["Hall west exit to quad"],
+      "cross_streets": ["San Fernando St"],
+      "vehicle_access": "Quad path only — no vehicle",
+      "neighbors": [
+        {"camera_id": "cam-01", "bearing": "ENE"},
+        {"camera_id": "cam-02", "bearing": "E"}
+      ],
       "adjacency": ["cam-01", "cam-02"],
       "on_wall": true,
       "feed": "seville_option1_3cam_locked",
@@ -55,8 +76,12 @@
       "location": "Parking East",
       "address": "East parking deck level 1",
       "building": "Parking East",
+      "floor": "1",
       "coordinates": [37.3348, -121.8798],
       "entrances": ["Deck stair A"],
+      "cross_streets": ["10th St"],
+      "vehicle_access": "Full vehicle deck access via 10th St ramp",
+      "neighbors": [{"camera_id": "cam-01", "bearing": "NW"}],
       "adjacency": ["cam-01"],
       "on_wall": true,
       "feed": "ambient_3cam",
@@ -71,8 +96,12 @@
       "location": "Basement corridor",
       "address": "Student Union basement service corridor",
       "building": "Student Union",
+      "floor": "B1",
       "coordinates": [37.3350, -121.8808],
       "entrances": ["Service elevator B"],
+      "cross_streets": [],
+      "vehicle_access": "Loading dock only — no public vehicle",
+      "neighbors": [{"camera_id": "cam-06", "bearing": "S"}],
       "adjacency": ["cam-06"],
       "on_wall": true,
       "feed": "ambient_3cam",
@@ -87,8 +116,12 @@
       "location": "Campus road",
       "address": "South campus road near residence",
       "building": null,
+      "floor": "street",
       "coordinates": [37.3345, -121.8818],
       "entrances": [],
+      "cross_streets": ["San Salvador St"],
+      "vehicle_access": "Two-way campus road",
+      "neighbors": [{"camera_id": "cam-05", "bearing": "N"}],
       "adjacency": ["cam-05"],
       "on_wall": true,
       "feed": "ambient_3cam",
@@ -97,5 +130,5 @@
       "placeholder": true
     }
   ],
-  "_note": "cam-01..03 = Seville locked chase. cam-04..06 = ffmpeg ambient placeholders until real fillers."
+  "_note": "Hand-authored location facts only. cam-01..03 Seville chase; cam-04..06 ambient placeholders. No geocoding."
 }
