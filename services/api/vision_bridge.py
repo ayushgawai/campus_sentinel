@@ -26,7 +26,9 @@ if TYPE_CHECKING:
 
 ROOT = Path(__file__).resolve().parents[2]
 FEED = ROOT / "data" / "feeds" / "seville_option1_3cam_locked.json"
-COOLDOWN_S = float(os.environ.get("CS_VISION_COOLDOWN_S", "8"))
+def _cooldown_s() -> float:
+    return float(os.environ.get("CS_VISION_COOLDOWN_S", "8"))
+
 
 
 def vision_enabled() -> bool:
@@ -70,7 +72,7 @@ class VisionBridge:
         key = (camera_id, track_id)
         now = time.monotonic()
         prev = self._last_fire.get(key, 0.0)
-        if now - prev < COOLDOWN_S:
+        if now - prev < _cooldown_s():
             return False
         self._last_fire[key] = now
         return True
@@ -87,7 +89,7 @@ class VisionBridge:
         zrt = ZRTClient(forced=True)
         print(
             f"[vision-bridge] started cams={list(paths)} media={media} "
-            f"cooldown={COOLDOWN_S}s",
+            f"cooldown={_cooldown_s()}s",
             flush=True,
         )
         loop = asyncio.get_running_loop()

@@ -120,18 +120,21 @@ async def main() -> None:
     server.close()
     await server.wait_closed()
     await srv.hub.stop_loops()
+    import os
     from services.api.vision_bridge import vision_enabled, VisionBridge
     assert vision_enabled() is False
-    # construct without starting (no torch)
     class _Hub:
         paused = False
         frames_screened = 0
         frames_escalated = 0
         async def publish(self, ev):
             pass
+    os.environ["CS_VISION_COOLDOWN_S"] = "8"
     vb = VisionBridge(_Hub())  # type: ignore[arg-type]
-    assert vb._should_fire("cam-01", "t-1") is True
-    assert vb._should_fire("cam-01", "t-1") is False  # cooldown
+    vb._last_fire.clear()
+    assert vb._should_fire("cam-01", "t-cooldown") is True
+    assert vb._should_fire("cam-01", "t-cooldown") is False
+    assert vb._should_fire("cam-01", "t-other") is True
     print("api self-check OK")
 
 
