@@ -1,51 +1,56 @@
 # context.md
-Last updated: 2026-09-23 (ayush) — piece 3: brain skeleton
+Last updated: 2026-09-24 (ayush) — on main; demo clips unlocked
 
 ## HARD RULES (do not skip)
-1. **Pull before push.** Always `git pull --rebase origin main` before every push. No exceptions.
-2. **Update this file after every finished piece**, in the **same commit** as the work. Move items Done / In progress / Blocked / Decisions. Never push code with stale context.
-3. **Stay in your ownership paths.** Do not edit another owner's directories without telling them. Especially do not change `contracts/` after freeze without a group message.
-4. Keep this file under ~150 lines. State only — no design essays (those live in the playbook).
-5. **Playbook is the base plan** (`campus-sentinel-playbook.html`). Do not change direction because a model suggested something prettier. Deviate only when (a) a real test/integration failure forces it, or (b) a reviewed better approach clearly unblocks the demo. When you deviate, add a **Decisions** line here with **why** so other agents keep working correctly.
+1. **Pull before push.** Always `git pull --rebase origin main` before every push. Work on **`main`** (no long-lived feature branches overnight).
+2. **Update this file after every finished piece**, in the **same commit** as the work.
+3. **Stay in your ownership paths.** Especially do not change `contracts/` after freeze without a group message.
+4. Keep this file under ~150 lines. State only — no design essays (playbook).
+5. **Playbook is the base plan.** Deviate only on real test failure or reviewed unblock; record **why** here.
 
 ## How to run it right now
 ```bash
-git pull --rebase origin main
+git checkout main && git pull --rebase origin main
 python3 services/brain/check.py
+# dashboard (Manav): open web/index.html — mock emitter
 ```
 
-## Ownership (paths)
+## Demo media (outside git — never commit mp4s)
+- **Locked chase pack (3 cams):** `Documents/campus_sentinel_media/feeds/seville_option1_3cam_locked/`
+  - CAM-01 lobby, CAM-02 hall east, CAM-03 hall west · ~340s · IN then OUT path
+  - `demo.json` + `HIGHLIGHTS.md` · Seville US Mock Attack · CC BY-NC 4.0 · staged drill
+- **Still needed:** 3 ambient fillers (parking / basement / road) → **6 feeds total** for demo wall
+
+## Ownership
 | Path | Owner |
 |------|--------|
-| `contracts/` | shared — **frozen v1.0** |
+| `contracts/` | shared — frozen v1.0 |
 | `services/brain/`, `services/api/`, compose, Makefile | Ayush |
 | `services/vision/`, `services/voice/` | Pratham |
 | `web/` | Manav |
 | `data/`, `bench/`, `docs/` | Naman |
 
 ## Done
-- Repo skeleton (ayush)
-- `contracts/` v1.0 (ayush; Kiro+Codex review)
-- `services/brain/` skeleton: sampler, ZRT client (forced), state machine, placeholder thresholds (ayush; Kiro+Codex review)
+- Repo skeleton + `contracts/` v1.0 + brain skeleton (ayush)
+- `web/` mock-driven officer dashboard (manav) — on main
+- Chase footage decision: Seville 3-cam locked pack verified (ayush/naman)
 
 ## In progress
-- (none)
+- (ayush) next: escalate → IncidentRecord + audit stub; then api
+- Vision router + VadCLIP live on `origin/feat/pratham/vision-router` — **not merged to main yet** (pratham)
 
 ## Blocked
-- Live multimodal ZRT classify needs vision's 16-frame bundle + ZRT up (Pratham Gate 1)
-- Real severity thresholds need Naman bench curve
+- 3 ambient filler clips for 6-pane wall
+- Live ZRT classify needs vision frames wired on main
+- Real severity thresholds (Naman bench)
 
-## Decisions made since the playbook
-- Deployment is Docker Compose only.
-- VLM six-class + Severity enums frozen in contracts.
-- WS overlays are `overlay.boxes` only.
-- Timestamps must be timezone-aware UTC.
-- **Brain state machine:** after DISPATCHED, must go TRACKING before RESOLVED (chase path). ALERTED→RESOLVED kept for MINOR close-without-dispatch (three ACT outcomes). Not a playbook rewrite — clarifies the graph.
-- **Thresholds:** `severity_from_fused(..., allow_placeholder=True)` required; numbers are not operational until bench.
-- **ZRT skeleton:** only forced/demo classify works; live classify raises until 16-frame multimodal prefill is wired (no metadata-only fake).
+## Decisions
+- Work lands on **main**; merge feature branches same day.
+- Clips live under `campus_sentinel_media/` (sibling of repo), not in git.
+- Demo wall target: **6 cameras** = 3 Seville chase + 3 ambient fillers.
 
 ## Next up
-1. Ayush: wire brain escalate→IncidentRecord path + audit log stub; then api
-2. Pratham: ZRT serve + vision frames into brain sampler
-3. Manav: dashboard on mock incident.upsert
-4. Naman: clips / camera_map / thresholds bench
+1. Ayush: IncidentRecord path + api
+2. Pratham: merge vision-router → main; point FileSource at locked Seville paths
+3. Manav: swap mock video panes to real MJPEG when api up
+4. Naman: 3 ambient clips + camera_map + thresholds
