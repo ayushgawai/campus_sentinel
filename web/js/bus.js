@@ -5,10 +5,10 @@
  *
  * A "source" both publishes contracts/events.py envelopes onto the bus and
  * accepts operator commands. The mock implements them locally; the live
- * source will forward them to services/api.
+ * source forwards them to services/api over the websocket.
  */
 
-import { config } from './config.js';
+import { config, wsUrl } from './config.js';
 import { createMockSource } from './mock/emitter.js';
 
 export class EventBus {
@@ -35,18 +35,104 @@ export class EventBus {
 export const bus = new EventBus();
 
 /**
- * Placeholder for the real transport.
- *
- * services/api does not exist yet. When it does, this opens wsUrl(), parses
- * each contracts/events.py envelope, publishes it onto the bus unchanged, and
- * forwards operator commands back over the socket. The rest of the dashboard
- * is already compatible because it only ever reads normalised view models.
+ * Live transport — one JSON envelope per WS message (event_to_dict shape).
+ * Operator commands go upstream as {cmd, ...} matching services/api/hub.py.
  */
-function createLiveSource() {
-  throw new Error(
-    'config.SOURCE = "live" requires services/api (websocket + MJPEG), which is not built yet. '
-    + 'Keep config.SOURCE = "mock" until it lands.'
-  );
+function createLiveSource(targetBus = bus) {
+  let ws = null;
+  let paused = false;
+  let starters = [];
+
+  function send(obj) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify(obj));
+    }
+  }
+
+  function connect() {
+    ws = new WebSocket(wsUrl());
+    ws.addEventListener('message', (ev) => {
+      let msg;
+      try {
+        msg = JSON.parse(ev.data);
+      } catch (err) {
+        console.error('[live] bad json', err);
+        return;
+      }
+      // Command acks ({ok:true,cmd:...}) are not bus events.
+      if (msg && typeof msg.type === 'string') {
+        targetBus.publish(msg);
+        if (msg.type === 'incident.upsert' && msg.incident) {
+          // keep a soft starter list for reset UX parity
+          starters = [msg.incident, ...starters.filter(
+            (i) => i.incident_id !== msg.incident.incident_id
+          )].slice(0, 8);
+        }
+      }
+    });
+    ws.addEventListener('close', () => {
+      console.warn('[live] ws closed — retry in 2s');
+      setTimeout(connect, 2000);
+    });
+    ws.addEventListener('open', () => {
+      send({ cmd: 'start' });
+    });
+  }
+
+  return {
+    kind: 'live',
+
+    start() {
+      connect();
+    },
+
+    stop() {
+      send({ cmd: 'stop' });
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+        ws = null;
+      }
+    },
+
+    startCall() {
+      return { brief: null, durationMs: 0 };
+    },
+
+    cancelCall() {},
+
+    setPaused(next) {
+      paused = !!next;
+      send({ cmd: 'setPaused', paused });
+      return paused;
+    },
+
+    isPaused() {
+      return paused;
+    },
+
+    runScenario(scenarioId) {
+      send({ cmd: 'runScenario', scenario_id: scenarioId });
+      return null;
+    },
+
+    sendStateChange(incidentId, nextState, note) {
+      send({
+        cmd: 'sendStateChange',
+        incident_id: incidentId,
+        state: nextState,
+        note: note || '',
+      });
+    },
+
+    reset() {
+      send({ cmd: 'reset' });
+    },
+
+    get starters() {
+      return () => starters;
+    },
+  };
 }
 
 export function createSource(targetBus = bus) {

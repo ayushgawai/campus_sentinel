@@ -1,3 +1,24 @@
-# Stub — services filled in as each piece lands.
-# Target: mediamtx, vision, brain, voice, api (+ ZRT on host).
-services: {}
+# One machine, one compose file. Five services + ZRT on the HOST.
+# First wired service: api (:8080). Others join under profile "full".
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      CS_MEDIA_ROOT: /media/seville
+    volumes:
+      - ../campus_sentinel_media/feeds/seville_option1_3cam_locked:/media/seville:ro
+
+  # Enable with: docker compose --profile full up
+  mediamtx:
+    profiles: ["full"]
+    image: bluenviron/mediamtx:latest
+    ports:
+      - "8554:8554"
+
+  # vision / brain / voice Dockerfiles land with their owners.
+  # ZRT is never composed — host snap on :8000.
