@@ -1,0 +1,40 @@
+{
+  "source": "/home/hp25/Documents/campus_sentinel_media/feeds/naman/demo_clips",
+  "assigned_at": "2026-09-24",
+  "vlm": "hf:Qwen/Qwen3-VL-30B-A3B-Instruct-FP8",
+  "policy": "Ambient only — never WEAPON/FIGHT hero. Vision bridge stays on Seville cam-01..03.",
+  "assignments": [
+    {
+      "camera_id": "cam-04",
+      "file": "ufpark_parking_lot_traffic_01_5min.mp4",
+      "vlm_scene": "parking_lot",
+      "name": "Parking East lot",
+      "location": "Outdoor parking lot",
+      "address": "East campus parking lot (UFPark demo clip)",
+      "ambient_ok": true,
+      "has_weapon_or_fight": false
+    },
+    {
+      "camera_id": "cam-05",
+      "file": "qut_campus_entrance_01_5min.mp4",
+      "vlm_scene": "other",
+      "vlm_short_name": "lobby entrance",
+      "name": "Campus lobby entrance",
+      "location": "Indoor lobby / entrance",
+      "address": "Campus lobby entrance hall (QUT demo clip)",
+      "ambient_ok": true,
+      "has_weapon_or_fight": false
+    },
+    {
+      "camera_id": "cam-06",
+      "file": "tocada_campus_walkway_cctv_01_5min.mp4",
+      "vlm_scene": "parking_lot",
+      "vlm_short_name": "Parking lot with walkway",
+      "name": "Lot walkway",
+      "location": "Path between parked cars",
+      "address": "Campus lot walkway path (Tocada demo clip)",
+      "ambient_ok": true,
+      "has_weapon_or_fight": false
+    }
+  ]
+}

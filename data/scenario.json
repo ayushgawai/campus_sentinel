@@ -5,7 +5,8 @@
   "duration_s": 339,
   "wall_cameras": ["cam-01", "cam-02", "cam-03"],
   "ambient_cameras": ["cam-04", "cam-05", "cam-06"],
-  "ambient_policy": "Natural no-incident loops only (parking/basement/road). Never WEAPON content.",
+  "ambient_policy": "Naman demo_clips VLM-assigned (parking/lobby/walkway). Never WEAPON content. Vision bridge stays on Seville only.",
+  "ambient_source": "naman/demo_clips",
   "wall_policy": "Seville locked 3-cam only — gun chase stays here.",
   "timeline": [
     {

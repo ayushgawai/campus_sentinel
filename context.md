@@ -29,8 +29,8 @@ cd web && python3 -m http.server 8765 --bind 0.0.0.0
 
 ## Clips (Naman) — 3 + 3 only
 - **cam-01..03:** locked Seville chase (WEAPON). No 12-clip pack.
-- **cam-04..06:** natural ambient (parking / basement / road), **no incidents**. See `docs/NAMAN_CLIPS.md`.
-- Until real ambient mp4s: `make ambient` placeholders (solid color, never 404).
+- **cam-04..06:** Naman `feeds/naman/demo_clips` — VLM-assigned (parking / lobby / walkway). See `docs/NAMAN_CLIPS.md` + `data/naman_ambient_assign.json`.
+- Placeholders remain as fallback if Naman pack missing.
 
 ## Voice / Twilio handoff
 - Spec: **`docs/HANDOFF_VOICE_TWILIO.md`** (Twilio Media Streams + Parakeet ASR + Kokoro TTS).
@@ -46,7 +46,7 @@ cd web && python3 -m http.server 8765 --bind 0.0.0.0
 ## Pending (owners)
 | Who | What |
 |-----|------|
-| **Naman** | Real ambient mp4s (replace ~30KB placeholders) → `ambient_3cam/` |
+| **Naman** | Done for ambient — 3 clips wired. Optional: more natural basement/road later |
 | **Voice owner** | Twilio Media Streams + Parakeet + Kokoro (`docs/HANDOFF_VOICE_TWILIO.md`) |
 | **Indraneel** | Officer F1 polish (same WS events as lab) |
 | **Ayush / open** | OSNet weights · temp calibration fit · MediaMTX optional |

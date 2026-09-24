@@ -1,23 +1,26 @@
-# Naman — clip pack (3 + 3 only)
+# Naman — clip pack (3 + 3)
 
 **No 12-clip wall.** Demo media is:
 
 | Cams | Content | Incidents? |
 |------|---------|------------|
 | **cam-01..03** | Locked Seville chase (`seville_option1_3cam_locked`) | **Yes — WEAPON hero only here** |
-| **cam-04..06** | Natural ambient fillers (parking / basement / road or similar) | **No — never escalate** |
+| **cam-04..06** | Naman ambient from `feeds/naman/demo_clips` (VLM-assigned) | **No — never escalate** |
 
-## Deliver (outside git)
-Path on ZGX:
-`~/Documents/campus_sentinel_media/feeds/ambient_3cam/`
+## Assigned (2026-09-24, Qwen VLM)
 
-Suggested files (names already in `data/camera_map.json`):
-- `CAM04_parking_east_ambient_60s.mp4` — parking garage / lot, people walking OK, **no fight/weapon**
-- `CAM05_basement_ambient_60s.mp4` — basement / service corridor, quiet
-- `CAM06_road_ambient_60s.mp4` — campus road / ground / sports path, normal traffic
+| Cam | File | VLM scene | Wall name |
+|-----|------|-----------|-----------|
+| cam-04 | `ufpark_parking_lot_traffic_01_5min.mp4` | parking_lot | Parking East lot |
+| cam-05 | `qut_campus_entrance_01_5min.mp4` | lobby entrance | Campus lobby entrance |
+| cam-06 | `tocada_campus_walkway_cctv_01_5min.mp4` | lot walkway | Lot walkway |
 
-Specs: ~60–120 s loop, 960×540 or 1080p, h264, boring and natural.  
-Until real files land, `make ambient` keeps solid-color placeholders so MJPEG never 404s.
+Manifest: `data/naman_ambient_assign.json`  
+All three: `ambient_ok=true`, `has_weapon_or_fight=false`.
+
+Path on ZGX: `~/Documents/campus_sentinel_media/feeds/naman/demo_clips/`
+
+Vision bridge still only runs Seville cam-01..03. Ambient is MJPEG wall filler only.
 
 ## Do not
 - Scatter timing in Python — edit `data/scenario.json` only.

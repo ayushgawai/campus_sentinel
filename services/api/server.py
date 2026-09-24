@@ -24,22 +24,43 @@ DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 8080
 
 # Feeds live under campus_sentinel_media/feeds/<pack>/. CS_MEDIA_ROOT overrides
-# the Seville pack root only (cam-01..03); ambient keeps its own folder.
+# the Seville pack root only (cam-01..03). Ambient cam-04..06 = Naman demo clips
+# (VLM-assigned; see data/naman_ambient_assign.json).
 _REPO = Path(__file__).resolve().parents[2]
 _FEEDS = _REPO.parent / "campus_sentinel_media" / "feeds"
 _DEFAULT_MEDIA = _FEEDS / "seville_option1_3cam_locked"
 MEDIA_ROOT = Path(os.environ.get("CS_MEDIA_ROOT", str(_DEFAULT_MEDIA)))
-_AMBIENT = _FEEDS / "ambient_3cam"
+_NAMAN_AMBIENT = _FEEDS / "naman" / "demo_clips"
+# Fallback placeholders if Naman pack missing.
+_AMBIENT_PLACEHOLDER = _FEEDS / "ambient_3cam"
 
 # camera_id → (root, filename)
 CLIP_BY_CAM: dict[str, tuple[Path, str]] = {
     "cam-01": (MEDIA_ROOT, "CAM01_lobby_entrance_IN_then_OUT_339s.mp4"),
     "cam-02": (MEDIA_ROOT, "CAM02_hallway_east_IN_then_OUT_339s.mp4"),
     "cam-03": (MEDIA_ROOT, "CAM03_hallway_west_IN_then_OUT_339s.mp4"),
-    "cam-04": (_AMBIENT, "CAM04_parking_east_ambient_60s.mp4"),
-    "cam-05": (_AMBIENT, "CAM05_basement_ambient_60s.mp4"),
-    "cam-06": (_AMBIENT, "CAM06_road_ambient_60s.mp4"),
+    "cam-04": (_NAMAN_AMBIENT, "ufpark_parking_lot_traffic_01_5min.mp4"),
+    "cam-05": (_NAMAN_AMBIENT, "qut_campus_entrance_01_5min.mp4"),
+    "cam-06": (_NAMAN_AMBIENT, "tocada_campus_walkway_cctv_01_5min.mp4"),
 }
+
+
+def _resolve_clip_map() -> dict[str, tuple[Path, str]]:
+    """Prefer Naman ambient; fall back to solid-color placeholders."""
+    out = dict(CLIP_BY_CAM)
+    placeholders = {
+        "cam-04": (_AMBIENT_PLACEHOLDER, "CAM04_parking_east_ambient_60s.mp4"),
+        "cam-05": (_AMBIENT_PLACEHOLDER, "CAM05_basement_ambient_60s.mp4"),
+        "cam-06": (_AMBIENT_PLACEHOLDER, "CAM06_road_ambient_60s.mp4"),
+    }
+    for cam, fallback in placeholders.items():
+        root, name = out[cam]
+        if not (root / name).is_file():
+            out[cam] = fallback
+    return out
+
+
+CLIP_BY_CAM = _resolve_clip_map()
 
 
 class WsClient:
