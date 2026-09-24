@@ -109,6 +109,7 @@ class VadClip:
     def _load(self):
         if self._model is not None:
             return
+        import logging
         import open_clip
         import torch
 
@@ -119,13 +120,34 @@ class VadClip:
                 "Run: python3 services/vision/pull_weights.py"
             )
         # OpenAI CLIP ViT-B/16 uses QuickGELU; mismatch silently hurts scores.
-        model, _, preprocess = open_clip.create_model_and_transforms(
-            CLIP_ARCH, pretrained=None, force_quick_gelu=True
-        )
+        # open_clip warns "initialized randomly" when pretrained=None — we load
+        # the local .pt immediately after; suppress that one false alarm.
+        class _DropRandomInit(logging.Filter):
+            def filter(self, record: logging.LogRecord) -> bool:
+                msg = record.getMessage()
+                return "initialized randomly" not in msg and "No pretrained weights" not in msg
+
+        root = logging.getLogger()
+        filt = _DropRandomInit()
+        root.addFilter(filt)
+        try:
+            model, _, preprocess = open_clip.create_model_and_transforms(
+                CLIP_ARCH, pretrained=None, force_quick_gelu=True
+            )
+        finally:
+            root.removeFilter(filt)
         blob = torch.load(path, map_location="cpu", weights_only=True)
         state = blob["state_dict"] if isinstance(blob, dict) and "state_dict" in blob else blob
-        model.load_state_dict(state)
+        incompatible = model.load_state_dict(state, strict=False)
+        missing = getattr(incompatible, "missing_keys", []) or []
+        unexpected = getattr(incompatible, "unexpected_keys", []) or []
+        if missing or unexpected:
+            raise RuntimeError(
+                f"CLIP state_dict mismatch at {path}: "
+                f"missing={len(missing)} unexpected={len(unexpected)}"
+            )
         model.eval()
+        logging.getLogger(__name__).info("VadCLIP loaded CLIP weights from %s", path)
         # Prefer CPU when ZRT owns the GPU (CS_VISION_DEVICE=cpu).
         want = os.environ.get("CS_VISION_DEVICE", "").strip().lower()
         if want.startswith("cpu"):

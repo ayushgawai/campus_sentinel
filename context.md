@@ -46,10 +46,14 @@ cd web && python3 -m http.server 8765 --bind 0.0.0.0
 ## Pending (owners)
 | Who | What |
 |-----|------|
-| **Naman** | Real ambient mp4s → `campus_sentinel_media/feeds/ambient_3cam/` (names in `docs/NAMAN_CLIPS.md`) |
-| **Voice owner** | Twilio Media Streams bridge + Parakeet + Kokoro per `docs/HANDOFF_VOICE_TWILIO.md` |
-| **Indraneel** | Officer F1 polish (consumes same WS events as lab) |
-| **Ayush / open** | OSNet weights · temp calibration fit · MediaMTX optional · VadCLIP weights-path warning |
+| **Naman** | Real ambient mp4s (replace ~30KB placeholders) → `ambient_3cam/` |
+| **Voice owner** | Twilio Media Streams + Parakeet + Kokoro (`docs/HANDOFF_VOICE_TWILIO.md`) |
+| **Indraneel** | Officer F1 polish (same WS events as lab) |
+| **Ayush / open** | OSNet weights · temp calibration fit · MediaMTX optional |
+
+## Runtime status (2026-09-24)
+- ZRT `:8000` @ **0.55** + API `:8080` Seville bridge **up** (restarted this session).
+- Lab `:8765` Mac + ZGX. VadCLIP “random init” warning = open_clip before local `.pt` load (weights on disk).
 
 ## Ownership
 Ayush: brain/api/lab/audit · Pratham: vision/voice · Indraneel: web · Naman: data/clips
