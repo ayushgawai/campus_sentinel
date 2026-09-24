@@ -11,6 +11,13 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from contracts import IncidentClass, IncidentState, Severity  # noqa: E402
+from services.brain.adjudicate import EscalateRequest, adjudicate  # noqa: E402
+from services.brain.audit import AuditLog  # noqa: E402
+from services.brain.from_vision import (  # noqa: E402
+    escalate_request_from_vision,
+    normalize_camera_id,
+)
+from services.brain.fuse import fuse_probs, logprob_to_prob  # noqa: E402
 from services.brain.sampler import sample_indices  # noqa: E402
 from services.brain.state_machine import StateMachine  # noqa: E402
 from services.brain.thresholds import severity_from_fused  # noqa: E402
@@ -73,6 +80,77 @@ def main() -> None:
     try:
         severity_from_fused(0.9)
         raise AssertionError("placeholder thresholds must not be silent")
+    except RuntimeError:
+        pass
+
+    # fuse: weighted router + VLM; logprob 0 → exp(0) = 1.0
+    assert abs(logprob_to_prob(0.0) - 1.0) < 1e-9
+    assert abs(fuse_probs(0.5, 0.5) - 0.5) < 1e-9
+    assert fuse_probs(0.0, 1.0) == 0.60  # default w_vlm
+    assert fuse_probs(1.0, 0.0) == 0.40  # default w_router
+    try:
+        fuse_probs(-0.1, 0.5)
+        raise AssertionError("out-of-range router must raise")
+    except ValueError:
+        pass
+    try:
+        fuse_probs(0.5, 1.5)
+        raise AssertionError("out-of-range vlm must raise")
+    except ValueError:
+        pass
+
+    # adjudicate + audit (forced ZRT → ALERTED for FALL)
+    audit = AuditLog()
+    req = EscalateRequest(
+        track_id="t-esc-1",
+        camera_id="cam-lobby",
+        router_score=0.85,
+        rules_fired=["fall_velocity"],
+        class_token_forced=IncidentClass.FALL,
+        allow_placeholder_thresholds=True,
+    )
+    result = adjudicate(req, zrt=ZRTClient(forced=True), audit=audit)
+    assert result.record.class_token is IncidentClass.FALL
+    assert result.record.camera_id == "cam-lobby"
+    assert result.record.state is IncidentState.ALERTED
+    assert result.record.severity is Severity.SEVERE
+    assert result.record.clip_uri == ""  # no fabricated path
+    assert abs(result.record.class_logprob_calibrated - 0.0) < 1e-9  # log(1.0)
+    assert result.fused_prob > 0.8
+    entries = audit.entries()
+    assert len(entries) >= 2
+    assert any(e.action == "adjudicate" for e in entries)
+    assert any(e.action.startswith("state:") for e in entries)
+    # same track again → new incident id (no silent reuse)
+    result2 = adjudicate(req, zrt=ZRTClient(forced=True), audit=audit)
+    assert result2.record.incident_id != result.record.incident_id
+    # low router + BENIGN forced → DISMISSED; logprob matches fuse vlm_prob
+    low = adjudicate(
+        EscalateRequest(
+            track_id="t-benign",
+            camera_id="cam-lobby",
+            router_score=0.05,
+            class_token_forced=IncidentClass.BENIGN,
+            allow_placeholder_thresholds=True,
+        ),
+        zrt=ZRTClient(forced=True),
+    )
+    assert low.record.state is IncidentState.DISMISSED
+    assert low.record.severity is Severity.NONE
+    assert abs(low.vlm_prob - 0.05) < 1e-9
+    assert abs(logprob_to_prob(low.record.class_logprob_calibrated) - 0.05) < 1e-9
+    # placeholder thresholds refused by default
+    try:
+        adjudicate(
+            EscalateRequest(
+                track_id="t-guard",
+                camera_id="cam-lobby",
+                router_score=0.9,
+                class_token_forced=IncidentClass.FALL,
+            ),
+            zrt=ZRTClient(forced=True),
+        )
+        raise AssertionError("placeholder thresholds must require explicit ack")
     except RuntimeError:
         pass
 

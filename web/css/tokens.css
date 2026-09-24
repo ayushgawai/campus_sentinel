@@ -1,0 +1,159 @@
+/* Campus Sentinel — design tokens.
+   Light operations theme: pale ground, white panels, dark navy chrome,
+   dark camera panes. Severity colours are the only saturated hues. */
+
+:root {
+  /* ground + surfaces */
+  --bg:            #eef2f7;
+  --panel:         #ffffff;
+  --panel-2:       #f6f9fc;
+  --chrome:        #0c1a2b;
+  --chrome-2:      #12263c;
+
+  /* ink */
+  --ink:           #0f1b2b;
+  --ink-2:         #3c4b5d;
+  --muted:         #6b7c90;
+  --faint:         #97a6b7;
+  --on-chrome:     #e8eff7;
+  --on-chrome-dim: #8ea3ba;
+
+  /* lines */
+  --line:          #dae2ec;
+  --line-2:        #c2cedc;
+
+  /* accents */
+  --accent:        #1668c4;
+  --accent-soft:   #e5eefa;
+  --accent-line:   #a9c8ea;
+
+  /* severity */
+  --critical:      #cf3324;
+  --critical-soft: #fdeae7;
+  --critical-line: #f0b4ab;
+
+  --high:          #b9701a;
+  --high-soft:     #fdf2e0;
+  --high-line:     #e8c68b;
+
+  --medium:        #3f6ea3;
+  --medium-soft:   #eaf1f8;
+  --medium-line:   #b6cde3;
+
+  --green:         #17794a;
+  --green-soft:    #e3f3ea;
+  --green-line:    #a3d4ba;
+
+  /* camera pane interior */
+  --pane-bg:       #10161d;
+  --pane-line:     #223040;
+
+  /* type */
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --mono: "SFMono-Regular", ui-monospace, Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* geometry */
+  --r-sm: 3px;
+  --r:    5px;
+  --r-lg: 8px;
+
+  --shadow: 0 1px 2px rgba(15, 27, 43, .06), 0 6px 18px -12px rgba(15, 27, 43, .25);
+
+  /* rhythm */
+  --gap:   10px;
+  --gap-2: 14px;
+  --pad:   14px;
+}
+
+* { box-sizing: border-box; }
+
+/* Must come before any component sets display, otherwise the hidden attribute
+   loses to rules like `.panel { display: flex }` — and a panel whose grid-area
+   is not in the active grid-template-areas spawns implicit tracks that wreck
+   the whole layout. */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* shared primitives -------------------------------------------------- */
+
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.eyebrow--muted { color: var(--faint); }
+.eyebrow--alert { color: var(--critical); }
+
+h1, h2, h3 { margin: 0; font-weight: 650; letter-spacing: -.01em; }
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+button:disabled { cursor: not-allowed; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: var(--panel);
+  color: var(--ink);
+  padding: 10px 14px;
+  border: 1px solid var(--line-2);
+  border-radius: var(--r);
+}
+
+.skip-link:focus {
+  left: 8px;
+  top: 8px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+}
