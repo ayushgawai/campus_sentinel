@@ -24,6 +24,7 @@ DEFAULT_CLIP = WEIGHTS_DIR / "clip-vit-b-16.pt"
 CLIP_ARCH = "ViT-B-16"
 CLIP_PRETRAINED = "openai"
 
+WEAPON = "weapon"
 FIGHT = "fight"
 THEFT = "theft"
 BENIGN = "benign"
@@ -31,8 +32,14 @@ BENIGN = "benign"
 # About 1 fps per tracked person (playbook C.6).
 HZ = 1.0
 
-# Prompts stay inside the frozen six-class set. No FIRE.
+# Six-class set: WEAPON replaces former FALL (Seville demo).
 _PROMPTS: dict[str, tuple[str, ...]] = {
+    WEAPON: (
+        "a person holding a gun",
+        "a person with a firearm in a hallway",
+        "an armed intruder with a rifle",
+        "someone carrying a visible weapon",
+    ),
     FIGHT: (
         "a photo of people fighting",
         "two people punching each other",
@@ -82,12 +89,12 @@ class VadClip:
         self._preprocess = None
         self._device = "cpu"
         self._class_feat = None  # 3 x D, order fight, theft, benign
-        self._labels = (FIGHT, THEFT, BENIGN)
+        self._labels = (WEAPON, FIGHT, THEFT, BENIGN)
         self._last: dict[tuple[str, str], tuple[float, VadScore]] = {}
 
     def score(self, frame: Frame, track: Track) -> VadScore:
         if self.forced:
-            if self.forced_label in (FIGHT, THEFT):
+            if self.forced_label in (WEAPON, FIGHT, THEFT):
                 return VadScore(0.90, self.forced_label)
             return VadScore(0.0, "")
         key = (frame.camera_id, track.track_id)
@@ -162,10 +169,11 @@ class VadClip:
             # Raw cosine, not CLIP's logit_scale=100 softmax. That turn
             # a 0.02 edge into a 0.9 "theft" on walking crops.
             sims = (vis @ self._class_feat.T)[0].detach().cpu().tolist()
-        s_fight, s_theft, s_benign = (float(s) for s in sims)
-        if s_fight >= s_theft:
+        s_weapon, s_fight, s_theft, s_benign = (float(s) for s in sims)
+        best, label = s_weapon, WEAPON
+        if s_fight > best:
             best, label = s_fight, FIGHT
-        else:
+        if s_theft > best:
             best, label = s_theft, THEFT
         margin = best - s_benign
         score = max(0.0, min(1.0, margin / MARGIN_FULL))

@@ -42,7 +42,7 @@ export const IncidentState = {
 
 /** contracts/incident.py :: IncidentClass — the VLM six-class set. */
 export const IncidentClass = {
-  FALL: 'FALL',
+  WEAPON: 'WEAPON',
   FIGHT: 'FIGHT',
   THEFT: 'THEFT',
   RUN: 'RUN',
@@ -101,7 +101,7 @@ export const STATE_LABEL = {
  *  A mock incident may override this with the optional display_title
  *  field; see js/normalize.js. */
 export const CLASS_TITLE = {
-  FALL: 'Person down',
+  WEAPON: 'Weapon detected',
   FIGHT: 'Altercation',
   THEFT: 'Forced entry',
   RUN: 'Running subject',

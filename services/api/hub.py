@@ -33,12 +33,13 @@ WALL_CAMS = [f"cam-{i:02d}" for i in range(1, 7)]
 ALL_CAMS = [f"cam-{i:02d}" for i in range(1, 13)]
 
 SCENARIOS: dict[str, tuple[IncidentClass, str]] = {
-    # demo bar ids (web/js/mock/fixtures.js SCENARIOS)
-    "person-down": (IncidentClass.FALL, "cam-05"),
+    # Primary demo: Seville armed chase
+    "armed-intruder": (IncidentClass.WEAPON, "cam-01"),
+    "person-down": (IncidentClass.WEAPON, "cam-01"),  # legacy UI id → WEAPON
     "forced-entry": (IncidentClass.THEFT, "cam-02"),
     "loitering": (IncidentClass.RUN, "cam-03"),
-    # class-token aliases
-    "fall": (IncidentClass.FALL, "cam-01"),
+    "weapon": (IncidentClass.WEAPON, "cam-01"),
+    "fall": (IncidentClass.WEAPON, "cam-01"),  # legacy alias
     "fight": (IncidentClass.FIGHT, "cam-01"),
     "theft": (IncidentClass.THEFT, "cam-02"),
     "run": (IncidentClass.RUN, "cam-03"),
@@ -78,7 +79,7 @@ class DemoHub:
         if not vision_enabled():
             await self._overlays()
             # Scenario seed only when not on live Seville vision.
-            await self.run_scenario("person-down")
+            await self.run_scenario("armed-intruder")
 
     async def start_loops(self) -> None:
         if self._health_task is not None:
@@ -119,8 +120,8 @@ class DemoHub:
     async def run_scenario(
         self, scenario_id: str, *, camera_id: str | None = None
     ) -> str:
-        key = (scenario_id or "person-down").strip().lower()
-        cls, default_cam = SCENARIOS.get(key, (IncidentClass.FALL, "cam-05"))
+        key = (scenario_id or "armed-intruder").strip().lower()
+        cls, default_cam = SCENARIOS.get(key, (IncidentClass.WEAPON, "cam-01"))
         cam = camera_id or default_cam
         result = adjudicate(
             EscalateRequest(
@@ -168,7 +169,7 @@ class DemoHub:
             paused = await self.set_paused(bool(msg.get("paused", True)))
             return {"ok": True, "cmd": "setPaused", "paused": paused}
         if cmd == "runScenario":
-            iid = await self.run_scenario(str(msg.get("scenario_id") or "person-down"))
+            iid = await self.run_scenario(str(msg.get("scenario_id") or "armed-intruder"))
             return {"ok": True, "cmd": "runScenario", "incident_id": iid}
         if cmd == "sendStateChange":
             await self.send_state_change(
