@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-23 (pratham) — router rules + fusion (no FIRE class)
+Last updated: 2026-09-24 (pratham) — live YOLO+rules on Naman staging clips
 
 ## HARD RULES (do not skip)
 1. **Pull before push.** Always `git pull --rebase origin main` before every push. No exceptions.
@@ -15,6 +15,8 @@ python3 services/brain/check.py
 services/vision/.venv/bin/python services/vision/check.py
 # VLM (needs zrt group): zrt status
 # API: http://127.0.0.1:8000/v1  model Qwen/Qwen3-VL-30B-A3B-Instruct-FP8
+# Live clips (skips 35-min Wildtrack):
+services/vision/.venv/bin/python services/vision/run_clips.py
 ```
 
 ## Ownership (paths)
@@ -34,13 +36,14 @@ services/vision/.venv/bin/python services/vision/check.py
 - **Gate 1 YES:** `zrt` 0.30.7 serves `Qwen/Qwen3-VL-30B-A3B-Instruct-FP8` on aarch64 `:8000`. Still frame answered. Cold TTFT 18.4s (image prefill); warm TTFT 0.12s, ~43 tok/s wall / ~54 tok/s decode. NVFP4 not tried. (pratham)
 - Vision `FrameBundle`: 16 peak-weighted frames from the 8s ring via `brain.sampler`. `to_classify_kwargs()` matches `ZRTClient.classify`. No scores. Ayush still needs to send `frames` on the wire. (pratham)
 - Router rolling 1–2s state + rules `fall|run|sudden_acceleration|long_dwell` + loose fusion. Overlay `score` is fused. Peak for the 16-frame bundle is the max fused ts. VadCLIP weight 0 (cut 05). No FIRE — not in frozen six-class. (pratham)
+- `FileSource` + live router on Naman `data/clips/staging/normalized/` (10 short mp4s, ~30s wall). Ambient stay under 0.40. cam7 fall peak 0.878 (walk→kneel→floor). cam1–4/6/8 run+accel over 0.40. Skipped wildtrack_cam1/2 (35 min). (pratham)
 
 ## In progress
 - (none)
 
 ## Blocked
 - Live ZRT classify: vision bundle is ready (`VisionRouter.bundle` / `to_classify_kwargs`); brain `zrt_client.classify` still raises until Ayush wires `frames`
-- Real decode/RTSP waits on Naman clips + mediamtx
+- Live RTSP still waits on Naman mediamtx; FileSource covers staging mp4s
 - Real severity thresholds need Naman bench curve
 
 ## Decisions made since the playbook
@@ -52,7 +55,7 @@ services/vision/.venv/bin/python services/vision/check.py
 - **Thresholds:** `severity_from_fused(..., allow_placeholder=True)` required; numbers are not operational until bench.
 - **ZRT skeleton:** only forced/demo classify works; live classify raises until 16-frame multimodal prefill is wired (no metadata-only fake).
 - **ZRT local:** `proxy.auth.type=none`, `proxy.tls.enabled=false`, `proxy.port=8000`. User must be in `zrt` group (`newgrp zrt`).
-- **Vision input:** synthetic frames until Naman clips/mediamtx. No RTSP invented.
+- **Vision input:** `FileSource` for Naman staging mp4s; `SyntheticSource` for check.py. No RTSP invented until mediamtx.
 - **Vision emit:** `overlay.boxes` only on the socket. Escalation bundle is in-process Python (`FrameBundle`), not a new contract. Keypoints + direction stay internal.
 - **16-frame sample:** vision calls `services.brain.sampler.sample_from_timestamps`. Peak is the camera's max fused score ts (else newest ring ts).
 - **Router classes:** pose rules cover fall/run/accel/dwell. Fight/theft wait on VadCLIP + VLM. FIRE is not a contract class — do not add without a group message.
