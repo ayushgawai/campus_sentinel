@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-24 (ayush) — local Mac clone; vision-router merged with main; ZGX offline
+Last updated: 2026-09-24 (ayush) — Seville full PASS; vision→api bridge ready to merge
 
 ## HARD RULES (do not skip)
 1. **Pull before push.** Always `git pull --rebase origin main` before every push. Work on **`main`** (no long-lived feature branches overnight).
@@ -10,19 +10,18 @@ Last updated: 2026-09-24 (ayush) — local Mac clone; vision-router merged with 
 
 ## How to run it right now
 ```bash
-# Local Mac working copy (ZGX down): ~/src/campus_sentinel
 git checkout feat/pratham/vision-router && git pull
-make check   # brain + api (no GPU)
-# On ZGX tomorrow (GPU + weights):
-services/vision/.venv/bin/python services/vision/check.py
+make check
+# Seville live router:
 services/vision/.venv/bin/python services/vision/run_seville.py --max-steps 90
-services/vision/.venv/bin/python services/vision/run_seville.py   # full ~340s
+services/vision/.venv/bin/python services/vision/run_seville.py
+# api + live vision overlays/escalations (needs vision venv):
+CS_VISION_SEVILLE=1 services/vision/.venv/bin/python -m services.api
 ```
 
-## Demo media (outside git — never commit mp4s)
-- **Locked chase pack:** `Documents/campus_sentinel_media/feeds/seville_option1_3cam_locked/`
+## Demo media (outside git)
+- Locked 3-cam: `Documents/campus_sentinel_media/feeds/seville_option1_3cam_locked/`
 - Path map: `data/feeds/seville_option1_3cam_locked.json`
-- **Still needed:** 3 ambient fillers → 6 demo feeds
 
 ## Ownership
 | Path | Owner |
@@ -30,29 +29,29 @@ services/vision/.venv/bin/python services/vision/run_seville.py   # full ~340s
 | `contracts/` | shared — frozen v1.0 |
 | `services/brain/`, `services/api/`, compose, Makefile | Ayush |
 | `services/vision/`, `services/voice/` | Pratham |
-| `web/` | Manav — **leave alone** |
+| `web/` | Manav — leave alone |
 | `data/`, `bench/`, `docs/` | Naman |
 
 ## Done
-- contracts + brain adjudicate/fuse/audit + api :8080 (ayush, on main)
-- web mock dashboard (indraneel); Manav iterating UI — do not touch
-- vision-router branch: YOLO26s-pose TRT, ByteTrack, rules, VadCLIP, FileSource, Seville path JSON (pratham)
-- **Partial Seville verify (ZGX, before box died):** forced `check.py` OK; live 90 steps on 3 cams → 22 escalations, YOLO+CLIP loaded. Full 340s pass interrupted (SSH/host stop).
+- contracts + brain adjudicate/fuse/audit + from_vision map (ayush)
+- api :8080 WS/MJPEG + optional `CS_VISION_SEVILLE` bridge (ayush)
+- vision-router: YOLO TRT, ByteTrack, rules, VadCLIP, FileSource (pratham)
+- **Seville full PASS (ZGX):** 1699 frames / 88 esc / ~50s wall; max boxes CAM-01:10 CAM-02:4 CAM-03:4
 
 ## In progress
-- Finish full Seville `run_seville.py` on ZGX tomorrow → then merge vision-router → main
-- Wire Escalation → EscalateRequest into api hub
+- Merge `feat/pratham/vision-router` → `main`
+- Live ZRT classify from FrameBundle (still forced)
 
 ## Blocked
-- ZGX offline until morning restart (GPU live tests)
-- Ambient clips + thresholds (Naman); live ZRT frames wire
+- Ambient fillers + real thresholds (Naman)
+- Fight/theft clips to bench VadCLIP (theft firing on lobby chase — revisit)
 
 ## Decisions
-- Working copy while ZGX down: **`~/src/campus_sentinel`** (push remote; pull on box tomorrow)
-- Camera wire ids `cam-01`… for web/api; vision Seville JSON uses `CAM-01`… — map at api ingest
+- Wire ids: vision `CAM-01` → api/web `cam-01` via `normalize_camera_id`
 - Do not touch `web/` while Manav works
+- Vision bridge cooldown default 8s per (cam, track)
 
 ## Next up
-1. ZGX up → full `run_seville.py` → merge vision-router → main
-2. Ayush: api ingest of escalations
-3. Manav: UI; Naman: ambient + thresholds
+1. Merge vision-router → main
+2. Demo path: CS_VISION_SEVILLE=1 api + live dashboard
+3. Naman ambient + thresholds; Pratham voice
