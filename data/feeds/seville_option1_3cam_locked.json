@@ -1,0 +1,52 @@
+{
+  "id": "seville_option1_3cam_locked",
+  "version": "locked-v2-lobby-fixed",
+  "purpose": "Mock CCTV FileSource for Campus Sentinel demo (synced freeze-handoff)",
+  "duration_s": 339.8,
+  "fps": 5,
+  "path_story": "IN: Lobby → Hall east → Hall west | OUT: Hall west → Hall east → Lobby",
+  "media_root": {
+    "zgx": "/home/hp25/Documents/campus_sentinel_media/feeds/seville_option1_3cam_locked",
+    "mac_mount": "~/mnt/zgx-b505/Documents/campus_sentinel_media/feeds/seville_option1_3cam_locked",
+    "note": "Video bytes live outside the git repo. Only this JSON is committed."
+  },
+  "research_originals": {
+    "zgx": "/home/hp25/tmp/campus_sentinel_clip_research",
+    "keep": [
+      "sources/mock_attack/",
+      "review/WATCH_THESE/",
+      "docs/PROVENANCE_MOCK_ATTACK.md"
+    ],
+    "note": "Raw Seville stills + source clips. Do not stream from tmp for demo."
+  },
+  "dashboard": "dashboard.html",
+  "demo_json": "demo.json",
+  "cameras": [
+    {
+      "camera_id": "CAM-01",
+      "file": "CAM01_lobby_entrance_IN_then_OUT_339s.mp4",
+      "location": "Lobby entrance",
+      "seville_label": "CAM5",
+      "live_windows_s": [[0.0, 60.0], [267.8, 339.8]]
+    },
+    {
+      "camera_id": "CAM-02",
+      "file": "CAM02_hallway_east_IN_then_OUT_339s.mp4",
+      "location": "Yellow hallway east",
+      "seville_label": "CAM1",
+      "live_windows_s": [[60.0, 117.0], [230.2, 267.8]]
+    },
+    {
+      "camera_id": "CAM-03",
+      "file": "CAM03_hallway_west_IN_then_OUT_339s.mp4",
+      "location": "Yellow hallway west",
+      "seville_label": "CAM7",
+      "live_windows_s": [[117.0, 216.6], [216.6, 230.2]]
+    }
+  ],
+  "FileSource_paths_example": {
+    "CAM-01": "/home/hp25/Documents/campus_sentinel_media/feeds/seville_option1_3cam_locked/CAM01_lobby_entrance_IN_then_OUT_339s.mp4",
+    "CAM-02": "/home/hp25/Documents/campus_sentinel_media/feeds/seville_option1_3cam_locked/CAM02_hallway_east_IN_then_OUT_339s.mp4",
+    "CAM-03": "/home/hp25/Documents/campus_sentinel_media/feeds/seville_option1_3cam_locked/CAM03_hallway_west_IN_then_OUT_339s.mp4"
+  }
+}
