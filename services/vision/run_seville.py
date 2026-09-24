@@ -79,8 +79,8 @@ def main() -> None:
                 by_cam_esc[esc.camera_id] += 1
                 for r in esc.rules:
                     rules[r] += 1
-            if frames % 300 == 0:
-                print(f"  frames={frames} esc={esc_total} t={time.time() - t0:.0f}s")
+            if frames % 50 == 0:
+                print(f"  frames={frames} esc={esc_total} t={time.time() - t0:.0f}s", flush=True)
     finally:
         src.close()
 

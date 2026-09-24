@@ -27,6 +27,7 @@ from contracts import (
 )
 from services.brain.adjudicate import EscalateRequest, adjudicate
 from services.brain.zrt_client import ZRTClient
+from services.api.vision_bridge import vision_enabled
 
 WALL_CAMS = [f"cam-{i:02d}" for i in range(1, 7)]
 ALL_CAMS = [f"cam-{i:02d}" for i in range(1, 13)]
@@ -82,7 +83,9 @@ class DemoHub:
         if self._health_task is not None:
             return
         self._health_task = asyncio.create_task(self._health_loop())
-        self._overlay_task = asyncio.create_task(self._overlay_loop())
+        # Live vision bridge publishes real overlay.boxes; skip synthetic ones.
+        if not vision_enabled():
+            self._overlay_task = asyncio.create_task(self._overlay_loop())
 
     async def stop_loops(self) -> None:
         for t in (self._health_task, self._overlay_task):
