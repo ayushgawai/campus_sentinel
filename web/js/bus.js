@@ -1,15 +1,24 @@
-/* Event transport.
+/* Event transport — services/api websocket only.
  *
- * Every UI module subscribes to this bus and never to the mock directly, so
- * going live means flipping config.SOURCE — no UI changes.
+ * One JSON envelope per WS message, shaped exactly like event_to_dict() output
+ * with the discriminator on a top-level `type` field. Operator commands go
+ * upstream as {cmd, ...} matching handle_cmd() in services/api/hub.py.
  *
- * A "source" both publishes contracts/events.py envelopes onto the bus and
- * accepts operator commands. The mock implements them locally; the live
- * source forwards them to services/api over the websocket.
+ * Two kinds of message arrive on the same socket:
+ *   - bus events      have a `type` field, and are republished unchanged
+ *   - command acks    have an `ok` flag instead, e.g.
+ *                     {ok:true, cmd:'runScenario', incident_id:'inc-…'}
+ * Acks are not events, so they go to onAck subscribers rather than the bus.
+ * Without that, the incident_id the backend assigns to a staged scenario never
+ * reaches the UI.
+ *
+ * Failure acks are matched on `ok` rather than `cmd` because the unhappy paths
+ * omit the command name entirely — hub.handle_cmd returns
+ * {ok:false, error:'unknown cmd: …'} and server.py returns
+ * {ok:false, error:'bad json'}.
  */
 
-import { config, wsUrl } from './config.js';
-import { createMockSource } from './mock/emitter.js';
+import { wsUrl } from './config.js';
 
 export class EventBus {
   constructor() {
@@ -34,14 +43,10 @@ export class EventBus {
 
 export const bus = new EventBus();
 
-/**
- * Live transport — one JSON envelope per WS message (event_to_dict shape).
- * Operator commands go upstream as {cmd, ...} matching services/api/hub.py.
- */
 function createLiveSource(targetBus = bus) {
   let ws = null;
   let paused = false;
-  let starters = [];
+  const ackHandlers = new Set();
 
   function send(obj) {
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -49,8 +54,19 @@ function createLiveSource(targetBus = bus) {
     }
   }
 
+  function emitAck(ack) {
+    for (const fn of ackHandlers) {
+      try {
+        fn(ack);
+      } catch (err) {
+        console.error('[live] ack handler failed for', ack && ack.cmd, err);
+      }
+    }
+  }
+
   function connect() {
     ws = new WebSocket(wsUrl());
+
     ws.addEventListener('message', (ev) => {
       let msg;
       try {
@@ -59,21 +75,20 @@ function createLiveSource(targetBus = bus) {
         console.error('[live] bad json', err);
         return;
       }
-      // Command acks ({ok:true,cmd:...}) are not bus events.
-      if (msg && typeof msg.type === 'string') {
+      if (!msg || typeof msg !== 'object') return;
+
+      if (typeof msg.type === 'string') {
         targetBus.publish(msg);
-        if (msg.type === 'incident.upsert' && msg.incident) {
-          // keep a soft starter list for reset UX parity
-          starters = [msg.incident, ...starters.filter(
-            (i) => i.incident_id !== msg.incident.incident_id
-          )].slice(0, 8);
-        }
+      } else if (typeof msg.ok === 'boolean' || typeof msg.cmd === 'string') {
+        emitAck(msg);
       }
     });
+
     ws.addEventListener('close', () => {
       console.warn('[live] ws closed — retry in 2s');
       setTimeout(connect, 2000);
     });
+
     ws.addEventListener('open', () => {
       send({ cmd: 'start' });
     });
@@ -95,11 +110,11 @@ function createLiveSource(targetBus = bus) {
       }
     },
 
-    startCall() {
-      return { brief: null, durationMs: 0 };
+    /** Subscribe to command acks. Returns an unsubscribe function. */
+    onAck(fn) {
+      ackHandlers.add(fn);
+      return () => ackHandlers.delete(fn);
     },
-
-    cancelCall() {},
 
     setPaused(next) {
       paused = !!next;
@@ -111,9 +126,9 @@ function createLiveSource(targetBus = bus) {
       return paused;
     },
 
+    /** Fire and forget. The new incident_id comes back as a runScenario ack. */
     runScenario(scenarioId) {
       send({ cmd: 'runScenario', scenario_id: scenarioId });
-      return null;
     },
 
     sendStateChange(incidentId, nextState, note) {
@@ -128,14 +143,9 @@ function createLiveSource(targetBus = bus) {
     reset() {
       send({ cmd: 'reset' });
     },
-
-    get starters() {
-      return () => starters;
-    },
   };
 }
 
 export function createSource(targetBus = bus) {
-  if (config.SOURCE === 'live') return createLiveSource(targetBus);
-  return createMockSource(targetBus);
+  return createLiveSource(targetBus);
 }

@@ -43,10 +43,13 @@ export function createStore() {
     notifications: [],
     unseen: 0,
 
-    /** incidentId -> { brief, transcript: [], toolCalls: [], startedAt, ended } */
+    /** incidentId -> { incidentId, transcript: [], toolCalls: [],
+     *                  startedAt, lastDeltaAt, dismissed }
+     *  No `brief`: services/api never serializes a CallBrief onto the socket.
+     *  No `ended`: there is no call.ended envelope either — see ensureCall. */
     calls: new Map(),
     activeCallId: null,
-    /** whether the console has taken over the lower half of the screen */
+    /** whether the console has taken the panel below the camera wall */
     callVisible: false,
   };
 
@@ -126,10 +129,17 @@ export function createStore() {
     notify(Change.OVERLAYS);
   }
 
-  function resetIncidents(list) {
-    state.incidents = new Map(list.map((vm) => [vm.id, vm]));
+  /** Back to an empty board.
+   *
+   *  Nothing is seeded client-side: the backend's own reset (DemoHub.reset →
+   *  seed) re-publishes camera.online, health.strip and a fresh scenario, so
+   *  the queue refills from the wire. Fabricating starter incidents here would
+   *  put rows in the queue that no service knows about.
+   */
+  function clearIncidents() {
+    state.incidents = new Map();
     state.overlays = new Map();
-    state.selectedId = list.length ? list[0].id : null;
+    state.selectedId = null;
     state.notifications = [];
     state.unseen = 0;
     state.expandedCameraId = null;
@@ -184,59 +194,80 @@ export function createStore() {
 
   /* ---------------- call console ---------------- */
 
-  function startCall(incidentId, brief) {
-    state.calls.set(incidentId, {
-      incidentId,
-      brief,
-      transcript: [],
-      toolCalls: [],
-      startedAt: new Date(),
-      ended: false,
-    });
-    state.activeCallId = incidentId;
-    state.callVisible = true;
-    notify(Change.CALL);
+  /**
+   * Open (or find) the console entry for an incident the voice service has
+   * started talking about.
+   *
+   * There is no call.started envelope: services/voice publishes only
+   * call.transcript_delta and tool.call_live, and DemoHub.publish() kicks the
+   * VoiceAgent off on any SEVERE upsert with no operator involvement. So the
+   * arrival of a delta IS the signal that a call exists, and this runs on every
+   * one of them. It must stay idempotent.
+   *
+   * Once the operator closes the console the call is marked `dismissed` and
+   * later deltas keep accumulating without popping the panel back open.
+   */
+  function ensureCall(incidentId) {
+    if (!incidentId) return null;
+
+    let call = state.calls.get(incidentId);
+    let changed = false;
+
+    if (!call) {
+      call = {
+        incidentId,
+        transcript: [],
+        toolCalls: [],
+        startedAt: new Date(),
+        lastDeltaAt: new Date(),
+        dismissed: false,
+      };
+      state.calls.set(incidentId, call);
+      changed = true;
+    }
+
+    if (!call.dismissed) {
+      if (state.activeCallId !== incidentId) {
+        state.activeCallId = incidentId;
+        changed = true;
+      }
+      if (!state.callVisible) {
+        state.callVisible = true;
+        changed = true;
+      }
+    }
+
+    if (changed) notify(Change.CALL);
+    return call;
   }
 
   function appendTranscript(vm) {
-    const call = state.calls.get(vm.incidentId);
+    const call = ensureCall(vm.incidentId);
     if (!call) return;
     call.transcript = [...call.transcript, vm];
+    call.lastDeltaAt = new Date();
     notify(Change.CALL);
   }
 
   function appendToolCall(vm) {
-    const call = state.calls.get(vm.incidentId);
+    const call = ensureCall(vm.incidentId);
     if (!call) return;
     call.toolCalls = [...call.toolCalls, vm];
-    notify(Change.CALL);
-  }
-
-  function endCall(incidentId) {
-    const call = state.calls.get(incidentId);
-    if (!call) return;
-    call.ended = true;
+    call.lastDeltaAt = new Date();
     notify(Change.CALL);
   }
 
   function setCallVisible(visible) {
+    if (!visible) {
+      const call = activeCall();
+      if (call) call.dismissed = true;
+    }
     state.callVisible = visible;
-    notify(Change.CALL);
-  }
-
-  function clearCalls() {
-    state.calls = new Map();
-    state.activeCallId = null;
-    state.callVisible = false;
     notify(Change.CALL);
   }
 
   function activeCall() {
     return state.activeCallId ? state.calls.get(state.activeCallId) || null : null;
-  }
-
-  function hasCall(incidentId) {
-    return state.calls.has(incidentId);
   }
 
   /* ---------------- selectors ---------------- */
@@ -281,15 +312,6 @@ export function createStore() {
     return n;
   }
 
-  function counts() {
-    const out = { ALL: 0, CRITICAL: 0, HIGH: 0, MEDIUM: 0 };
-    for (const inc of state.incidents.values()) {
-      out.ALL += 1;
-      if (inc.uiSeverity in out) out[inc.uiSeverity] += 1;
-    }
-    return out;
-  }
-
   return {
     getState: () => state,
     subscribe(fn) {
@@ -303,7 +325,7 @@ export function createStore() {
     applyStateChange,
     setHealth,
     setOverlay,
-    resetIncidents,
+    clearIncidents,
     // intent
     select,
     setFilter,
@@ -313,20 +335,16 @@ export function createStore() {
     setPrewarmed,
     clearUnseen,
     // call console
-    startCall,
+    ensureCall,
     appendTranscript,
     appendToolCall,
-    endCall,
     setCallVisible,
-    clearCalls,
     activeCall,
-    hasCall,
     // selectors
     visibleIncidents,
     selected,
     alertingCameraIds,
     alertingTracks,
     openCount,
-    counts,
   };
 }

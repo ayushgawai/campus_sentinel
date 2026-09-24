@@ -8,7 +8,9 @@ import { h, mount, clear, fmtUtcTime, severityClass } from './dom.js';
 import { icons } from './icons.js';
 import { Change } from '../store.js';
 
-const FILTERS = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM'];
+/* Three buckets, matching js/contracts.js :: UiSeverity. HIGH is gone — it was
+ * unreachable once bench/thresholds.json set severe_at to 0.80. */
+const FILTERS = ['ALL', 'CRITICAL', 'MEDIUM'];
 
 export function createQueue(root, store, { onSelectIncident }) {
   let countEl;

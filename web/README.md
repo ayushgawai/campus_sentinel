@@ -12,143 +12,118 @@ python3 -m http.server 8000
 ES modules need a real HTTP origin, so opening `index.html` from the filesystem
 (`file://`) will not work.
 
-## Current state: mock-driven
+## Self-check
 
-`services/api` does not exist yet, so the dashboard runs entirely on
-`js/mock/emitter.js`, which publishes exactly the envelopes defined in
-`contracts/events.py`. Nothing in the UI knows the data is synthetic.
-
-## Going live
-
-One switch in `js/config.js`:
-
-```js
-export const config = {
-  SOURCE: 'live',                    // was 'mock'
-  API_BASE: 'http://127.0.0.1:8080', // services/api origin
-  MJPEG_PATH: '/mjpeg',
-  WS_PATH: '/ws',
-};
+```bash
+node web/check.mjs
 ```
 
-Then implement `createLiveSource()` in `js/bus.js`. It needs to:
+Covers `cameras.js`, `scenarios.js`, `contracts.js`, `transitions.js`,
+`normalize.js` and `store.js` against payloads shaped like real
+`event_to_dict()` output. No DOM, no dependencies. Two of the assertions guard
+hand-kept copies that would otherwise rot silently — see *Mirrored files* below.
 
-1. open `wsUrl()` and publish each received envelope onto the bus unchanged, and
-2. expose the same command methods the mock does — `start`, `stop`, `setPaused`,
-   `runScenario`, `sendStateChange`, `reset`.
+## It runs live
 
-No UI module changes. Every panel reads normalised view models from the store,
-never the wire format directly.
+The dashboard talks to `services/api` and has no mock source. Start the backend
+first, or every pane sits empty:
 
-## What the API needs to serve
+```bash
+python3 -m services.api                         # :8080
+CS_VISION_SEVILLE=1 python3 -m services.api     # with the live vision bridge
+```
 
-| Need | Shape |
+Then point `API_BASE` in `js/config.js` at it. That is the only knob.
+
+## What the API actually serves
+
+Everything the UI shows comes from this surface. There is nothing else.
+
+| Endpoint | Purpose |
 |---|---|
-| WebSocket `/ws` | The 8 `EventType` envelopes from `contracts/events.py` |
-| MJPEG `/mjpeg/{camera_id}` | Annotated stream per camera. Panes fall back to a locally drawn placeholder while this 404s |
-| Camera map | `data/camera_map.json` — coordinates, names, addresses, entrances, adjacency |
-| Call Brief | `contracts/call_brief.py` payload, assembled by brain and delivered per call |
+| `GET /ws` | The 8 `EventType` envelopes from `contracts/events.py`, one JSON object per message, discriminated on a top-level `type` field |
+| `GET /mjpeg/{camera_id}` | Annotated stream, via `ffmpeg`. `CLIP_BY_CAM` in `services/api/server.py` has clips for `cam-01`..`cam-06` only |
+| `GET /health` | `{"ok": true, "service": "api"}` |
 
-### Wire envelope — needs confirming with whoever builds `api/`
+Commands travel back over the same socket as `{cmd, ...}`, handled by
+`handle_cmd` in `services/api/hub.py`: `start`, `stop`, `setPaused`,
+`runScenario`, `sendStateChange`, `reset`.
 
-The dashboard assumes one JSON object per websocket message, shaped exactly
-like `event_to_dict()` output, with the discriminator on a top-level `type`
-field:
-
-```json
-{ "type": "overlay.boxes", "camera_id": "cam-01", "ts": "...", "boxes": [...] }
-```
-
-Not `{"event": "...", "data": {...}}`, and not newline-delimited batches. This
-assumption lives in exactly one place — `createLiveSource()` in `js/bus.js` —
-so it is cheap to change, but it should be agreed before `api/` is written.
-
-## Call console
-
-The call console (`js/ui/call.js`) takes over the lower half of the screen when
-an incident is dispatched, and consumes `call.transcript_delta` and
-`tool.call_live`. Three columns: the Call Brief the agent may read from, both
-sides of the transcript, and tool calls landing live.
-
-Today the mock plays a scripted exchange (`CALL_SCRIPTS` in
-`js/mock/fixtures.js`) over those same two event types, so the voice service can
-replace it without the console changing. Two things in the script are
-deliberate and should survive editing:
-
-- Sentinel opens by stating the call is **simulated**.
-- When the dispatcher asks something unverifiable ("is the person conscious?"),
-  Sentinel answers that it **cannot confirm** and reports only what the camera
-  observed. That is the "never infer a fact on a call" rule made visible.
-
-`callBriefFor()` in the mock stands in for brain's Call Brief assembly. In
-production brain builds it; the browser should never assemble one.
+Command replies are **not** events — they carry an `ok` flag instead of a
+`type`, so `js/bus.js` routes them to `onAck` subscribers. That matters for
+`runScenario`, where the incident id the brain assigns only comes back on the
+ack.
 
 ## Layout
 
 ```
 web/
 ├── index.html
+├── check.mjs             node self-check
 ├── css/
 │   ├── tokens.css        design tokens
 │   ├── layout.css        app shell grid
 │   └── components.css    every component
 └── js/
-    ├── config.js         the mock/live switch
+    ├── config.js         API origin and paths
     ├── contracts.js      mirror of contracts/ + display vocabulary
     ├── transitions.js    mirror of the brain's state graph
+    ├── cameras.js        mirror of data/camera_map.json
+    ├── scenarios.js      scenario ids the hub accepts
     ├── normalize.js      wire payload -> view model
     ├── store.js          state + selectors
-    ├── bus.js            transport, the single swap point
+    ├── bus.js            websocket transport
     ├── app.js            wiring + boot
-    ├── mock/             fixtures + event emitter + call scripts
     └── ui/               one module per panel
 ```
 
-## Integration checklist
+Nothing is seeded client-side. The board fills from `/ws` and empties on the
+`demo.control` reset envelope, so a reset triggered from any client lands the
+same way.
 
-Things that will cost time later if they are not settled now. The first two are
-not documented anywhere upstream, so they are genuinely undecided rather than
-just unwritten.
+## Mirrored files
 
-- [ ] **`BBox` units.** `contracts/events.py` does not state whether x/y/w/h are
-      normalised 0..1 or pixels. This UI assumes normalised. Needs a one-line
-      docstring from `services/vision`.
-- [ ] **Websocket envelope shape** — see the table above.
-- [ ] **Who computes `predicted_next`.** The map's prediction ring needs it.
-      Unclear whether that is vision's camera-graph work or brain's. Currently
-      mock-only, so the ring silently never fires against real data.
-- [ ] **ID formats.** Mock uses `cam-01`..`cam-12` and `INC-0417`. If vision
-      emits different camera ids or brain emits UUIDs, every lookup keyed on
-      those strings misses silently — a blank pane, not a crash.
-- [ ] **Who assembles the Call Brief.** Should be brain, per
-      `contracts/call_brief.py`. The browser mock is a stand-in only.
+Three files in `js/` are hand-kept copies of things the browser cannot import.
+If the source changes, update the copy.
+
+| Copy | Source of truth |
+|---|---|
+| `js/contracts.js` | `contracts/incident.py`, `contracts/events.py` |
+| `js/transitions.js` | `services/brain/state_machine.py` :: `ALLOWED` |
+| `js/cameras.js` | `data/camera_map.json` |
+
+`check.mjs` asserts `cameras.js` still matches the JSON field by field, because
+that one is the easiest to forget. The two Python mirrors are not machine-checked
+— treat them as review-critical.
+
+Camera pin positions on the map are **derived** from the lat/lon in
+`data/camera_map.json`, projected onto the panel's 0..1 space. Relative geography
+is real; absolute scale is not meaningful (the six cameras span roughly 100m by
+180m).
 
 ## Three things to know before editing
 
-**1. `contracts.js` and `transitions.js` are hand-kept copies.**
-The Python in `contracts/` and `services/brain/state_machine.py` cannot be
-imported by a browser, and nothing outside `web/` may be modified. If either
-changes upstream, update these two files by hand.
-
-**2. Severity names here are presentation only.**
-`contracts/incident.py` freezes `Severity` as `NONE | MINOR | SEVERE`. The
-mockup's four buckets are produced in `contracts.js`:
+**1. Severity names here are presentation only.**
+`contracts/incident.py` freezes `Severity` as `NONE | MINOR | SEVERE`. The queue
+buckets are produced in `contracts.js`:
 
 | Contract | UI |
 |---|---|
 | `SEVERE` | CRITICAL |
-| `MINOR`, `fused_prob >= 0.8` | HIGH |
-| `MINOR`, `fused_prob < 0.8` | MEDIUM |
-| `NEW` | REVIEW badge |
-| `DISMISSED` | FALSE ALARM badge |
+| `MINOR` | MEDIUM |
+| `NONE` | NONE badge, and the record arrives already `DISMISSED` |
+| state `NEW` | REVIEW badge |
+| state `DISMISSED` | FALSE ALARM badge |
 
-`UI_HIGH_AT = 0.8` is a display threshold invented for the queue chips. It is
-**not** a dispatch threshold — those live in `services/brain/thresholds.py` and
-are owned by brain.
+There used to be a HIGH bucket splitting `MINOR` at `fused_prob >= 0.8`. It was
+removed as unreachable: `bench/thresholds.json` sets `severe_at` to `0.80`, and
+`severity_from_fused` returns `SEVERE` at `>= severe_at`, so `MINOR` implies
+`fused_prob < 0.80`. `check.mjs` fails if `severe_at` moves above `0.8`, which
+would make a display split meaningful again.
 
-**3. Action buttons follow the brain's real state graph.**
-`transitions.js` mirrors `ALLOWED`, so the UI can never request a transition the
-backend would reject. Consequences:
+**2. Action buttons follow the brain's real state graph.**
+`transitions.js` mirrors `ALLOWED`, so the UI never offers a transition the graph
+would reject:
 
 - Dispatch from `NEW` auto-walks `ALERTED -> DISPATCH_PENDING -> DISPATCHED`
 - Resolve on a dispatched incident passes through `TRACKING` first
@@ -156,51 +131,77 @@ backend would reject. Consequences:
   reachable from `NEW` or `ALERTED`
 - Acknowledge only applies at `NEW`; Resolve is blocked at `NEW`
 
-Each hop emits its own `incident.state_change`, so the timeline matches what the
-brain's audit trail would record.
+Each hop emits its own `incident.state_change`. Note that this is currently the
+**only** guard — see the gap list below.
 
-## Fields the UI wants that the contracts do not have
+**3. The transcript panel is not opened by the Dispatch button.**
+`DemoHub.publish()` starts the `VoiceAgent` on any SEVERE `incident.upsert`, with
+no operator involvement, and there is no `call.started` envelope. So the arrival
+of the first `call.transcript_delta` is what creates the call and reveals the
+panel (`store.ensureCall`). Dispatch only walks the state chain.
 
-Handled without touching `contracts/`. The mock supplies these; the real api
-will not, and every one degrades quietly (`js/normalize.js`).
+The panel takes the cell directly below the camera wall, replacing the campus
+map; the incident detail panel stays visible alongside it. Closing it marks the
+call dismissed so later deltas keep accumulating without popping it back open.
 
-| Field | Absent behaviour |
-|---|---|
-| `display_title` | falls back to `CLASS_TITLE[class_token]` |
-| `track_path` | falls back to `[camera_id]`, no trail drawn |
-| `predicted_next` | no prediction ring |
-| `models_count` | tile shows the `models_resident` boolean |
-| `gpu_temp_c` | temperature hidden |
+## Known gaps — all of them backend work
 
-Derived in the browser, no new fields needed: the `+N/s` screened rate (delta
-between health ticks), the escalation percentage, each pane's tracked count
-(`boxes.length`) and its router score (`max(box.score)`).
+None of these are fixable inside `web/`.
 
-## Assumptions to confirm with other owners
-
-- **`BBox` coordinates are normalised 0..1.** `contracts/events.py` does not
-  specify units. If `services/vision` emits pixels instead, `js/ui/wall.js`
-  needs a divide by the frame size.
-- **Camera positions are mock data.** `js/mock/fixtures.js` holds twelve
-  cameras with invented coordinates because `data/camera_map.json` is still
-  empty. Nothing in `data/` was written.
-- **Timestamps render in UTC** and are labelled as such, since the contracts
-  require timezone-aware UTC and local time would disagree with the audit log.
+- **No Call Brief on the wire.** `services/brain/call_brief.py` assembles a real
+  `CallBrief` and `DemoHub._maybe_start_voice` passes it to the voice agent, but
+  it is never serialized. No event type carries one. The console's brief column
+  was removed for this reason; it needs a new envelope or a
+  `GET /call_brief/{incident_id}`.
+- **No call lifecycle events.** No `call.started`, no `call.ended`. The console's
+  status pill therefore reports whether *deltas are arriving*, not whether the
+  call is live.
+- **One call at a time.** `VoiceAgent.busy()` plus the single `_voice` instance on
+  the hub means a second SEVERE incident gets no call at all, silently.
+- **Voice script timing.** `WEAPON_SCRIPT` in `services/voice/agent.py` reads its
+  `after_s` values like absolute timeline offsets but consumes them as cumulative
+  `asyncio.sleep` calls, stretching the exchange to about 52 seconds with a 9
+  second pause before the closing line.
+- **No camera map endpoint**, hence `js/cameras.js`.
+- **`location_text` and `person_description` are unset on the live path.**
+  `escalate_request_from_vision` in `services/brain/from_vision.py` passes
+  neither, so `adjudicate` falls back to the bare `camera_id` and the string
+  `"unknown"`. The queue shows `cam-01` rather than a readable location.
+- **`description` carries a debug tag.** `adjudicate` appends `[zrt-live]` or
+  `[zrt-forced]`, which renders verbatim in the operator's evidence paragraph.
+- **`clip_uri` is always empty** — `vision_bridge` never sets it. Nothing in the
+  UI reads it yet.
+- **No GPU or latency telemetry.** `DemoHub._health()` sends `gpu_util=0.68` and
+  `p95_ms=182.0` as literal constants every tick, so those tiles were removed
+  rather than shown frozen. `frames_screened` also starts from a hardcoded
+  2,842,232.
+- **`camera.online` is never false.** Published once in `hub.seed()`, always
+  `True`, with no liveness monitor. The wall's "degraded" state cannot trigger.
+  The hub also reports 12 cameras online while only 6 have clips.
+- **State transitions are echoed, not enforced.** `hub.send_state_change` wraps
+  whatever state string the browser sent and rebroadcasts it. It never consults
+  `services/brain/state_machine.py`, the `StateMachine` built inside `adjudicate`
+  is discarded, and `DemoHub` keeps no incident store. Nothing is written to
+  `services/brain/audit.py` for operator actions, and an illegal transition from
+  any other client would be accepted and fanned out.
+- **No `track_path` or `predicted_next`.** The map trail and prediction ring were
+  removed. Ownership of cross-camera prediction was never settled.
 
 ## Simulation labelling
 
-The dispatch path is a simulation. The top bar carries a permanent
-`Simulation` tag, the Dispatch button's tooltip says no real call is placed, and
-dispatch timeline entries are written `SIMULATED · campus security`. Keep all of
-that in place.
+The dispatch path is a simulation. The top bar carries a permanent `Simulation`
+tag, the Dispatch button's tooltip says no real call is placed, and dispatch
+timeline entries are written `SIMULATED · campus security`. The voice agent opens
+by stating the call is simulated and answers "I cannot confirm" when asked
+something it holds no fact for. Keep all of that in place.
 
 ## Accessibility
 
-Keyboard reachable throughout, including the twelve SVG map pins (Enter/Space).
-The queue is a `listbox` with `aria-selected` rows, severity filters expose
+Keyboard reachable throughout, including the SVG map pins (Enter/Space). The
+queue is a `listbox` with `aria-selected` rows, severity filters expose
 `aria-pressed`, the confidence meter is a `progressbar` with `aria-valuenow`,
-toasts and the queue sit in `aria-live` regions, and the alert pulse plus the map
-path animation respect `prefers-reduced-motion`.
+toasts, the queue and both transcript columns sit in `aria-live` regions, and the
+alert pulse respects `prefers-reduced-motion`.
 
 Full WCAG conformance needs manual testing with real assistive technology and an
 expert review; this covers the structural basics only.

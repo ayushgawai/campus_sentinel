@@ -7,7 +7,7 @@
 import { h, mount, clear } from './dom.js';
 import { icons } from './icons.js';
 import { Change } from '../store.js';
-import { SCENARIOS } from '../mock/fixtures.js';
+import { SCENARIOS } from '../scenarios.js';
 
 export function createDemoControl(root, store, { onRunScenario, onReset }) {
   let select;

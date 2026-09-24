@@ -3,7 +3,8 @@
  * Flow: source -> bus (contracts/events.py envelopes) -> normalize -> store
  *       -> UI modules. Operator intent travels back out through the source.
  *
- * Nothing here knows whether the events are mock or live.
+ * Every panel reads normalised view models from the store, never the wire
+ * format directly.
  */
 
 import { config } from './config.js';
@@ -18,10 +19,9 @@ import {
   normalizeCameraOnline,
   normalizeTranscriptDelta,
   normalizeToolCall,
-  normalizeCallBrief,
 } from './normalize.js';
 import { Action, ACTION_NOTE, actionPath } from './transitions.js';
-import { CAMERAS, cameraNo, starterIncidents } from './mock/fixtures.js';
+import { CAMERAS, cameraNo } from './cameras.js';
 
 import { createTopbar } from './ui/topbar.js';
 import { createHealthStrip } from './ui/health.js';
@@ -60,7 +60,11 @@ function boot() {
     switch (ev.type) {
       case EventType.INCIDENT_UPSERT: {
         const dict = ev.incident || ev.incident_dict;
-        if (dict) store.upsertIncident(normalizeIncident(dict));
+        if (!dict) break;
+        store.upsertIncident(normalizeIncident(dict));
+        // Nothing is seeded client-side, so the detail panel would sit empty
+        // until the operator clicked. Land on the first incident that arrives.
+        if (!store.getState().selectedId) selectIncident(dict.incident_id);
         break;
       }
 
@@ -85,6 +89,8 @@ function boot() {
         store.setCameraOnline(normalizeCameraOnline(ev));
         break;
 
+      /* Both of these lazily create the call entry and reveal the transcript
+       * panel, because no call.started envelope exists to do it explicitly. */
       case EventType.CALL_TRANSCRIPT_DELTA:
         store.appendTranscript(normalizeTranscriptDelta(ev));
         break;
@@ -93,8 +99,14 @@ function boot() {
         store.appendToolCall(normalizeToolCall(ev));
         break;
 
+      /* DemoHub emits 'reset' and 'scenario' only — never 'prewarm' — so the
+       * prewarm indicator is driven from health.strip's models_resident above.
+       *
+       * Reset is server-authoritative: DemoHub.reset() publishes this envelope
+       * and then re-seeds, so the clear lands before the fresh incidents and
+       * the board stays in step even when another client triggered it. */
       case EventType.DEMO_CONTROL:
-        if (ev.action === 'prewarm') store.setPrewarmed(true);
+        if (ev.action === 'reset') store.clearIncidents();
         break;
 
       default:
@@ -141,60 +153,47 @@ function boot() {
     else if (action === Action.FALSE_ALARM) toasts.warn(title, body);
     else toasts.ok(title, body);
 
-    // Dispatch opens the simulated call. In production the voice service drives
-    // this; here the mock plays a scripted exchange over the same wire events.
-    if (action === Action.DISPATCH && source.startCall) {
-      const dict = starterOrStaged(incidentId);
-      if (dict) {
-        const { brief, durationMs } = source.startCall(dict);
-        store.startCall(incidentId, normalizeCallBrief(brief));
-        setTimeout(() => store.endCall(incidentId), durationMs + 900);
-      }
-    }
+    /* Dispatch does NOT open the transcript panel.
+     *
+     * services/voice is driven by the backend, not by this button:
+     * DemoHub.publish() starts the VoiceAgent on any SEVERE incident.upsert,
+     * which usually lands before an operator has touched anything. The panel
+     * therefore opens when transcript deltas start arriving — see
+     * store.ensureCall, called from appendTranscript/appendToolCall. */
   }
 
   /**
-   * The mock's call playback needs the raw wire payload, not the view model.
-   * Rebuild a minimal one from the store so the console works for both starter
-   * and staged incidents. The live source will not need this.
+   * Staging a scenario is fire-and-forget: the brain assigns the incident id,
+   * so it comes back on the runScenario ack rather than from this call. The
+   * hub publishes the incident.upsert before it returns that ack, so by the
+   * time the handler below runs the incident is already in the store.
    */
-  function starterOrStaged(incidentId) {
-    const inc = store.getState().incidents.get(incidentId);
-    if (!inc) return null;
-    return {
-      incident_id: inc.id,
-      track_id: inc.trackId,
-      camera_id: inc.cameraId,
-      class_token: inc.classToken,
-      location_text: inc.locationText,
-      person_description: inc.personDescription,
-      created_at: (inc.createdAt || new Date()).toISOString(),
-      peak_ts: (inc.peakTs || new Date()).toISOString(),
-    };
+  function runScenario(scenarioId) {
+    source.runScenario(scenarioId);
   }
 
-  function runScenario(scenarioId) {
-    const incidentId = source.runScenario(scenarioId);
-    if (!incidentId) return;
+  source.onAck((ack) => {
+    if (ack.ok === false) {
+      toasts.warn('Command rejected', ack.error || 'The backend refused it.');
+      return;
+    }
+    if (ack.cmd !== 'runScenario' || !ack.incident_id) return;
 
-    selectIncident(incidentId);
+    selectIncident(ack.incident_id);
 
-    const inc = store.getState().incidents.get(incidentId);
+    const inc = store.getState().incidents.get(ack.incident_id);
     toasts.alert(
       'Scenario staged',
-      inc ? `${inc.title} · CAM ${cameraNo(inc.cameraId)}` : scenarioId
+      inc ? `${inc.title} · CAM ${cameraNo(inc.cameraId)}` : ack.incident_id
     );
-  }
+  });
 
+  /** Ask the backend to reset. The board is cleared by the demo.control
+   *  envelope that comes back, not here, so a reset triggered from anywhere
+   *  lands the same way. */
   function resetDemo() {
-    if (source.cancelCall) source.cancelCall();
-    store.resetIncidents(starterIncidents().map(normalizeIncident));
     source.reset();
-
-    const newest = store.visibleIncidents()[0];
-    if (newest) selectIncident(newest.id);
-
-    toasts.info('Demo reset', 'Back to the three starter incidents.');
+    toasts.info('Demo reset', 'Asked the backend to clear and re-seed.');
   }
 
   function togglePause() {
@@ -238,7 +237,9 @@ function boot() {
     onReset: resetDemo,
   });
 
-  // the lower half swaps between map+detail and the call console
+  /* The transcript panel takes the cell directly below the camera wall,
+   * replacing the campus map. The incident detail panel stays put, so the
+   * operator keeps the evidence and the action buttons while a call runs. */
   const mainEl = document.querySelector('.main');
   store.subscribe((state, kind) => {
     if (kind !== Change.CALL) return;
@@ -250,13 +251,10 @@ function boot() {
 
   source.start();
 
-  // open on the most recent incident so the panel is never empty
-  const newest = store.visibleIncidents()[0];
-  if (newest) store.select(newest.id);
-
   console.info(
-    `[sentinel] dashboard up · source=${source.kind} · `
-    + `MJPEG expected at ${config.API_BASE || location.origin}${config.MJPEG_PATH}/<camera_id>`
+    `[sentinel] dashboard up · ${config.API_BASE || location.origin} · `
+    + `MJPEG at ${config.MJPEG_PATH}/<camera_id> · nothing is seeded locally, `
+    + 'the board fills from /ws'
   );
 }
 

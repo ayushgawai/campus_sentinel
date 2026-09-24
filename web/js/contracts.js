@@ -19,16 +19,6 @@ export const EventType = {
   CAMERA_ONLINE: 'camera.online',
 };
 
-/** The five agentic call tools from playbook §04-E, with the label shown in
- *  the call console. Each one is a lookup, never a generation. */
-export const CALL_TOOLS = {
-  lookup_location: 'lookup_location',
-  get_suspect_status: 'get_suspect_status',
-  get_elapsed_time: 'get_elapsed_time',
-  get_person_description: 'get_person_description',
-  repeat_last: 'repeat_last',
-};
-
 /** contracts/incident.py :: IncidentState */
 export const IncidentState = {
   NEW: 'NEW',
@@ -60,29 +50,33 @@ export const Severity = {
 /* ------------------------------------------------------------------ *
  * PRESENTATION-ONLY MAPPINGS
  *
- * The mockup uses CRITICAL / HIGH / MEDIUM and a REVIEW badge. None of
- * those are contract values. Everything below is display vocabulary that
- * lives entirely in the browser; the wire format is untouched.
+ * CRITICAL / MEDIUM and the REVIEW badge are not contract values. Everything
+ * below is display vocabulary that lives entirely in the browser; the wire
+ * format is untouched.
  * ------------------------------------------------------------------ */
 
-/** UI-invented split inside Severity.MINOR. Display only — not a threshold
- *  the system acts on. Real dispatch thresholds live in
- *  services/brain/thresholds.py and are owned by brain. */
-export const UI_HIGH_AT = 0.8;
-
+/* There used to be a HIGH bucket here, splitting Severity.MINOR at
+ * fused_prob >= 0.8. It was unreachable and has been removed.
+ *
+ * bench/thresholds.json sets severe_at to 0.80, and
+ * services/brain/thresholds.py :: severity_from_fused returns SEVERE at
+ * fused_prob >= severe_at. So MINOR implies fused_prob < 0.80, and the
+ * condition fused_prob >= 0.8 could never hold for a MINOR incident. The chip
+ * and badge were permanently empty.
+ *
+ * Dispatch thresholds are owned by brain. If severe_at ever moves back above
+ * 0.8, a display split becomes possible again — but it should be derived from
+ * the real threshold rather than hardcoded here. */
 export const UiSeverity = {
   CRITICAL: 'CRITICAL',
-  HIGH: 'HIGH',
   MEDIUM: 'MEDIUM',
   NONE: 'NONE',
 };
 
-/** Severity + fused_prob -> queue badge / filter bucket. */
-export function uiSeverity(severity, fusedProb = 0) {
+/** Severity -> queue badge / filter bucket. */
+export function uiSeverity(severity) {
   if (severity === Severity.SEVERE) return UiSeverity.CRITICAL;
-  if (severity === Severity.MINOR) {
-    return fusedProb >= UI_HIGH_AT ? UiSeverity.HIGH : UiSeverity.MEDIUM;
-  }
+  if (severity === Severity.MINOR) return UiSeverity.MEDIUM;
   return UiSeverity.NONE;
 }
 

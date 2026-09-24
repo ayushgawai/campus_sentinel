@@ -1,15 +1,17 @@
 /* Wire payload -> view model.
  *
- * Every field the UI needs is either (a) present in the frozen contracts, or
- * (b) derived here, or (c) an OPTIONAL extra that only the mock emitter
- * supplies. Category (c) must always degrade gracefully, because the real
- * services/api will not send it:
+ * Every field below is either present in the frozen contracts or derived here
+ * from something that is. The optional mock-only extras this file used to
+ * tolerate are gone, because the mock is gone and services/api never sent any
+ * of them:
  *
- *   display_title   -> falls back to CLASS_TITLE[class_token]
- *   track_path      -> falls back to [camera_id] (no trail drawn)
- *   predicted_next  -> falls back to null (no prediction ring)
- *   models_count    -> falls back to the models_resident boolean
- *   gpu_temp_c      -> hidden when absent
+ *   display_title   -> always CLASS_TITLE[class_token]
+ *   track_path      -> removed with the map trail
+ *   predicted_next  -> removed with the prediction ring (nobody computes it)
+ *   models_count    -> removed; the health tile shows models_resident
+ *   gpu_temp_c      -> removed with the GPU tile
+ *   clip_uri        -> removed; nothing renders it, and vision_bridge leaves
+ *                      it empty anyway
  *
  * No field below is ever written back to the wire.
  */
@@ -38,7 +40,7 @@ export function normalizeIncident(dict) {
     cameraId: dict.camera_id,
 
     classToken: dict.class_token,
-    title: dict.display_title || CLASS_TITLE[dict.class_token] || 'Incident',
+    title: CLASS_TITLE[dict.class_token] || 'Incident',
 
     // Three score readouts in the detail panel.
     routerScore: num(dict.router_score),
@@ -47,7 +49,7 @@ export function normalizeIncident(dict) {
     confidencePct: Math.round(fused * 100),
 
     severity: dict.severity,
-    uiSeverity: uiSeverity(dict.severity, fused),
+    uiSeverity: uiSeverity(dict.severity),
 
     description: dict.description || '',
     locationText: dict.location_text || '',
@@ -58,7 +60,6 @@ export function normalizeIncident(dict) {
     open: isOpen(state),
     alerting: isAlerting(state),
 
-    clipUri: dict.clip_uri || '',
     rulesFired: Array.isArray(dict.rules_fired) ? [...dict.rules_fired] : [],
 
     peakTs: toDate(dict.peak_ts),
@@ -72,16 +73,15 @@ export function normalizeIncident(dict) {
     })),
 
     dismissedReason: dict.dismissed_reason || null,
-
-    // optional mock-only extras
-    trackPath: Array.isArray(dict.track_path) && dict.track_path.length
-      ? [...dict.track_path]
-      : [dict.camera_id],
-    predictedNext: dict.predicted_next || null,
   };
 }
 
-/** contracts/events.py :: HealthStrip -> health view model */
+/** contracts/events.py :: HealthStrip -> health view model.
+ *
+ *  gpu_util and p95_ms are on the wire but omitted here on purpose:
+ *  DemoHub._health() sends them as the literal constants 0.68 and 182.0 on
+ *  every tick, so no tile can honestly display them. Add them back when the
+ *  hub reports measured values. */
 export function normalizeHealth(dict) {
   const screened = num(dict.frames_screened);
   const escalated = num(dict.frames_escalated);
@@ -90,14 +90,7 @@ export function normalizeHealth(dict) {
     camerasOnline: num(dict.cameras_online),
     camerasTotal: num(dict.cameras_total),
 
-    // contract field is a boolean; models_count is a mock-only nicety
     modelsResident: Boolean(dict.models_resident),
-    modelsCount: typeof dict.models_count === 'number' ? dict.models_count : null,
-
-    gpuUtil: num(dict.gpu_util),
-    gpuTempC: typeof dict.gpu_temp_c === 'number' ? dict.gpu_temp_c : null,
-
-    p95Ms: num(dict.p95_ms),
 
     framesScreened: screened,
     framesEscalated: escalated,
@@ -109,8 +102,10 @@ export function normalizeHealth(dict) {
 }
 
 /** contracts/events.py :: OverlayBoxes -> overlay view model.
- *  BBox x/y/w/h are assumed normalised 0..1 (the contract does not say;
- *  confirm with services/vision before going live). */
+ *
+ *  x/y/w/h are normalised 0..1. The contract does not say so, but
+ *  _norm_boxes() in services/api/vision_bridge.py divides the YOLO pixel
+ *  values by the frame size and clamps to 0..1 before publishing. */
 export function normalizeOverlay(dict) {
   const boxes = (dict.boxes || []).map((b) => ({
     x: num(b.x),
@@ -129,7 +124,7 @@ export function normalizeOverlay(dict) {
     ts: toDate(dict.ts),
     boxes,
     tracked: boxes.length,
-    // per-pane "ROUTER 0.74" readout is not a contract field
+    // per-pane "ROUTER 0.74" readout is derived, not a contract field
     routerScore: scores.length ? Math.max(...scores) : 0,
   };
 }
@@ -173,24 +168,5 @@ export function normalizeToolCall(dict) {
     args: dict.args && typeof dict.args === 'object' ? dict.args : {},
     result: dict.result && typeof dict.result === 'object' ? dict.result : {},
     ts: toDate(dict.ts),
-  };
-}
-
-/** contracts/call_brief.py :: call_brief_to_dict -> call brief view model.
- *  Facts only by contract: no summary or assessment fields exist to read. */
-export function normalizeCallBrief(dict) {
-  return {
-    incidentId: dict.incident_id,
-    cameraId: dict.camera_id,
-    address: dict.address || '',
-    building: dict.building || null,
-    coordinates: Array.isArray(dict.coordinates) ? [...dict.coordinates] : null,
-    entrances: Array.isArray(dict.entrances) ? [...dict.entrances] : [],
-    personDescription: dict.person_description || '',
-    incidentStartedAt: toDate(dict.incident_started_at),
-    briefGeneratedAt: toDate(dict.brief_generated_at),
-    peakTs: toDate(dict.peak_ts),
-    dispatchedTs: toDate(dict.dispatched_ts),
-    mapLookupRefs: Array.isArray(dict.map_lookup_refs) ? [...dict.map_lookup_refs] : [],
   };
 }
