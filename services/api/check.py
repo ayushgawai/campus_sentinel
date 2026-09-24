@@ -132,6 +132,7 @@ async def main() -> None:
     os.environ["CS_VISION_COOLDOWN_S"] = "8"
     vb = VisionBridge(_Hub())  # type: ignore[arg-type]
     vb._last_fire.clear()
+    vb._upsert_times.clear()
     assert vb._should_fire("cam-01", "t-cooldown") is True
     assert vb._should_fire("cam-01", "t-cooldown") is False
     assert vb._should_fire("cam-01", "t-other") is True

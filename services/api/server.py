@@ -191,8 +191,6 @@ class ApiServer:
             if first:
                 await self.hub.seed()
                 await self.hub.start_loops()
-                if self.vision is not None:
-                    self.vision.start()
             while client.alive:
                 raw = await client.recv_text()
                 if raw is None:
@@ -225,8 +223,7 @@ class ApiServer:
             client.close()
             if not self.clients:
                 await self.hub.stop_loops()
-                if self.vision is not None:
-                    await self.vision.stop()
+                # keep vision bridge running across reconnects
 
     async def _mjpeg(self, writer: asyncio.StreamWriter, camera_id: str) -> None:
         name = CLIP_BY_CAM.get(camera_id)
@@ -345,6 +342,9 @@ class ApiServer:
         writer.close()
 
     async def run(self) -> None:
+        if self.vision is not None:
+            self.vision.start()
+            print("[api] CS_VISION_SEVILLE bridge starting", flush=True)
         server = await asyncio.start_server(self.handle, self.host, self.port)
         addrs = ", ".join(str(s.getsockname()) for s in server.sockets or [])
         print(f"api listening on {addrs}  (/health /ws /mjpeg/{{cam}})", flush=True)
