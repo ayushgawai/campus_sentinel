@@ -46,6 +46,7 @@ cd web && python3 -m http.server 8765 --bind 0.0.0.0
 - Live C→D→E + Completion B + guardrails + AUDIT.md
 - Officer 911 script + cross-cam whereabouts + security re-alerts
 - Naman 3+3 · lab `:8765` · SSHFS mount recovered
+- Health strip **measured** (`services/api/telemetry.py`): nvidia-smi GPU, router-step p95, real counters. No constants on the wire; `null` when unmeasured. GPU/p95 tiles restored.
 
 ## Pending (owners)
 | Who | What |

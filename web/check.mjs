@@ -218,22 +218,36 @@ const HEALTH_DICT = {
   cameras_online: 6,
   cameras_total: 6,
   models_resident: true,
-  gpu_util: 0.68,
-  p95_ms: 182.0,
-  frames_screened: 2842232,
-  frames_escalated: 17,
+  gpu_util: 0.42,
+  p95_ms: 96.4,
+  frames_screened: 1840,
+  frames_escalated: 3,
   ts: '2026-09-24T02:14:08+00:00',
 };
 
 const hs = normalizeHealth(HEALTH_DICT);
 eq('normalize: health keys', Object.keys(hs), [
   'camerasOnline', 'camerasTotal', 'modelsResident',
+  'gpuUtil', 'p95Ms',
   'framesScreened', 'framesEscalated', 'escalationPct', 'ts',
 ]);
-for (const fake of ['gpuUtil', 'p95Ms', 'modelsCount', 'gpuTempC']) {
-  ok(`normalize: ${fake} is not produced`, !(fake in hs));
+for (const gone of ['modelsCount', 'gpuTempC']) {
+  ok(`normalize: ${gone} is not produced`, !(gone in hs));
 }
-ok('normalize: escalationPct derived', Math.abs(hs.escalationPct - (17 / 2842232) * 100) < 1e-9);
+eq('normalize: gpuUtil passes through as a fraction', hs.gpuUtil, 0.42);
+eq('normalize: p95Ms passes through', hs.p95Ms, 96.4);
+
+/* services/api/telemetry.py sends null when there is nothing to measure.
+ * Coercing that to 0 would paint a missing reading as an idle GPU, which is
+ * the bug the hardcoded 0.68 / 182.0 constants used to hide. */
+const unmeasured = normalizeHealth({ ...HEALTH_DICT, gpu_util: null, p95_ms: null });
+eq('normalize: null gpu_util stays null', unmeasured.gpuUtil, null);
+eq('normalize: null p95_ms stays null', unmeasured.p95Ms, null);
+const absent = normalizeHealth({ ...HEALTH_DICT, gpu_util: undefined, p95_ms: undefined });
+eq('normalize: absent gpu_util is null not 0', absent.gpuUtil, null);
+eq('normalize: absent p95_ms is null not 0', absent.p95Ms, null);
+
+ok('normalize: escalationPct derived', Math.abs(hs.escalationPct - (3 / 1840) * 100) < 1e-9);
 eq('normalize: escalationPct guards divide-by-zero',
   normalizeHealth({ ...HEALTH_DICT, frames_screened: 0 }).escalationPct, 0);
 

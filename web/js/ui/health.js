@@ -1,16 +1,17 @@
-/* Health strip — four tiles.
+/* Health strip — six tiles, every value measured.
  *
- * Every value here moves. The GPU load and p95 latency tiles were removed:
- * DemoHub._health() in services/api/hub.py publishes gpu_util=0.68 and
- * p95_ms=182.0 as literal constants on every tick, so those tiles read like
- * live telemetry while reporting nothing. No GPU or latency measurement exists
- * anywhere in the service yet. Put them back when it does.
+ * GPU load and p95 latency are back now that services/api/telemetry.py samples
+ * them for real: nvidia-smi for GPU, a rolling window of router step durations
+ * for p95. Both arrive as null when there is nothing to measure — no NVIDIA GPU
+ * on the host, or no router step timed yet — and a null renders as a dash. It
+ * must never render as 0%, which would read as an idle GPU rather than a
+ * missing reading.
  *
  * The screened rate and the escalation percentage are derived in the browser;
  * neither is on the wire.
  */
 
-import { h, mount, fmtInt, fmtPctValue } from './dom.js';
+import { h, mount, fmtInt, fmtPct, fmtPctValue } from './dom.js';
 import { icons } from './icons.js';
 import { Change } from '../store.js';
 
@@ -61,6 +62,20 @@ export function createHealthStrip(root, store) {
         value: hs.modelsResident ? 'Resident' : 'Loading',
         unit: '',
         tone: hs.modelsResident ? 'ok' : 'warn',
+      }),
+      tile({
+        icon: icons.chip,
+        label: 'GPU load',
+        // null = nvidia-smi unreadable on this host, not a zero reading.
+        value: hs.gpuUtil === null ? '—' : fmtPct(hs.gpuUtil),
+        unit: hs.gpuUtil === null ? 'no reading' : '',
+      }),
+      tile({
+        icon: icons.activity,
+        label: 'Router p95',
+        // null = no router step measured yet (scenario mode, or just booted).
+        value: hs.p95Ms === null ? '—' : Math.round(hs.p95Ms).toLocaleString('en-US'),
+        unit: hs.p95Ms === null ? 'no samples' : 'ms',
       }),
       tile({
         icon: icons.scan,

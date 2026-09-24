@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from contracts import BBox, IncidentUpsert, OverlayBoxes
+from services.api import telemetry
 from services.brain.adjudicate import adjudicate
 from services.brain.from_vision import (
     class_hint_from_rules,
@@ -148,9 +149,11 @@ class VisionBridge:
                 if self.hub.paused:
                     await asyncio.sleep(0.5)
                     continue
+                t0 = time.perf_counter()
                 ovs, escalations = await loop.run_in_executor(
                     None, self._step, router
                 )
+                step_ms = (time.perf_counter() - t0) * 1000.0
                 if not ovs:
                     print(
                         "[vision-bridge] EOF — rewind FileSource (keep TRT warm)",
@@ -163,6 +166,9 @@ class VisionBridge:
                     height = float(getattr(src, "height", height) or height)
                     await asyncio.sleep(1.0)
                     continue
+                # Real screening cost — feeds the p95 on the health strip.
+                # Recorded after the EOF branch so rewinds do not skew it.
+                telemetry.ROUTER_LATENCY.record(step_ms)
                 for ov in ovs:
                     remapped = OverlayBoxes(
                         camera_id=normalize_camera_id(ov.camera_id),
@@ -214,7 +220,8 @@ class VisionBridge:
                         f"live={live_ok}",
                         flush=True,
                     )
-                self.hub.frames_screened += max(1, len(ovs))
+                # One decoded frame per camera per step — count them, do not round up.
+                self.hub.frames_screened += len(ovs)
                 await asyncio.sleep(step)
         except asyncio.CancelledError:
             raise

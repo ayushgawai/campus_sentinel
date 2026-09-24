@@ -22,6 +22,12 @@ function num(v, fallback = 0) {
   return typeof v === 'number' && Number.isFinite(v) ? v : fallback;
 }
 
+/** Keeps null as null. For contract fields that are genuinely optional, where
+ *  coercing an absent measurement to 0 would render as a real low reading. */
+function numOrNull(v) {
+  return typeof v === 'number' && Number.isFinite(v) ? v : null;
+}
+
 /** Contracts guarantee timezone-aware UTC ISO-8601 strings. */
 function toDate(iso) {
   if (!iso) return null;
@@ -78,10 +84,10 @@ export function normalizeIncident(dict) {
 
 /** contracts/events.py :: HealthStrip -> health view model.
  *
- *  gpu_util and p95_ms are on the wire but omitted here on purpose:
- *  DemoHub._health() sends them as the literal constants 0.68 and 182.0 on
- *  every tick, so no tile can honestly display them. Add them back when the
- *  hub reports measured values. */
+ *  gpu_util and p95_ms are optional on the contract and stay nullable here.
+ *  services/api/telemetry.py measures both and sends null when there is
+ *  nothing to measure — no nvidia-smi on the host, or no router step timed
+ *  yet. Rendering null as 0 would turn a missing reading into an idle GPU. */
 export function normalizeHealth(dict) {
   const screened = num(dict.frames_screened);
   const escalated = num(dict.frames_escalated);
@@ -91,6 +97,10 @@ export function normalizeHealth(dict) {
     camerasTotal: num(dict.cameras_total),
 
     modelsResident: Boolean(dict.models_resident),
+
+    // null when unmeasured — tiles must show a dash, not a number.
+    gpuUtil: numOrNull(dict.gpu_util),
+    p95Ms: numOrNull(dict.p95_ms),
 
     framesScreened: screened,
     framesEscalated: escalated,

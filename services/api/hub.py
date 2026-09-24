@@ -30,6 +30,7 @@ from services.brain.adjudicate import EscalateRequest, adjudicate
 from services.brain.call_brief import assemble_call_brief
 from services.brain.guardrails import DEFAULT_GUARDRAILS
 from services.brain.zrt_client import ZRTClient
+from services.api import telemetry
 from services.api.vision_bridge import vision_enabled
 from services.voice import VoiceAgent
 
@@ -61,8 +62,10 @@ def _utcnow() -> datetime:
 @dataclass
 class DemoHub:
     broadcast: BroadcastFn
-    frames_screened: int = 2_842_232
-    frames_escalated: int = 17
+    # Counters start at zero and only move when real work happens: the vision
+    # bridge adds one per decoded frame, adjudicate adds one per escalation.
+    frames_screened: int = 0
+    frames_escalated: int = 0
     paused: bool = False
     _overlay_task: asyncio.Task[None] | None = field(default=None, repr=False)
     _health_task: asyncio.Task[None] | None = field(default=None, repr=False)
@@ -189,8 +192,9 @@ class DemoHub:
         await self.publish(
             DemoControl(action="reset", scenario_id=None, ts=_utcnow())
         )
-        self.frames_screened = 2_842_232
-        self.frames_escalated = 17
+        self.frames_screened = 0
+        self.frames_escalated = 0
+        telemetry.reset()
         self._seeded = False
         await self.seed(force=True)
 
@@ -261,15 +265,17 @@ class DemoHub:
         return {"ok": False, "error": f"unknown cmd: {cmd}"}
 
     async def _health(self) -> None:
-        self.frames_screened += 30
+        # Every field is measured. gpu_util and p95_ms go out as null rather than
+        # a placeholder when there is no GPU to read or no router work yet.
+        gpu_util, p95_ms, models_resident = await telemetry.sample()
         # Wall has six real feeds (CLIP_BY_CAM); do not advertise phantom cam-07..12.
         await self.publish(
             HealthStrip(
                 cameras_online=len(WALL_CAMS),
                 cameras_total=len(WALL_CAMS),
-                models_resident=True,
-                gpu_util=0.68,
-                p95_ms=182.0,
+                models_resident=models_resident,
+                gpu_util=gpu_util,
+                p95_ms=p95_ms,
                 frames_screened=self.frames_screened,
                 frames_escalated=self.frames_escalated,
                 ts=_utcnow(),
