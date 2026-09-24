@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Campus Sentinel — Live Pipeline Lab</title>
+<meta name="description" content="Live Seville→YOLO→VadCLIP→Qwen→911 lab. No forced mock scenarios.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/lab.css">
+</head>
+<body>
+  <header class="lab-head">
+    <div class="brand">
+      <span class="brand__mark">CS</span>
+      <div>
+        <h1>Live Pipeline Lab</h1>
+        <p>Seville → YOLO / VadCLIP → Qwen (ZRT) → thresholds → 911 · not a mock</p>
+      </div>
+    </div>
+    <div class="head-actions">
+      <span id="ws-status" class="pill pill--off">WS disconnected</span>
+      <span id="vision-hint" class="pill pill--off">waiting for overlay.boxes</span>
+      <button type="button" id="btn-reset" class="btn">Reset UI</button>
+    </div>
+  </header>
+
+  <p class="banner">
+    Watches the <strong>live</strong> API only. Start with
+    <code>CS_VISION_SEVILLE=1</code> + vision venv so boxes and escalations come from
+    real weights — not <code>runScenario</code>.
+  </p>
+
+  <main class="lab-grid">
+    <section class="pane pane--video" aria-label="Camera feed">
+      <div class="pane__title">
+        <h2>cam-01 · live tracks</h2>
+        <span id="box-count" class="muted">0 boxes</span>
+      </div>
+      <div class="stage" id="stage">
+        <img id="mjpeg" alt="cam-01 MJPEG" crossorigin="anonymous">
+        <canvas id="overlay" width="960" height="540"></canvas>
+      </div>
+      <ul id="track-list" class="track-list"></ul>
+    </section>
+
+    <section class="pane" aria-label="Scores">
+      <div class="pane__title"><h2>Scores · threshold · classify</h2></div>
+      <div id="scores" class="scores scores--idle">
+        <p class="muted">Waiting for live incident.upsert from vision bridge…</p>
+      </div>
+    </section>
+
+    <section class="pane" aria-label="Dispatch status">
+      <div class="pane__title"><h2>Dispatch</h2></div>
+      <div id="dispatch" class="dispatch dispatch--idle">
+        <div class="dispatch__lamp" aria-hidden="true"></div>
+        <div>
+          <strong id="dispatch-state">IDLE</strong>
+          <p id="dispatch-detail" class="muted">SEVERE from live fuse starts 911 loop</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="pane pane--transcript" aria-label="911 call transcript">
+      <div class="pane__title">
+        <h2>911 call · live transcript</h2>
+        <span class="muted">Sentinel ↔ dispatcher stand-in (real ASR/TTS later)</span>
+      </div>
+      <div id="transcript" class="transcript" role="log" aria-live="polite"></div>
+      <div id="tools" class="tools"></div>
+    </section>
+
+    <section class="pane pane--broadcast" aria-label="Security broadcast">
+      <div class="pane__title"><h2>Security broadcast · human in the loop</h2></div>
+      <p class="hint">Draft to campus security first. Approve before any student-wide alert.</p>
+      <textarea id="broadcast-draft" rows="5" readonly placeholder="Live SEVERE incident drafts a message here…"></textarea>
+      <div class="broadcast-actions">
+        <span id="broadcast-status" class="pill pill--off">No draft</span>
+        <button type="button" id="btn-approve" class="btn btn--warn" disabled>Approve → notify campus</button>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./js/lab.js"></script>
+</body>
+</html>

@@ -74,18 +74,31 @@ class DemoHub:
         await self.broadcast(event_to_dict(ev))
         # Live Seville path publishes IncidentUpsert here — start 911 loop on SEVERE.
         if isinstance(ev, IncidentUpsert) and ev.incident is not None:
-            await self._maybe_start_voice(ev.incident)
+            await self._on_incident(ev.incident)
 
     def _voice_agent(self) -> VoiceAgent:
         if self._voice is None:
             self._voice = VoiceAgent(self.publish)
         return self._voice
 
+    async def _on_incident(self, rec: Any) -> None:
+        # Cross-cam handoff while a call is live → whereabouts + security re-alert.
+        voice = self._voice_agent()
+        active = voice.active_incident_id()
+        if active and voice.busy() and rec.camera_id in {"cam-02", "cam-03", "cam-01"}:
+            brief = assemble_call_brief(rec)
+            await voice.notify_whereabouts(rec.camera_id, brief.address)
+        await self._maybe_start_voice(rec)
+
     async def _maybe_start_voice(self, rec: Any) -> None:
         if getattr(rec, "severity", None) is not Severity.SEVERE:
             return
         ok, reason = DEFAULT_GUARDRAILS.can_dispatch(rec.incident_id)
         if not ok:
+            # Still allow whereabouts if this is a follow-on cam during an active call.
+            if self._voice and self._voice.busy():
+                brief = assemble_call_brief(rec)
+                await self._voice.notify_whereabouts(rec.camera_id, brief.address)
             await self.publish(
                 DemoControl(
                     action="scenario",

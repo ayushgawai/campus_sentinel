@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-24 (ayush) — architecture audit + D6/A2/A3/E4 fixes
+Last updated: 2026-09-24 (ayush) — 911 script + 3+3 clips + Twilio handoff
 
 ## HARD RULES
 1. `git pull --rebase origin main` before every push. Work on **main**.
@@ -20,19 +20,36 @@ zrt serve hf:Qwen/Qwen3-VL-30B-A3B-Instruct-FP8 --force --gpu-memory-fraction 0.
 CS_VISION_SEVILLE=1 CS_VISION_YOLO=pt CS_VISION_DEVICE=cuda:0 \
   CS_VISION_STEP_S=0.5 CS_VISION_COOLDOWN_S=12 \
   services/vision/.venv/bin/python -m services.api --host 0.0.0.0 --port 8080
+# Lab static (Mac + ZGX) — separate from API
+cd web && python3 -m http.server 8765 --bind 0.0.0.0
 ```
 - Qwen **0.55** required for YOLO coexistence. Does **not** change FP8 precision.
-- Lab: `http://100.83.170.35:8765/lab.html` · API `:8080` · clips outside git (FileSource).
+- Lab: `http://100.83.170.35:8765/lab.html` (ZGX) · Mac Tailscale `:8765` · API `:8080`
 - Kill switch: `CS_KILL_SWITCH=1` blocks SEVERE voice dispatch.
 
-## Done
-- Live C→D→E path: YOLO-pose + ByteTrack + rules + VadCLIP → ZRT A+**B** → fuse → thresholds → voice tools + HITL
-- `data/scenario.json`, enriched `camera_map.json`, `services/brain/guardrails.py`
-- `AUDIT.md` full step table (INTENTIONAL / MISSED / fixed)
+## Clips (Naman) — 3 + 3 only
+- **cam-01..03:** locked Seville chase (WEAPON). No 12-clip pack.
+- **cam-04..06:** natural ambient (parking / basement / road), **no incidents**. See `docs/NAMAN_CLIPS.md`.
+- Until real ambient mp4s: `make ambient` placeholders (solid color, never 404).
 
-## In progress / open
-- MediaMTX · Twilio/Parakeet/Kokoro · OSNet weights · temp calibration fit · officer F1 polish (Indraneel)
-- VadCLIP load warning (“random init”) — verify weights path
+## Voice / Twilio handoff
+- Spec: **`docs/HANDOFF_VOICE_TWILIO.md`** (Twilio Media Streams + Parakeet ASR + Kokoro TTS).
+- Never dial real emergency numbers. Demo phone allowlist only.
+- Until phones land: officer Q&A in `services/voice/agent.py`; cam-02/03 → `notify_whereabouts` + `security_alert:*`.
+- Self-check: `python3 -m services.voice.check`
+
+## Done
+- Live C→D→E + Completion B + guardrails + AUDIT.md
+- Officer 911 script + cross-cam whereabouts + security re-alerts (hub wired)
+- Naman 3+3 + Twilio handoff docs · lab on `:8765`
+
+## Pending (owners)
+| Who | What |
+|-----|------|
+| **Naman** | Real ambient mp4s → `campus_sentinel_media/feeds/ambient_3cam/` (names in `docs/NAMAN_CLIPS.md`) |
+| **Voice owner** | Twilio Media Streams bridge + Parakeet + Kokoro per `docs/HANDOFF_VOICE_TWILIO.md` |
+| **Indraneel** | Officer F1 polish (consumes same WS events as lab) |
+| **Ayush / open** | OSNet weights · temp calibration fit · MediaMTX optional · VadCLIP weights-path warning |
 
 ## Ownership
 Ayush: brain/api/lab/audit · Pratham: vision/voice · Indraneel: web · Naman: data/clips
