@@ -9,7 +9,10 @@ export const config = {
   /** 'mock' drives the UI from js/mock/emitter.js. 'live' opens a websocket. */
   SOURCE: 'mock',
 
-  /** Origin of services/api. Empty string = same origin as this page. */
+  /** Origin of services/api. Empty string = same origin as this page.
+   *  For live mode with `make api` + `python -m http.server` in web/:
+   *    SOURCE: 'live', API_BASE: 'http://127.0.0.1:8080'
+   */
   API_BASE: '',
 
   /** GET {API_BASE}{MJPEG_PATH}/{camera_id} — annotated MJPEG stream. */

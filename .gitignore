@@ -2,6 +2,7 @@
 .DS_Store
 data/clips/*
 !data/clips/.gitkeep
+services/vision/weights/
 *.pt
 *.onnx
 *.safetensors
