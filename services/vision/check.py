@@ -25,7 +25,8 @@ from services.vision.pipeline import VisionRouter  # noqa: E402
 from services.vision.ring import RingBuffer  # noqa: E402
 from services.vision.rules import FALL, RUN, evaluate  # noqa: E402
 from services.vision.state import PoseSample, TrackMemory  # noqa: E402
-from services.vision.tracker import ByteTracker  # noqa: E402
+from services.vision.tracker import ByteTracker, Track  # noqa: E402
+from services.vision.vadclip import FIGHT, DEFAULT_CLIP, VadClip  # noqa: E402
 
 
 def main() -> None:
@@ -131,6 +132,17 @@ def main() -> None:
         )
     assert FALL in evaluate(mem)
     assert should_escalate(fuse(0.9, [FALL]))
+    # Fight/theft can escalate without a pose rule once VadCLIP is on.
+    assert should_escalate(fuse(0.8, [], vadclip=0.70))
+    assert not should_escalate(fuse(0.5, [], vadclip=0.20))
+
+    dummy = SyntheticSource(["cam-1"], fps=15.0).next_frames()[0]
+    dummy_tr = Track(
+        track_id="t-1", x=40, y=200, w=56, h=140, score=0.9, keypoints=[]
+    )
+    assert VadClip(forced=True).score(dummy, dummy_tr).score == 0.0
+    fight = VadClip(forced=True, forced_label=FIGHT).score(dummy, dummy_tr)
+    assert fight.label == FIGHT and fight.score >= 0.9
 
     fall_router = VisionRouter(["cam-1"], forced=True, fps=15.0, forced_rule=FALL)
     for _ in range(10):
@@ -138,6 +150,15 @@ def main() -> None:
     assert fall_router.last_escalations
     assert FALL in fall_router.last_escalations[0].rules
     assert fall_router.bundle("cam-1").track_id
+
+    fight_router = VisionRouter(
+        ["cam-1"], forced=True, fps=15.0, forced_vadclip=FIGHT
+    )
+    for _ in range(5):
+        fight_router.step()
+    assert fight_router.last_escalations
+    assert FIGHT in fight_router.last_escalations[0].rules
+    assert fight_router.last_escalations[0].vadclip >= 0.9
 
     # Sliding synthetic person should be able to trip run (not only fall)
     run_mem = TrackMemory()
@@ -165,9 +186,14 @@ def main() -> None:
         frames = SyntheticSource(["cam-1"], fps=15.0).next_frames()
         live_dets = live.detect_batch(frames)
         assert isinstance(live_dets, list) and len(live_dets) == 1
-        print("vision self-check OK (forced + live YOLO)")
+        extra = " + live YOLO"
     else:
-        print("vision self-check OK (forced only; weights not on disk)")
+        extra = " (forced only; YOLO weights not on disk)"
+    if DEFAULT_CLIP.is_file():
+        vs = VadClip(forced=False).score(dummy, dummy_tr)
+        assert 0.0 <= vs.score <= 1.0
+        extra += " + live CLIP"
+    print(f"vision self-check OK{extra}")
 
 
 if __name__ == "__main__":

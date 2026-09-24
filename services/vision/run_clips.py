@@ -57,6 +57,7 @@ def run_one(path: Path) -> dict:
                 "fused": round(router._peak[cam].fused, 3),
                 "rules": router._peak[cam].rules,
                 "track_id": router._peak[cam].track_id,
+                "vadclip": round(router._peak[cam].vadclip, 3),
             }
         ),
     }
@@ -70,15 +71,17 @@ def main() -> None:
     rows = [run_one(p) for p in clips]
     print(
         f"{'clip':22} {'frames':>6} {'tracks':>6} {'maxN':>4} "
-        f"{'esc':>4}  peak_fused  rules"
+        f"{'esc':>4}  peak_fused  vadclip  rules"
     )
     for r in rows:
         peak = r["peak"]
         pf = f"{peak['fused']:.3f}" if peak else "-"
+        pv = f"{peak['vadclip']:.3f}" if peak else "-"
         pr = ",".join((peak or {}).get("rules") or []) or "-"
         print(
             f"{r['clip']:22} {r['frames']:6} {r['tracks']:6} "
-            f"{r['max_people']:4} {r['escalations']:4}  {pf:>9}  {pr} {r['rules']}"
+            f"{r['max_people']:4} {r['escalations']:4}  {pf:>9}  {pv:>7}  "
+            f"{pr} {r['rules']}"
         )
 
 

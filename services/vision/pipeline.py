@@ -1,4 +1,4 @@
-"""Router: decode → ring → YOLO → ByteTrack → state → rules → fusion → overlay.boxes."""
+"""Router: decode → ring → YOLO → ByteTrack → state → rules → VadCLIP → fusion → overlay.boxes."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from .ring import RingBuffer
 from .rules import evaluate
 from .state import TrackMemory, sample_from_track
 from .tracker import ByteTracker, Track
+from .vadclip import VadClip
 
 
 @dataclass
@@ -24,6 +25,7 @@ class Escalation:
     ts: datetime
     fused: float
     rules: list[str]
+    vadclip: float = 0.0
 
 
 def tracks_to_overlay(
@@ -55,6 +57,7 @@ class VisionRouter:
         forced: bool = True,
         fps: float = 15.0,
         forced_rule: str | None = None,
+        forced_vadclip: str | None = None,
         source=None,
     ) -> None:
         self.source = source if source is not None else SyntheticSource(
@@ -64,6 +67,7 @@ class VisionRouter:
         src_fps = getattr(self.source, "fps", fps)
         self.ring = RingBuffer(window_s=8.0)
         self.detector = PoseDetector(forced=forced)
+        self.vadclip = VadClip(forced=forced, forced_label=forced_vadclip)
         self.fps = float(src_fps)
         self.forced_rule = forced_rule
         self._trackers: dict[str, ByteTracker] = {
@@ -93,8 +97,12 @@ class VisionRouter:
                 mem = self._mem.setdefault(key, TrackMemory())
                 mem.push(sample_from_track(fr.ts, tr))
                 rules = evaluate(mem, fps=self.fps, forced=self.forced_rule)
-                self._last_rules[key] = rules
-                fused = fuse(tr.score, rules)
+                vs = self.vadclip.score(fr, tr)
+                shown = list(rules)
+                if vs.label:
+                    shown.append(vs.label)
+                self._last_rules[key] = shown
+                fused = fuse(tr.score, rules, vadclip=vs.score)
                 fused_by[tr.track_id] = fused
                 prev = self._peak.get(fr.camera_id)
                 if prev is None or fused >= prev.fused:
@@ -103,7 +111,8 @@ class VisionRouter:
                         track_id=tr.track_id,
                         ts=fr.ts,
                         fused=fused,
-                        rules=rules,
+                        rules=shown,
+                        vadclip=vs.score,
                     )
                 if should_escalate(fused):
                     self.last_escalations.append(
@@ -112,7 +121,8 @@ class VisionRouter:
                             track_id=tr.track_id,
                             ts=fr.ts,
                             fused=fused,
-                            rules=list(rules),
+                            rules=list(shown),
+                            vadclip=vs.score,
                         )
                     )
             overlays.append(
