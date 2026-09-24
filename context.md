@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-24 (ayush) — on main; demo clips unlocked
+Last updated: 2026-09-24 (ayush) — escalate → IncidentRecord + audit on main
 
 ## HARD RULES (do not skip)
 1. **Pull before push.** Always `git pull --rebase origin main` before every push. Work on **`main`** (no long-lived feature branches overnight).
@@ -12,7 +12,7 @@ Last updated: 2026-09-24 (ayush) — on main; demo clips unlocked
 ```bash
 git checkout main && git pull --rebase origin main
 python3 services/brain/check.py
-# dashboard (Manav): open web/index.html — mock emitter
+cd web && python3 -m http.server 8000   # mock dashboard (SOURCE=mock)
 ```
 
 ## Demo media (outside git — never commit mp4s)
@@ -27,16 +27,17 @@ python3 services/brain/check.py
 | `contracts/` | shared — frozen v1.0 |
 | `services/brain/`, `services/api/`, compose, Makefile | Ayush |
 | `services/vision/`, `services/voice/` | Pratham |
-| `web/` | Manav |
+| `web/` | Manav (landed by Indraneel ac7e93b) |
 | `data/`, `bench/`, `docs/` | Naman |
 
 ## Done
 - Repo skeleton + `contracts/` v1.0 + brain skeleton (ayush)
-- `web/` mock-driven officer dashboard (manav) — on main
+- Brain escalate → IncidentRecord: fuse + audit + adjudicate + self-check (ayush)
+- `web/` mock-driven officer dashboard (indraneel) — on main; one-line swap to live api
 - Chase footage decision: Seville 3-cam locked pack verified (ayush/naman)
 
 ## In progress
-- (ayush) next: escalate → IncidentRecord + audit stub; then api
+- (ayush) next: `services/api` WS + MJPEG; fill compose services as they land
 - Vision router + VadCLIP live on `origin/feat/pratham/vision-router` — **not merged to main yet** (pratham)
 
 ## Blocked
@@ -48,9 +49,10 @@ python3 services/brain/check.py
 - Work lands on **main**; merge feature branches same day.
 - Clips live under `campus_sentinel_media/` (sibling of repo), not in git.
 - Demo wall target: **6 cameras** = 3 Seville chase + 3 ambient fillers.
+- Compose = whole deployment story (5 services + ZRT on host). Stub until services exist.
 
 ## Next up
-1. Ayush: IncidentRecord path + api
+1. Ayush: api (ws + mjpeg) then wire compose
 2. Pratham: merge vision-router → main; point FileSource at locked Seville paths
-3. Manav: swap mock video panes to real MJPEG when api up
+3. Manav/Indraneel: SOURCE=live when api up
 4. Naman: 3 ambient clips + camera_map + thresholds
