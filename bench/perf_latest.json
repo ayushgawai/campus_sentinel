@@ -1,0 +1,67 @@
+{
+  "ts": "2026-09-24T19:42:50Z",
+  "api": "http://127.0.0.1:8080",
+  "zrt": "http://127.0.0.1:8000",
+  "health_ms": 13.9,
+  "health_code": 200,
+  "mjpeg_first_chunk_ms": 3333.5,
+  "mjpeg_code": 200,
+  "mjpeg_bytes": 65536,
+  "zrt_models_ms": 1.4,
+  "zrt_ok": true,
+  "ws": {
+    "elapsed_s": 30.75,
+    "counts": {
+      "health.strip": 31,
+      "overlay.boxes": 75,
+      "call.transcript_delta": 5,
+      "tool.call_live": 2,
+      "incident.upsert": 1
+    },
+    "overlay.boxes": {
+      "n": 75,
+      "hz": 2.4391520567316993,
+      "gap_ms_p50": 0.02275199994983268,
+      "gap_ms_p95": 1385.9566930000256,
+      "gap_ms_max": 1693.8719920003678
+    },
+    "incident.upsert": {
+      "n": 1,
+      "hz": 0.03252202742308932
+    },
+    "call.transcript_delta": {
+      "n": 5,
+      "hz": 0.1626101371154466,
+      "gap_ms_p50": 5602.28880700015,
+      "gap_ms_p95": 6400.365475999934,
+      "gap_ms_max": 6400.365475999934
+    },
+    "classes": {
+      "BENIGN": 1
+    },
+    "severities": {
+      "SEVERE": 1
+    },
+    "fused_prob": {
+      "n": 1,
+      "mean": 0.8184311361162642,
+      "p50": 0.8184311361162642,
+      "p95": 0.8184311361162642,
+      "max": 0.8184311361162642
+    }
+  },
+  "local_vision_step": {
+    "steps": 3,
+    "step_ms_p50": 820.4,
+    "step_ms_p95": 2901.3,
+    "step_ms_max": 2901.3,
+    "note": "CPU YOLO/CLIP beside live ZRT; cold start in p95/max",
+    "device": "cpu",
+    "yolo": "pt"
+  },
+  "notes": [
+    "overlay bursts: 3 cams per router tick \u2192 tiny p50 gap, ~1.4s p95 gap matches CS_VISION_STEP_S\u22480.6 plus CPU work",
+    "1 upsert in 30s sample due to cooldown; SEVERE can fire on high fused even when VLM says BENIGN",
+    "mjpeg_first_chunk includes ffmpeg spawn"
+  ]
+}

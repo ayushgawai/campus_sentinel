@@ -3,17 +3,19 @@
  * SOURCE is the single switch between the mock emitter and the real
  * services/api websocket. Nothing else in the UI needs to change when
  * api/ lands — see js/bus.js.
+ *
+ * Indraneel: officer dashboard = index.html. Live pipeline lab = lab.html.
+ * ZGX Tailscale IP below; override if your network differs.
  */
 
 export const config = {
   /** 'mock' drives the UI from js/mock/emitter.js. 'live' opens a websocket. */
-  SOURCE: 'mock',
+  SOURCE: 'live',
 
   /** Origin of services/api. Empty string = same origin as this page.
-   *  For live mode with `make api` + `python -m http.server` in web/:
-   *    SOURCE: 'live', API_BASE: 'http://127.0.0.1:8080'
+   *  Live lab / Mac: ZGX Tailscale. Same-host ZGX: also works as http://127.0.0.1:8080
    */
-  API_BASE: '',
+  API_BASE: 'http://100.83.170.35:8080',
 
   /** GET {API_BASE}{MJPEG_PATH}/{camera_id} — annotated MJPEG stream. */
   MJPEG_PATH: '/mjpeg',
