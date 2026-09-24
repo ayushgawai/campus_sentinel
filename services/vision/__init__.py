@@ -1,7 +1,7 @@
 """Vision service — decode, ring buffer, YOLO26s-pose, ByteTrack (Pratham)."""
 
 from .bundle import FrameBundle, build_bundle
-from .decode import Frame, SyntheticSource
+from .decode import FileSource, Frame, SyntheticSource
 from .detector import Detection, PoseDetector
 from .fusion import fuse, should_escalate
 from .pipeline import Escalation, VisionRouter, tracks_to_overlay
@@ -14,6 +14,7 @@ __all__ = [
     "Detection",
     "Escalation",
     "FALL",
+    "FileSource",
     "Frame",
     "FrameBundle",
     "LONG_DWELL",

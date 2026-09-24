@@ -88,3 +88,56 @@ class SyntheticSource:
             )
         self._i += 1
         return out
+
+
+class FileSource:
+    """Decode local mp4s (Naman clips) until mediamtx RTSP exists."""
+
+    def __init__(self, paths: dict[str, str], *, start: datetime | None = None) -> None:
+        import cv2
+
+        if not paths:
+            raise ValueError("paths must be non-empty")
+        self.camera_ids = list(paths)
+        self._caps = {}
+        self.fps = 15.0
+        for cid, path in paths.items():
+            cap = cv2.VideoCapture(path)
+            if not cap.isOpened():
+                raise FileNotFoundError(f"cannot open clip {path}")
+            raw = cap.get(cv2.CAP_PROP_FPS)
+            if raw and raw > 1:
+                self.fps = float(raw)
+            self._caps[cid] = cap
+        self._dt = 1.0 / self.fps
+        self._i = 0
+        self._t0 = start or utcnow()
+        self.width = int(next(iter(self._caps.values())).get(cv2.CAP_PROP_FRAME_WIDTH) or 640)
+        self.height = int(next(iter(self._caps.values())).get(cv2.CAP_PROP_FRAME_HEIGHT) or 640)
+
+    def next_frames(self) -> list[Frame]:
+        import cv2
+
+        ts = self._t0 + timedelta(seconds=self._i * self._dt)
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        out: list[Frame] = []
+        for cid in self.camera_ids:
+            ok, bgr = self._caps[cid].read()
+            if not ok:
+                return []
+            rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+            out.append(
+                Frame(
+                    camera_id=cid,
+                    ts=ts,
+                    image=rgb,
+                    person_xywh=(0.0, 0.0, 1.0, 1.0),
+                )
+            )
+        self._i += 1
+        return out
+
+    def close(self) -> None:
+        for cap in self._caps.values():
+            cap.release()

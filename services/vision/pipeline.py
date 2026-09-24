@@ -55,11 +55,16 @@ class VisionRouter:
         forced: bool = True,
         fps: float = 15.0,
         forced_rule: str | None = None,
+        source=None,
     ) -> None:
-        self.source = SyntheticSource(camera_ids, fps=fps)
+        self.source = source if source is not None else SyntheticSource(
+            camera_ids, fps=fps
+        )
+        camera_ids = list(getattr(self.source, "camera_ids", camera_ids))
+        src_fps = getattr(self.source, "fps", fps)
         self.ring = RingBuffer(window_s=8.0)
         self.detector = PoseDetector(forced=forced)
-        self.fps = fps
+        self.fps = float(src_fps)
         self.forced_rule = forced_rule
         self._trackers: dict[str, ByteTracker] = {
             cid: ByteTracker() for cid in camera_ids
@@ -72,6 +77,8 @@ class VisionRouter:
 
     def step(self) -> list[OverlayBoxes]:
         frames = self.source.next_frames()
+        if not frames:
+            return []
         for fr in frames:
             self.ring.push(fr)
         dets = self.detector.detect_batch(frames)
