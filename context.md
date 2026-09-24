@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-24 (ayush) — 911 script + 3+3 clips + Twilio handoff
+Last updated: 2026-09-24 (ayush) — SSHFS mount fix + Twilio .env on box
 
 ## HARD RULES
 1. `git pull --rebase origin main` before every push. Work on **main**.
@@ -27,39 +27,33 @@ cd web && python3 -m http.server 8765 --bind 0.0.0.0
 - Lab: `http://100.83.170.35:8765/lab.html` (ZGX) · Mac Tailscale `:8765` · API `:8080`
 - Kill switch: `CS_KILL_SWITCH=1` blocks SEVERE voice dispatch.
 
+## Mac mount
+- `~/mnt/zgx-b505` = SSHFS of `/home/hp25` via **`zgx-up`** (must show in `mount`, not a local folder).
+- If Mac writes never appear on ZGX: `zgx-down && zgx-up` (script now rejects local shadow trees + verifies write-through).
+
 ## Clips (Naman) — 3 + 3 only
 - **cam-01..03:** locked Seville chase (WEAPON). No 12-clip pack.
-- **cam-04..06:** Naman `feeds/naman/demo_clips` — VLM-assigned (parking / lobby / walkway). See `docs/NAMAN_CLIPS.md` + `data/naman_ambient_assign.json`.
-- Placeholders remain as fallback if Naman pack missing.
+- **cam-04..06:** Naman `feeds/naman/demo_clips` — VLM-assigned. See `docs/NAMAN_CLIPS.md`.
 
-## Voice / Twilio handoff
-- Spec: **`docs/HANDOFF_VOICE_TWILIO.md`**
-- Scaffold ready: `services/voice/twilio_bridge.py` + `parakeet.py` + `kokoro.py`
-- Env template: **`.env.example`** — set `CS_TWILIO_ENABLED=1` + Twilio keys when Naman has them
-- Status: `GET /voice/status` · TwiML: `POST /twilio/voice`
-- Until keys: officer Q&A script + cam-02/03 whereabouts + `security_alert:*`
-- Self-check: `python3 -m services.voice.check`
+## Voice / Twilio
+- Spec: `docs/HANDOFF_VOICE_TWILIO.md` · scaffold: `twilio_bridge` / `parakeet` / `kokoro`
+- SID + token on ZGX **`.env` only** (gitignored). Parakeet/Kokoro = local stubs, no cloud keys.
+- **Trial block:** verify personal phone in Twilio Console → buy Voice number → set `TWILIO_FROM` + `CS_DEMO_TO_NUMBER` + `CS_PUBLIC_BASE`.
+- Check: `bash scripts/check_twilio_env.sh` · `GET /voice/status`
+- Until complete: scripted 911 loop still runs on SEVERE.
 
 ## Done
 - Live C→D→E + Completion B + guardrails + AUDIT.md
-- Officer 911 script + cross-cam whereabouts + security re-alerts (hub wired)
-- Naman 3+3 + Twilio handoff docs · lab on `:8765`
+- Officer 911 script + cross-cam whereabouts + security re-alerts
+- Naman 3+3 · lab `:8765` · SSHFS mount recovered
 
 ## Pending (owners)
 | Who | What |
 |-----|------|
-| **Naman** | Done for ambient — 3 clips wired. Optional: more natural basement/road later |
-| **Voice owner** | Drop keys into `.env` from `.env.example`; Media Stream WS still thin |
-| **Indraneel** | Officer F1 polish (same WS events as lab) |
-| **Ayush / open** | OSNet weights · temp calibration fit · MediaMTX optional |
-
-## Mac mount
-- `~/mnt/zgx-b505` must be **SSHFS** via `zgx-up` (not a local folder).
-- If writes don't show on ZGX: `zgx-down && zgx-up` (script now refuses local shadow trees).
-
-## Runtime status (2026-09-24)
-- ZRT `:8000` @ **0.55** + API `:8080` Seville bridge **up** (restarted this session).
-- Lab `:8765` Mac + ZGX. VadCLIP “random init” warning = open_clip before local `.pt` load (weights on disk).
+| **Naman** | Ambient clips done. Optional more later |
+| **Voice / Ayush** | Verify phone → buy FROM → set TO + public HTTPS |
+| **Indraneel** | Officer F1 polish |
+| **Ayush / open** | OSNet weights · temp calibration · MediaMTX optional |
 
 ## Ownership
 Ayush: brain/api/lab/audit · Pratham: vision/voice · Indraneel: web · Naman: data/clips
