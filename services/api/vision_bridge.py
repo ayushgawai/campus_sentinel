@@ -19,7 +19,11 @@ from typing import TYPE_CHECKING, Any
 
 from contracts import BBox, IncidentUpsert, OverlayBoxes
 from services.brain.adjudicate import adjudicate
-from services.brain.from_vision import escalate_request_from_vision, normalize_camera_id
+from services.brain.from_vision import (
+    class_hint_from_rules,
+    escalate_request_from_vision,
+    normalize_camera_id,
+)
 from services.brain.zrt_client import ZRTClient
 
 if TYPE_CHECKING:
@@ -128,7 +132,7 @@ class VisionBridge:
         # ONE VisionRouter for the process lifetime — recreating reloads TensorRT
         # and has knocked this box over before.
         router = VisionRouter(list(paths), forced=False, source=src)
-        zrt = ZRTClient(forced=True)
+        zrt = ZRTClient(forced=False, timeout_s=90.0)
         width = float(getattr(src, "width", 960) or 960)
         height = float(getattr(src, "height", 540) or 540)
         step = _step_s()
@@ -170,7 +174,21 @@ class VisionBridge:
                     cam = normalize_camera_id(esc.camera_id)
                     if not self._should_fire(cam, esc.track_id):
                         continue
-                    req = escalate_request_from_vision(esc)
+                    frames = []
+                    try:
+                        bundle = router.bundle(
+                            esc.camera_id,
+                            peak_ts=esc.ts,
+                            track_id=esc.track_id,
+                        )
+                        frames = list(bundle.images)
+                    except Exception as exc:
+                        print(f"[vision-bridge] bundle failed: {exc}", flush=True)
+                    req = escalate_request_from_vision(esc, frames=frames)
+                    if not frames or not zrt.health():
+                        req.class_token_forced = class_hint_from_rules(
+                            req.rules_fired
+                        )
                     result = adjudicate(req, zrt=zrt)
                     self.hub.frames_escalated += 1
                     await self.hub.publish(IncidentUpsert(incident=result.record))

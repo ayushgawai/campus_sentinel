@@ -1,0 +1,6 @@
+# Stub — Naman fills clip paths. Replay only; no internet.
+# Enable: docker compose --profile full up mediamtx
+logLevel: info
+rtsp: yes
+rtspAddress: :8554
+paths: {}

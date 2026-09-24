@@ -85,14 +85,14 @@ async def main() -> None:
         env = await _recv_frame(r)
         types.append(env["type"])
         if env["type"] == "incident.upsert":
-            assert "incident" in env and env["incident"]["camera_id"] == "cam-05"
-            assert env["incident"]["class_token"] == "FALL"
+            assert "incident" in env and env["incident"]["camera_id"] == "cam-01"
+            assert env["incident"]["class_token"] == "WEAPON"
             break
     assert "camera.online" in types
     assert "health.strip" in types
     assert "incident.upsert" in types
 
-    await _send_text(w, {"cmd": "start"})  # idempotent — must not double-seed FALL
+    await _send_text(w, {"cmd": "start"})  # idempotent — must not double-seed WEAPON
     await _send_text(w, {"cmd": "runScenario", "scenario_id": "forced-entry"})
     got_theft = False
     for _ in range(40):

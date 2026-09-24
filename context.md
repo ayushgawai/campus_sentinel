@@ -1,33 +1,41 @@
 # context.md
-Last updated: 2026-09-24 (ayush) — vision bridge: normalize boxes + GPU throttle
+Last updated: 2026-09-24 (ayush) — FALL→WEAPON contract divert; CallBrief assembler
 
-## HARD RULES (do not skip)
-1. **Pull before push.** Always `git pull --rebase origin main` before every push. Work on **`main`**.
-2. **Update this file after every finished piece**, same commit as the work.
-3. Stay in ownership paths. Do not change `contracts/` without a group message.
+## HARD RULES
+1. `git pull --rebase origin main` before every push. Work on **main**.
+2. Update this file in the same commit as the work.
+3. Stay in ownership paths. Contracts change = group decision (logged below).
 4. Keep under ~150 lines.
-5. Playbook is base plan; record deviations here.
+5. Playbook is base; record deviations here.
 
-## How to run (stable — do NOT overload the ZGX)
+## CONTRACT DECISION (2026-09-24)
+- **IncidentClass:** `FALL` replaced by **`WEAPON`**. Six-class set is now:
+  `WEAPON | FIGHT | THEFT | RUN | MEDICAL | BENIGN`
+- **Why:** Seville armed-chase is the demo primary; "person down"/FALL was the wrong hero class.
+- **schema_version:** IncidentRecord → **1.1**
+- Pose rule name `fall` may still fire inside vision; wire token / VLM class is **WEAPON**.
+- VadCLIP prompts include weapon. Web mirror + demo scenario id `armed-intruder` (legacy `person-down` aliases to WEAPON).
+
+## How to run (stable)
 ```bash
-# ONE GPU consumer only. Never run run_seville.py at the same time as this.
-CS_VISION_SEVILLE=1 CS_VISION_STEP_S=0.4 CS_VISION_COOLDOWN_S=12 \
-  services/vision/.venv/bin/python -m services.api --host 0.0.0.0 --port 8080
-# Mac: ssh -L 8080:127.0.0.1:8080 zgx-b505
-# Mac: cd web && SOURCE=live API_BASE=http://127.0.0.1:8080 → http://127.0.0.1:8000/
+# ONE GPU job only
+CS_VISION_SEVILLE=1 CS_VISION_STEP_S=0.45 CS_VISION_COOLDOWN_S=12 \
+  services/vision/.venv/bin/python -m services.api --host 127.0.0.1 --port 8080
+# Mac tunnel: ssh -L 8080:127.0.0.1:8080 zgx-b505
 ```
 
-## Done
-- Seville full PASS earlier; vision merged to main
-- Vision bridge: pixel→0..1 box normalize (dashboard was dropping pixel boxes)
-- Throttle: step sleep, upsert cooldown, per-minute cap; rewind FileSource without reloading TRT
+## Done (Ayush)
+- contracts v1.1 WEAPON divert + brain adjudicate/fuse/audit/from_vision
+- CallBrief assembler (`services/brain/call_brief.py`) — facts only
+- api WS/MJPEG + throttled Seville vision bridge (normalized boxes)
+- compose: api service + mediamtx stub under profile `full`
 
-## Important
-- **No WEAPON/FIRE class** in frozen contracts (FALL/FIGHT/THEFT/RUN/MEDICAL/BENIGN only). Seville footage has weapons; the stack will not say "weapon detected".
-- Overloading GPU (full run_seville + live bridge + CLIP) has hung this box — keep one process.
+## Still open (not UI)
+- Live ZRT multimodal classify (FrameBundle → HTTP) — forced only today
+- Voice service empty (Pratham)
+- Ambient clips + real thresholds (Naman)
+- OSNet / mediamtx live RTSP
+- make up/demo end-to-end clean-clone
 
 ## Ownership
-Ayush: brain/api/compose · Pratham: vision/voice · Manav: web (leave alone) · Naman: data/bench
-
-## Next
-Demo carefully with throttled bridge; live ZRT frames; Naman ambient/thresholds
+Ayush: brain/api/compose · Pratham: vision/voice · Manav: web · Naman: data/bench

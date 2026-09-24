@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
 from contracts import IncidentClass, IncidentState, Severity  # noqa: E402
 from services.brain.adjudicate import EscalateRequest, adjudicate  # noqa: E402
 from services.brain.audit import AuditLog  # noqa: E402
+from services.brain.call_brief import assemble_call_brief
 from services.brain.from_vision import (  # noqa: E402
     escalate_request_from_vision,
     normalize_camera_id,
@@ -39,12 +40,12 @@ def main() -> None:
     zrt = ZRTClient(forced=True)
     assert zrt.health() is True
     r = zrt.classify(
-        class_token_forced=IncidentClass.FALL,
+        class_token_forced=IncidentClass.WEAPON,
         track_id="t1",
         camera_id="cam-1",
         peak_ts_iso="2026-09-23T00:00:00+00:00",
     )
-    assert r.forced and r.class_token is IncidentClass.FALL
+    assert r.forced and r.class_token is IncidentClass.WEAPON
     try:
         ZRTClient(forced=False).classify(
             track_id="t1",
@@ -99,18 +100,18 @@ def main() -> None:
     except ValueError:
         pass
 
-    # adjudicate + audit (forced ZRT → ALERTED for FALL)
+    # adjudicate + audit (forced ZRT → ALERTED for WEAPON)
     audit = AuditLog()
     req = EscalateRequest(
         track_id="t-esc-1",
         camera_id="cam-lobby",
         router_score=0.85,
         rules_fired=["fall_velocity"],
-        class_token_forced=IncidentClass.FALL,
+        class_token_forced=IncidentClass.WEAPON,
         allow_placeholder_thresholds=True,
     )
     result = adjudicate(req, zrt=ZRTClient(forced=True), audit=audit)
-    assert result.record.class_token is IncidentClass.FALL
+    assert result.record.class_token is IncidentClass.WEAPON
     assert result.record.camera_id == "cam-lobby"
     assert result.record.state is IncidentState.ALERTED
     assert result.record.severity is Severity.SEVERE
@@ -146,7 +147,7 @@ def main() -> None:
                 track_id="t-guard",
                 camera_id="cam-lobby",
                 router_score=0.9,
-                class_token_forced=IncidentClass.FALL,
+                class_token_forced=IncidentClass.WEAPON,
             ),
             zrt=ZRTClient(forced=True),
         )
@@ -174,15 +175,19 @@ def main() -> None:
             track_id="t-9",
             ts=datetime(2026, 9, 24, tzinfo=timezone.utc),
             fused=0.91,
-            rules=["fall", "Orientation flip"],
+            rules=["weapon", "sudden_acceleration"],
         )
     )
     assert mapped.camera_id == "cam-01"
     assert mapped.router_score == 0.91
-    assert mapped.class_token_forced is IncidentClass.FALL
+    assert mapped.class_token_forced is IncidentClass.WEAPON
     via = adjudicate(mapped, zrt=ZRTClient(forced=True))
     assert via.record.camera_id == "cam-01"
-    assert via.record.class_token is IncidentClass.FALL
+    assert via.record.class_token is IncidentClass.WEAPON
+
+    brief = assemble_call_brief(via.record)
+    assert brief.incident_id == via.record.incident_id
+    assert brief.camera_id == "cam-01"
 
     print("brain self-check OK")
 

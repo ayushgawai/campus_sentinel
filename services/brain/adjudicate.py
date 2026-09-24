@@ -1,6 +1,6 @@
 """Escalate → IncidentRecord (playbook D+E entry).
 
-Forced/demo path works offline. Live ZRT classify still waits on vision frames.
+Forced/demo path works offline. Live classify posts the 16-frame bundle to ZRT.
 """
 
 from __future__ import annotations
@@ -39,6 +39,8 @@ class EscalateRequest:
     location_text: str = ""
     description: str = ""
     class_token_forced: IncidentClass | None = None
+    # 16 sampled frames for live classify. Empty → forced/demo only.
+    frames: list = field(default_factory=list)
     # Must be True for demos/tests until Naman's bench thresholds land.
     allow_placeholder_thresholds: bool = False
 
@@ -76,6 +78,7 @@ def adjudicate(
         camera_id=req.camera_id,
         peak_ts_iso=peak.isoformat(),
         person_hint=req.person_description,
+        frames=list(req.frames) or None,
     )
     vlm_prob = logprob_to_prob(classify.logprob)
     calibrated_logprob = classify.logprob
