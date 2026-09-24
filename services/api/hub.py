@@ -75,9 +75,10 @@ class DemoHub:
         for cid in ALL_CAMS:
             await self.publish(CameraOnline(camera_id=cid, online=True, ts=now))
         await self._health()
-        await self._overlays()
-        # One real adjudicated incident so the queue is never empty on live.
-        await self.run_scenario("person-down")
+        if not vision_enabled():
+            await self._overlays()
+            # Scenario seed only when not on live Seville vision.
+            await self.run_scenario("person-down")
 
     async def start_loops(self) -> None:
         if self._health_task is not None:

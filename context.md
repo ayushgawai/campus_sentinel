@@ -1,57 +1,33 @@
 # context.md
-Last updated: 2026-09-24 (ayush) — Seville full PASS; vision→api bridge ready to merge
+Last updated: 2026-09-24 (ayush) — vision bridge: normalize boxes + GPU throttle
 
 ## HARD RULES (do not skip)
-1. **Pull before push.** Always `git pull --rebase origin main` before every push. Work on **`main`** (no long-lived feature branches overnight).
-2. **Update this file after every finished piece**, in the **same commit** as the work.
-3. **Stay in your ownership paths.** Especially do not change `contracts/` after freeze without a group message.
-4. Keep this file under ~150 lines. State only — no design essays (playbook).
-5. **Playbook is the base plan.** Deviate only on real test failure or reviewed unblock; record **why** here.
+1. **Pull before push.** Always `git pull --rebase origin main` before every push. Work on **`main`**.
+2. **Update this file after every finished piece**, same commit as the work.
+3. Stay in ownership paths. Do not change `contracts/` without a group message.
+4. Keep under ~150 lines.
+5. Playbook is base plan; record deviations here.
 
-## How to run it right now
+## How to run (stable — do NOT overload the ZGX)
 ```bash
-git checkout feat/pratham/vision-router && git pull
-make check
-# Seville live router:
-services/vision/.venv/bin/python services/vision/run_seville.py --max-steps 90
-services/vision/.venv/bin/python services/vision/run_seville.py
-# api + live vision overlays/escalations (needs vision venv):
-CS_VISION_SEVILLE=1 services/vision/.venv/bin/python -m services.api
+# ONE GPU consumer only. Never run run_seville.py at the same time as this.
+CS_VISION_SEVILLE=1 CS_VISION_STEP_S=0.4 CS_VISION_COOLDOWN_S=12 \
+  services/vision/.venv/bin/python -m services.api --host 0.0.0.0 --port 8080
+# Mac: ssh -L 8080:127.0.0.1:8080 zgx-b505
+# Mac: cd web && SOURCE=live API_BASE=http://127.0.0.1:8080 → http://127.0.0.1:8000/
 ```
 
-## Demo media (outside git)
-- Locked 3-cam: `Documents/campus_sentinel_media/feeds/seville_option1_3cam_locked/`
-- Path map: `data/feeds/seville_option1_3cam_locked.json`
+## Done
+- Seville full PASS earlier; vision merged to main
+- Vision bridge: pixel→0..1 box normalize (dashboard was dropping pixel boxes)
+- Throttle: step sleep, upsert cooldown, per-minute cap; rewind FileSource without reloading TRT
+
+## Important
+- **No WEAPON/FIRE class** in frozen contracts (FALL/FIGHT/THEFT/RUN/MEDICAL/BENIGN only). Seville footage has weapons; the stack will not say "weapon detected".
+- Overloading GPU (full run_seville + live bridge + CLIP) has hung this box — keep one process.
 
 ## Ownership
-| Path | Owner |
-|------|--------|
-| `contracts/` | shared — frozen v1.0 |
-| `services/brain/`, `services/api/`, compose, Makefile | Ayush |
-| `services/vision/`, `services/voice/` | Pratham |
-| `web/` | Manav — leave alone |
-| `data/`, `bench/`, `docs/` | Naman |
+Ayush: brain/api/compose · Pratham: vision/voice · Manav: web (leave alone) · Naman: data/bench
 
-## Done
-- contracts + brain adjudicate/fuse/audit + from_vision map (ayush)
-- api :8080 WS/MJPEG + optional `CS_VISION_SEVILLE` bridge (ayush)
-- vision-router: YOLO TRT, ByteTrack, rules, VadCLIP, FileSource (pratham)
-- **Seville full PASS (ZGX):** 1699 frames / 88 esc / ~50s wall; max boxes CAM-01:10 CAM-02:4 CAM-03:4
-
-## In progress
-- Merge `feat/pratham/vision-router` → `main`
-- Live ZRT classify from FrameBundle (still forced)
-
-## Blocked
-- Ambient fillers + real thresholds (Naman)
-- Fight/theft clips to bench VadCLIP (theft firing on lobby chase — revisit)
-
-## Decisions
-- Wire ids: vision `CAM-01` → api/web `cam-01` via `normalize_camera_id`
-- Do not touch `web/` while Manav works
-- Vision bridge cooldown default 8s per (cam, track)
-
-## Next up
-1. Merge vision-router → main
-2. Demo path: CS_VISION_SEVILLE=1 api + live dashboard
-3. Naman ambient + thresholds; Pratham voice
+## Next
+Demo carefully with throttled bridge; live ZRT frames; Naman ambient/thresholds
