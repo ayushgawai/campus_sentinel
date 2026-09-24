@@ -78,11 +78,16 @@ def main() -> None:
     assert severity_from_fused(0.1, allow_placeholder=True) is Severity.NONE
     assert severity_from_fused(0.6, allow_placeholder=True) is Severity.MINOR
     assert severity_from_fused(0.9, allow_placeholder=True) is Severity.SEVERE
-    try:
-        severity_from_fused(0.9)
-        raise AssertionError("placeholder thresholds must not be silent")
-    except RuntimeError:
-        pass
+    from services.brain.thresholds import using_bench
+
+    if using_bench():
+        assert severity_from_fused(0.9) is Severity.SEVERE
+    else:
+        try:
+            severity_from_fused(0.9)
+            raise AssertionError("placeholder thresholds must not be silent")
+        except RuntimeError:
+            pass
 
     # fuse: weighted router + VLM; logprob 0 → exp(0) = 1.0
     assert abs(logprob_to_prob(0.0) - 1.0) < 1e-9
@@ -140,9 +145,11 @@ def main() -> None:
     assert low.record.severity is Severity.NONE
     assert abs(low.vlm_prob - 0.05) < 1e-9
     assert abs(logprob_to_prob(low.record.class_logprob_calibrated) - 0.05) < 1e-9
-    # placeholder thresholds refused by default
-    try:
-        adjudicate(
+    # placeholder thresholds refused by default unless bench/thresholds.json loaded
+    from services.brain.thresholds import using_bench
+
+    if using_bench():
+        guarded = adjudicate(
             EscalateRequest(
                 track_id="t-guard",
                 camera_id="cam-lobby",
@@ -151,9 +158,21 @@ def main() -> None:
             ),
             zrt=ZRTClient(forced=True),
         )
-        raise AssertionError("placeholder thresholds must require explicit ack")
-    except RuntimeError:
-        pass
+        assert guarded.record.severity is Severity.SEVERE
+    else:
+        try:
+            adjudicate(
+                EscalateRequest(
+                    track_id="t-guard",
+                    camera_id="cam-lobby",
+                    router_score=0.9,
+                    class_token_forced=IncidentClass.WEAPON,
+                ),
+                zrt=ZRTClient(forced=True),
+            )
+            raise AssertionError("placeholder thresholds must require explicit ack")
+        except RuntimeError:
+            pass
 
     # vision Escalation → EscalateRequest (duck-typed; no vision import)
     assert normalize_camera_id("CAM-01") == "cam-01"

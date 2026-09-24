@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .rules import FALL,  # pose rule name LONG_DWELL, RUN, SUDDEN_ACCEL
+from .rules import FALL, LONG_DWELL, RUN, SUDDEN_ACCEL
 
 # Tuned loose on purpose: a wrong escalate costs GPU seconds; a miss is forever.
 # VadCLIP is on so FIGHT/THEFT can escalate without a pose rule.

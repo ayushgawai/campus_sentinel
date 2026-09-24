@@ -25,6 +25,16 @@ def _load_camera_map(path: Path | None = None) -> dict[str, Any]:
         return {}
 
 
+def _norm_cam(cid: str) -> str:
+    s = str(cid).strip().lower().replace("_", "-")
+    if s.startswith("cam") and not s.startswith("cam-"):
+        # cam01 → cam-01
+        digits = "".join(ch for ch in s if ch.isdigit())
+        if digits:
+            return f"cam-{int(digits):02d}"
+    return s
+
+
 def assemble_call_brief(
     rec: IncidentRecord,
     *,
@@ -34,9 +44,15 @@ def assemble_call_brief(
     cmap = camera_map if camera_map is not None else _load_camera_map(map_path)
     cams = cmap.get("cameras") if isinstance(cmap.get("cameras"), list) else None
     entry: dict[str, Any] = {}
+    want = _norm_cam(rec.camera_id)
     if isinstance(cams, list):
         for c in cams:
-            if isinstance(c, dict) and c.get("camera_id") == rec.camera_id:
+            if not isinstance(c, dict):
+                continue
+            ids = {_norm_cam(str(c.get("camera_id") or ""))}
+            if c.get("legacy_id"):
+                ids.add(_norm_cam(str(c["legacy_id"])))
+            if want in ids:
                 entry = c
                 break
     elif isinstance(cmap, dict) and rec.camera_id in cmap:

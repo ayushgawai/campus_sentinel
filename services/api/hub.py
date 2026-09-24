@@ -23,11 +23,14 @@ from contracts import (
     IncidentStateChange,
     IncidentUpsert,
     OverlayBoxes,
+    Severity,
     event_to_dict,
 )
 from services.brain.adjudicate import EscalateRequest, adjudicate
+from services.brain.call_brief import assemble_call_brief
 from services.brain.zrt_client import ZRTClient
 from services.api.vision_bridge import vision_enabled
+from services.voice import VoiceAgent
 
 WALL_CAMS = [f"cam-{i:02d}" for i in range(1, 7)]
 ALL_CAMS = [f"cam-{i:02d}" for i in range(1, 13)]
@@ -64,9 +67,21 @@ class DemoHub:
     _health_task: asyncio.Task[None] | None = field(default=None, repr=False)
     _rng: random.Random = field(default_factory=lambda: random.Random(20260923))
     _seeded: bool = False
+    _voice: VoiceAgent | None = field(default=None, repr=False)
 
     async def publish(self, ev: Any) -> None:
         await self.broadcast(event_to_dict(ev))
+
+    def _voice_agent(self) -> VoiceAgent:
+        if self._voice is None:
+            self._voice = VoiceAgent(self.publish)
+        return self._voice
+
+    async def _maybe_start_voice(self, rec: Any) -> None:
+        if getattr(rec, "severity", None) is not Severity.SEVERE:
+            return
+        brief = assemble_call_brief(rec)
+        await self._voice_agent().start_call(rec, brief)
 
     async def seed(self, *, force: bool = False) -> None:
         if self._seeded and not force:
@@ -109,6 +124,8 @@ class DemoHub:
         return self.paused
 
     async def reset(self) -> None:
+        if self._voice is not None:
+            await self._voice.cancel()
         await self.publish(
             DemoControl(action="reset", scenario_id=None, ts=_utcnow())
         )
@@ -138,6 +155,7 @@ class DemoHub:
         )
         self.frames_escalated += 1
         await self.publish(IncidentUpsert(incident=result.record))
+        await self._maybe_start_voice(result.record)
         await self.publish(
             DemoControl(action="scenario", scenario_id=key, ts=_utcnow())
         )

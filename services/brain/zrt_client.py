@@ -24,7 +24,7 @@ from contracts import IncidentClass
 
 DEFAULT_BASE_URL = os.environ.get("ZRT_BASE_URL", "http://127.0.0.1:8000")
 DEFAULT_MODEL = os.environ.get(
-    "ZRT_MODEL", "Qwen/Qwen3-VL-30B-A3B-Instruct-FP8"
+    "ZRT_MODEL", "hf:Qwen/Qwen3-VL-30B-A3B-Instruct-FP8"
 )
 CLASS_TOKENS = tuple(c.value for c in IncidentClass)
 _MAX_SIDE = 384
