@@ -1,0 +1,33 @@
+{
+  "id": "ambient_3cam",
+  "purpose": "Placeholder ambient fillers for 6-pane demo wall (not real CCTV)",
+  "duration_s": 60,
+  "fps": 5,
+  "media_root": {
+    "zgx": "/home/hp25/Documents/campus_sentinel_media/feeds/ambient_3cam",
+    "mac_mount": "~/mnt/zgx-b505/Documents/campus_sentinel_media/feeds/ambient_3cam"
+  },
+  "cameras": [
+    {
+      "camera_id": "CAM-04",
+      "web_id": "cam-04",
+      "file": "CAM04_parking_east_ambient_60s.mp4",
+      "location": "Parking East",
+      "note": "placeholder ambient"
+    },
+    {
+      "camera_id": "CAM-05",
+      "web_id": "cam-05",
+      "file": "CAM05_basement_ambient_60s.mp4",
+      "location": "Basement corridor",
+      "note": "placeholder ambient"
+    },
+    {
+      "camera_id": "CAM-06",
+      "web_id": "cam-06",
+      "file": "CAM06_road_ambient_60s.mp4",
+      "location": "Campus road",
+      "note": "placeholder ambient"
+    }
+  ]
+}

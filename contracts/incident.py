@@ -31,9 +31,14 @@ class IncidentState(str, Enum):
 
 
 class IncidentClass(str, Enum):
-    """VLM Completion A — single token from this six-class set."""
+    """VLM Completion A — single token from this six-class set.
 
-    FALL = "FALL"
+    2026-09-24 group decision: FALL replaced by WEAPON — Seville armed-chase
+    is the demo primary. Pose rule name "fall" may still fire internally;
+    the wire class token is WEAPON.
+    """
+
+    WEAPON = "WEAPON"
     FIGHT = "FIGHT"
     THEFT = "THEFT"
     RUN = "RUN"
@@ -80,7 +85,7 @@ class IncidentRecord:
     rules_fired: list[str] = field(default_factory=list)
     timeline: list[TimelineEvent] = field(default_factory=list)
     dismissed_reason: str | None = None
-    schema_version: str = "1.0"
+    schema_version: str = "1.1"
 
     def __post_init__(self) -> None:
         for name in ("peak_ts", "created_at", "updated_at"):

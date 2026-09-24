@@ -1,57 +1,43 @@
 # context.md
-Last updated: 2026-09-24 (ayush) — api on main; next: verify Pratham vision + Seville clips
+Last updated: 2026-09-24 (ayush) — live pipeline lab (real YOLO/VadCLIP/Qwen)
 
-## HARD RULES (do not skip)
-1. **Pull before push.** Always `git pull --rebase origin main` before every push. Work on **`main`** (no long-lived feature branches overnight).
-2. **Update this file after every finished piece**, in the **same commit** as the work.
-3. **Stay in your ownership paths.** Especially do not change `contracts/` after freeze without a group message.
-4. Keep this file under ~150 lines. State only — no design essays (playbook).
-5. **Playbook is the base plan.** Deviate only on real test failure or reviewed unblock; record **why** here.
+## HARD RULES
+1. `git pull --rebase origin main` before every push. Work on **main**.
+2. Update this file in the same commit as the work.
+3. Stay in ownership paths. Contracts change = group decision (logged below).
+4. Keep under ~150 lines.
+5. Playbook is base; record deviations here.
 
-## How to run it right now
+## CONTRACT DECISION (2026-09-24)
+- **IncidentClass:** `FALL` replaced by **`WEAPON`**. Six-class set is now:
+  `WEAPON | FIGHT | THEFT | RUN | MEDICAL | BENIGN`
+- **Why:** Seville armed-chase is the demo primary; "person down"/FALL was the wrong hero class.
+- **schema_version:** IncidentRecord → **1.1**
+- Pose rule name `fall` may still fire inside vision; wire token / VLM class is **WEAPON**.
+- VadCLIP prompts include weapon. Web mirror + demo scenario id `armed-intruder` (legacy `person-down` aliases to WEAPON).
+
+## How to run (stable)
 ```bash
-git checkout main && git pull --rebase origin main
-make check                          # brain + api self-checks
-make api                            # :8080 /health /ws /mjpeg/{cam-01..03}
-# Mac dashboard (mock): cd web && python3 -m http.server 8000 → http://127.0.0.1:8000/
-# Live: SOURCE:live API_BASE:http://127.0.0.1:8080 (api must be up; tunnel if remote)
+# ZRT/Qwen on :8000 uses most VRAM — run YOLO/CLIP on CPU beside it:
+CS_VISION_SEVILLE=1 CS_VISION_YOLO=pt CS_VISION_DEVICE=cpu \
+  CS_VISION_STEP_S=0.6 CS_VISION_COOLDOWN_S=15 \
+  services/vision/.venv/bin/python -m services.api --host 127.0.0.1 --port 8080
+# Mac: ssh -L 8080:127.0.0.1:8080 zgx-b505
+# Lab: cd web && python3 -m http.server 8000 → http://127.0.0.1:8000/lab.html
 ```
 
-## Demo media (outside git — never commit mp4s)
-- **Locked chase pack (3 cams):** `Documents/campus_sentinel_media/feeds/seville_option1_3cam_locked/`
-  - cam-01/02/03 ↔ CAM01/02/03 mp4s (api MJPEG)
-- **Still needed:** 3 ambient fillers → **6 feeds** for demo wall
+## Done
+- contracts v1.1 WEAPON + brain adjudicate/fuse/CallBrief
+- api WS/MJPEG + throttled Seville vision bridge → live ZRT when healthy
+- Voice on any SEVERE upsert (live or scenario); transcript AI↔911 stand-in
+- Ambient cam-04..06 placeholders; bench thresholds; OSNet stub; mediamtx paths
+- **`web/lab.html`** live-only test UI (tracks, scores, 911, HITL broadcast)
+- Indraneel’s officer `web/index.html` untouched
+
+## Still open
+- Real Parakeet/Kokoro (911 human later)
+- Real ambient CCTV + OSNet weights
+- make up/demo clean-clone
 
 ## Ownership
-| Path | Owner |
-|------|--------|
-| `contracts/` | shared — frozen v1.0 |
-| `services/brain/`, `services/api/`, compose, Makefile | Ayush |
-| `services/vision/`, `services/voice/` | Pratham |
-| `web/` | Manav — **leave alone** (he is iterating UI) |
-| `data/`, `bench/`, `docs/` | Naman |
-
-## Done
-- contracts v1.0 + brain adjudicate/fuse/audit (ayush)
-- services/api :8080 — WS + health + ffmpeg MJPEG; scenarios → forced adjudicate (ayush)
-- compose: `api` service + Dockerfile; mediamtx under profile `full`
-- web mock dashboard on main (indraneel); createLiveSource present — Manav owns further UI
-
-## In progress
-- (ayush) verify `origin/feat/pratham/vision-router` against Seville locked clips, then merge if green
-- Vision Escalation → EscalateRequest wiring after merge
-  (camera_id, track_id, ts→peak_ts, fused→router_score, rules→rules_fired)
-
-## Blocked
-- 3 ambient filler clips; real severity thresholds (Naman)
-- Live ZRT classify (needs vision frames on main)
-
-## Decisions
-- Camera wire ids stay `cam-01`… (web); Seville files mapped in api only.
-- ZRT stays on host, never in compose.
-- Do not touch `web/` while Manav is working.
-
-## Next up
-1. Ayush: test Pratham vision on Seville clips → merge → api ingest escalations
-2. Manav: UI (no interference)
-3. Naman: ambient clips + camera_map + thresholds
+Ayush: brain/api/compose/lab · Pratham: vision/voice · Indraneel: officer web · Naman: data/bench

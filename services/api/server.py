@@ -18,21 +18,27 @@ from typing import Any
 from urllib.parse import unquote
 
 from .hub import DemoHub, dumps
+from .vision_bridge import VisionBridge, vision_enabled
 
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 8080
 
-# Seville locked pack (sibling of repo). Override with CS_MEDIA_ROOT.
+# Feeds live under campus_sentinel_media/feeds/<pack>/. CS_MEDIA_ROOT overrides
+# the Seville pack root only (cam-01..03); ambient keeps its own folder.
 _REPO = Path(__file__).resolve().parents[2]
-_DEFAULT_MEDIA = (
-    _REPO.parent / "campus_sentinel_media" / "feeds" / "seville_option1_3cam_locked"
-)
+_FEEDS = _REPO.parent / "campus_sentinel_media" / "feeds"
+_DEFAULT_MEDIA = _FEEDS / "seville_option1_3cam_locked"
 MEDIA_ROOT = Path(os.environ.get("CS_MEDIA_ROOT", str(_DEFAULT_MEDIA)))
+_AMBIENT = _FEEDS / "ambient_3cam"
 
-CLIP_BY_CAM = {
-    "cam-01": "CAM01_lobby_entrance_IN_then_OUT_339s.mp4",
-    "cam-02": "CAM02_hallway_east_IN_then_OUT_339s.mp4",
-    "cam-03": "CAM03_hallway_west_IN_then_OUT_339s.mp4",
+# camera_id → (root, filename)
+CLIP_BY_CAM: dict[str, tuple[Path, str]] = {
+    "cam-01": (MEDIA_ROOT, "CAM01_lobby_entrance_IN_then_OUT_339s.mp4"),
+    "cam-02": (MEDIA_ROOT, "CAM02_hallway_east_IN_then_OUT_339s.mp4"),
+    "cam-03": (MEDIA_ROOT, "CAM03_hallway_west_IN_then_OUT_339s.mp4"),
+    "cam-04": (_AMBIENT, "CAM04_parking_east_ambient_60s.mp4"),
+    "cam-05": (_AMBIENT, "CAM05_basement_ambient_60s.mp4"),
+    "cam-06": (_AMBIENT, "CAM06_road_ambient_60s.mp4"),
 }
 
 
@@ -97,6 +103,7 @@ class ApiServer:
         self.port = port
         self.clients: set[WsClient] = set()
         self.hub = DemoHub(broadcast=self.broadcast)
+        self.vision = VisionBridge(self.hub) if vision_enabled() else None
 
     async def broadcast(self, envelope: dict[str, Any]) -> None:
         blob = dumps(envelope)
@@ -221,10 +228,11 @@ class ApiServer:
             client.close()
             if not self.clients:
                 await self.hub.stop_loops()
+                # keep vision bridge running across reconnects
 
     async def _mjpeg(self, writer: asyncio.StreamWriter, camera_id: str) -> None:
-        name = CLIP_BY_CAM.get(camera_id)
-        path = MEDIA_ROOT / name if name else None
+        entry = CLIP_BY_CAM.get(camera_id)
+        path = (entry[0] / entry[1]) if entry else None
         if path is None or not path.is_file():
             await self._http_raw(writer, 404, b"no clip for camera\n")
             return
@@ -339,6 +347,9 @@ class ApiServer:
         writer.close()
 
     async def run(self) -> None:
+        if self.vision is not None:
+            self.vision.start()
+            print("[api] CS_VISION_SEVILLE bridge starting", flush=True)
         server = await asyncio.start_server(self.handle, self.host, self.port)
         addrs = ", ".join(str(s.getsockname()) for s in server.sockets or [])
         print(f"api listening on {addrs}  (/health /ws /mjpeg/{{cam}})", flush=True)

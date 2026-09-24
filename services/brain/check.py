@@ -13,6 +13,11 @@ if str(ROOT) not in sys.path:
 from contracts import IncidentClass, IncidentState, Severity  # noqa: E402
 from services.brain.adjudicate import EscalateRequest, adjudicate  # noqa: E402
 from services.brain.audit import AuditLog  # noqa: E402
+from services.brain.call_brief import assemble_call_brief
+from services.brain.from_vision import (  # noqa: E402
+    escalate_request_from_vision,
+    normalize_camera_id,
+)
 from services.brain.fuse import fuse_probs, logprob_to_prob  # noqa: E402
 from services.brain.sampler import sample_indices  # noqa: E402
 from services.brain.state_machine import StateMachine  # noqa: E402
@@ -35,12 +40,12 @@ def main() -> None:
     zrt = ZRTClient(forced=True)
     assert zrt.health() is True
     r = zrt.classify(
-        class_token_forced=IncidentClass.FALL,
+        class_token_forced=IncidentClass.WEAPON,
         track_id="t1",
         camera_id="cam-1",
         peak_ts_iso="2026-09-23T00:00:00+00:00",
     )
-    assert r.forced and r.class_token is IncidentClass.FALL
+    assert r.forced and r.class_token is IncidentClass.WEAPON
     try:
         ZRTClient(forced=False).classify(
             track_id="t1",
@@ -73,11 +78,16 @@ def main() -> None:
     assert severity_from_fused(0.1, allow_placeholder=True) is Severity.NONE
     assert severity_from_fused(0.6, allow_placeholder=True) is Severity.MINOR
     assert severity_from_fused(0.9, allow_placeholder=True) is Severity.SEVERE
-    try:
-        severity_from_fused(0.9)
-        raise AssertionError("placeholder thresholds must not be silent")
-    except RuntimeError:
-        pass
+    from services.brain.thresholds import using_bench
+
+    if using_bench():
+        assert severity_from_fused(0.9) is Severity.SEVERE
+    else:
+        try:
+            severity_from_fused(0.9)
+            raise AssertionError("placeholder thresholds must not be silent")
+        except RuntimeError:
+            pass
 
     # fuse: weighted router + VLM; logprob 0 → exp(0) = 1.0
     assert abs(logprob_to_prob(0.0) - 1.0) < 1e-9
@@ -95,18 +105,18 @@ def main() -> None:
     except ValueError:
         pass
 
-    # adjudicate + audit (forced ZRT → ALERTED for FALL)
+    # adjudicate + audit (forced ZRT → ALERTED for WEAPON)
     audit = AuditLog()
     req = EscalateRequest(
         track_id="t-esc-1",
         camera_id="cam-lobby",
         router_score=0.85,
         rules_fired=["fall_velocity"],
-        class_token_forced=IncidentClass.FALL,
+        class_token_forced=IncidentClass.WEAPON,
         allow_placeholder_thresholds=True,
     )
     result = adjudicate(req, zrt=ZRTClient(forced=True), audit=audit)
-    assert result.record.class_token is IncidentClass.FALL
+    assert result.record.class_token is IncidentClass.WEAPON
     assert result.record.camera_id == "cam-lobby"
     assert result.record.state is IncidentState.ALERTED
     assert result.record.severity is Severity.SEVERE
@@ -135,20 +145,68 @@ def main() -> None:
     assert low.record.severity is Severity.NONE
     assert abs(low.vlm_prob - 0.05) < 1e-9
     assert abs(logprob_to_prob(low.record.class_logprob_calibrated) - 0.05) < 1e-9
-    # placeholder thresholds refused by default
-    try:
-        adjudicate(
+    # placeholder thresholds refused by default unless bench/thresholds.json loaded
+    from services.brain.thresholds import using_bench
+
+    if using_bench():
+        guarded = adjudicate(
             EscalateRequest(
                 track_id="t-guard",
                 camera_id="cam-lobby",
                 router_score=0.9,
-                class_token_forced=IncidentClass.FALL,
+                class_token_forced=IncidentClass.WEAPON,
             ),
             zrt=ZRTClient(forced=True),
         )
-        raise AssertionError("placeholder thresholds must require explicit ack")
-    except RuntimeError:
-        pass
+        assert guarded.record.severity is Severity.SEVERE
+    else:
+        try:
+            adjudicate(
+                EscalateRequest(
+                    track_id="t-guard",
+                    camera_id="cam-lobby",
+                    router_score=0.9,
+                    class_token_forced=IncidentClass.WEAPON,
+                ),
+                zrt=ZRTClient(forced=True),
+            )
+            raise AssertionError("placeholder thresholds must require explicit ack")
+        except RuntimeError:
+            pass
+
+    # vision Escalation → EscalateRequest (duck-typed; no vision import)
+    assert normalize_camera_id("CAM-01") == "cam-01"
+    from dataclasses import dataclass
+    from datetime import datetime, timezone
+
+    @dataclass
+    class _Esc:
+        camera_id: str
+        track_id: str
+        ts: datetime
+        fused: float
+        rules: list[str]
+        vadclip: float = 0.0
+
+    mapped = escalate_request_from_vision(
+        _Esc(
+            camera_id="CAM-01",
+            track_id="t-9",
+            ts=datetime(2026, 9, 24, tzinfo=timezone.utc),
+            fused=0.91,
+            rules=["weapon", "sudden_acceleration"],
+        )
+    )
+    assert mapped.camera_id == "cam-01"
+    assert mapped.router_score == 0.91
+    assert mapped.class_token_forced is IncidentClass.WEAPON
+    via = adjudicate(mapped, zrt=ZRTClient(forced=True))
+    assert via.record.camera_id == "cam-01"
+    assert via.record.class_token is IncidentClass.WEAPON
+
+    brief = assemble_call_brief(via.record)
+    assert brief.incident_id == via.record.incident_id
+    assert brief.camera_id == "cam-01"
 
     print("brain self-check OK")
 

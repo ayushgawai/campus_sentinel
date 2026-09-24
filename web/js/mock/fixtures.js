@@ -161,14 +161,14 @@ export function starterIncidents() {
       track_id: 'T-2',
       camera_id: 'cam-01',
       peak_ts: isoAt(2, 14, 8),
-      class_token: IncidentClass.FALL,
+      class_token: IncidentClass.WEAPON,
       class_logprob_calibrated: 0.97,
       router_score: 0.94,
       fused_prob: 0.96,
       severity: Severity.SEVERE,
       description:
-        'Person descended rapidly near the north entrance and remained prone for 18 seconds. '
-        + 'No recovery motion detected.',
+        'Armed individual entered the north lobby with a visible long firearm and moved '
+        + 'toward the east hallway.',
       location_text: locationText('cam-01'),
       person_description: 'Adult, dark jacket, light backpack, no hat.',
       rules_fired: ['Rapid descent', 'Orientation flip', 'Remained low'],
@@ -253,19 +253,18 @@ export function starterIncidents() {
 /** Deterministic scenario definitions for the demo bar. */
 export const SCENARIOS = [
   {
-    id: 'person-down',
-    label: 'Person down',
-    camera_id: 'cam-05',
+    id: 'armed-intruder',
+    label: 'Armed intruder',
+    camera_id: 'cam-01',
     track_id: 'T-3',
-    class_token: IncidentClass.FALL,
+    class_token: IncidentClass.WEAPON,
     severity: Severity.SEVERE,
     router_score: 0.92,
     class_logprob_calibrated: 0.96,
     fused_prob: 0.94,
     rules_fired: ['Rapid descent', 'Orientation flip', 'Remained low'],
     description:
-      'Person collapsed mid-walkway outside the union and stayed down '
-      + 'without recovery motion.',
+      'Subject carrying a visible firearm crossed the lobby toward the academic walk.',
     person_description: 'Adult, red jacket, jeans, no bag.',
     predicted_next: 'cam-10',
   },
@@ -419,7 +418,7 @@ const CLOSING = [
 ];
 
 export const CALL_SCRIPTS = {
-  FALL: [
+  WEAPON: [
     ...OPENING,
     { after: 1800, speaker: 'dispatcher', text: 'What is happening there?' },
     { after: 1400, tool: 'get_person_description' },

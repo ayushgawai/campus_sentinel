@@ -23,21 +23,26 @@ from contracts import (
     IncidentStateChange,
     IncidentUpsert,
     OverlayBoxes,
+    Severity,
     event_to_dict,
 )
 from services.brain.adjudicate import EscalateRequest, adjudicate
+from services.brain.call_brief import assemble_call_brief
 from services.brain.zrt_client import ZRTClient
+from services.api.vision_bridge import vision_enabled
+from services.voice import VoiceAgent
 
 WALL_CAMS = [f"cam-{i:02d}" for i in range(1, 7)]
 ALL_CAMS = [f"cam-{i:02d}" for i in range(1, 13)]
 
 SCENARIOS: dict[str, tuple[IncidentClass, str]] = {
-    # demo bar ids (web/js/mock/fixtures.js SCENARIOS)
-    "person-down": (IncidentClass.FALL, "cam-05"),
+    # Primary demo: Seville armed chase
+    "armed-intruder": (IncidentClass.WEAPON, "cam-01"),
+    "person-down": (IncidentClass.WEAPON, "cam-01"),  # legacy UI id → WEAPON
     "forced-entry": (IncidentClass.THEFT, "cam-02"),
     "loitering": (IncidentClass.RUN, "cam-03"),
-    # class-token aliases
-    "fall": (IncidentClass.FALL, "cam-01"),
+    "weapon": (IncidentClass.WEAPON, "cam-01"),
+    "fall": (IncidentClass.WEAPON, "cam-01"),  # legacy alias
     "fight": (IncidentClass.FIGHT, "cam-01"),
     "theft": (IncidentClass.THEFT, "cam-02"),
     "run": (IncidentClass.RUN, "cam-03"),
@@ -62,9 +67,24 @@ class DemoHub:
     _health_task: asyncio.Task[None] | None = field(default=None, repr=False)
     _rng: random.Random = field(default_factory=lambda: random.Random(20260923))
     _seeded: bool = False
+    _voice: VoiceAgent | None = field(default=None, repr=False)
 
     async def publish(self, ev: Any) -> None:
         await self.broadcast(event_to_dict(ev))
+        # Live Seville path publishes IncidentUpsert here — start 911 loop on SEVERE.
+        if isinstance(ev, IncidentUpsert) and ev.incident is not None:
+            await self._maybe_start_voice(ev.incident)
+
+    def _voice_agent(self) -> VoiceAgent:
+        if self._voice is None:
+            self._voice = VoiceAgent(self.publish)
+        return self._voice
+
+    async def _maybe_start_voice(self, rec: Any) -> None:
+        if getattr(rec, "severity", None) is not Severity.SEVERE:
+            return
+        brief = assemble_call_brief(rec)
+        await self._voice_agent().start_call(rec, brief)
 
     async def seed(self, *, force: bool = False) -> None:
         if self._seeded and not force:
@@ -74,15 +94,18 @@ class DemoHub:
         for cid in ALL_CAMS:
             await self.publish(CameraOnline(camera_id=cid, online=True, ts=now))
         await self._health()
-        await self._overlays()
-        # One real adjudicated incident so the queue is never empty on live.
-        await self.run_scenario("person-down")
+        if not vision_enabled():
+            await self._overlays()
+            # Scenario seed only when not on live Seville vision.
+            await self.run_scenario("armed-intruder")
 
     async def start_loops(self) -> None:
         if self._health_task is not None:
             return
         self._health_task = asyncio.create_task(self._health_loop())
-        self._overlay_task = asyncio.create_task(self._overlay_loop())
+        # Live vision bridge publishes real overlay.boxes; skip synthetic ones.
+        if not vision_enabled():
+            self._overlay_task = asyncio.create_task(self._overlay_loop())
 
     async def stop_loops(self) -> None:
         for t in (self._health_task, self._overlay_task):
@@ -104,6 +127,8 @@ class DemoHub:
         return self.paused
 
     async def reset(self) -> None:
+        if self._voice is not None:
+            await self._voice.cancel()
         await self.publish(
             DemoControl(action="reset", scenario_id=None, ts=_utcnow())
         )
@@ -115,8 +140,8 @@ class DemoHub:
     async def run_scenario(
         self, scenario_id: str, *, camera_id: str | None = None
     ) -> str:
-        key = (scenario_id or "person-down").strip().lower()
-        cls, default_cam = SCENARIOS.get(key, (IncidentClass.FALL, "cam-05"))
+        key = (scenario_id or "armed-intruder").strip().lower()
+        cls, default_cam = SCENARIOS.get(key, (IncidentClass.WEAPON, "cam-01"))
         cam = camera_id or default_cam
         result = adjudicate(
             EscalateRequest(
@@ -164,7 +189,7 @@ class DemoHub:
             paused = await self.set_paused(bool(msg.get("paused", True)))
             return {"ok": True, "cmd": "setPaused", "paused": paused}
         if cmd == "runScenario":
-            iid = await self.run_scenario(str(msg.get("scenario_id") or "person-down"))
+            iid = await self.run_scenario(str(msg.get("scenario_id") or "armed-intruder"))
             return {"ok": True, "cmd": "runScenario", "incident_id": iid}
         if cmd == "sendStateChange":
             await self.send_state_change(

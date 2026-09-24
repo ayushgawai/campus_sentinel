@@ -1,0 +1,23 @@
+# Stub MediaMTX — clip replay for demo. No internet.
+# docker compose --profile full up mediamtx
+logLevel: info
+rtsp: yes
+rtspAddress: :8554
+rtmp: no
+hls: no
+webrtc: no
+
+paths:
+  cam01:
+    source: publisher
+    # FileSource / ffmpeg publish: ffmpeg -re -stream_loop -1 -i <seville CAM01> -c copy -f rtsp rtsp://127.0.0.1:8554/cam01
+  cam02:
+    source: publisher
+  cam03:
+    source: publisher
+  cam04:
+    source: publisher
+  cam05:
+    source: publisher
+  cam06:
+    source: publisher

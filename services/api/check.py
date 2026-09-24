@@ -85,14 +85,14 @@ async def main() -> None:
         env = await _recv_frame(r)
         types.append(env["type"])
         if env["type"] == "incident.upsert":
-            assert "incident" in env and env["incident"]["camera_id"] == "cam-05"
-            assert env["incident"]["class_token"] == "FALL"
+            assert "incident" in env and env["incident"]["camera_id"] == "cam-01"
+            assert env["incident"]["class_token"] == "WEAPON"
             break
     assert "camera.online" in types
     assert "health.strip" in types
     assert "incident.upsert" in types
 
-    await _send_text(w, {"cmd": "start"})  # idempotent — must not double-seed FALL
+    await _send_text(w, {"cmd": "start"})  # idempotent — must not double-seed WEAPON
     await _send_text(w, {"cmd": "runScenario", "scenario_id": "forced-entry"})
     got_theft = False
     for _ in range(40):
@@ -120,6 +120,22 @@ async def main() -> None:
     server.close()
     await server.wait_closed()
     await srv.hub.stop_loops()
+    import os
+    from services.api.vision_bridge import vision_enabled, VisionBridge
+    assert vision_enabled() is False
+    class _Hub:
+        paused = False
+        frames_screened = 0
+        frames_escalated = 0
+        async def publish(self, ev):
+            pass
+    os.environ["CS_VISION_COOLDOWN_S"] = "8"
+    vb = VisionBridge(_Hub())  # type: ignore[arg-type]
+    vb._last_fire.clear()
+    vb._upsert_times.clear()
+    assert vb._should_fire("cam-01", "t-cooldown") is True
+    assert vb._should_fire("cam-01", "t-cooldown") is False
+    assert vb._should_fire("cam-01", "t-other") is True
     print("api self-check OK")
 
 
