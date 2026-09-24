@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Campus Sentinel — Security Operations</title>
+<meta name="description" content="Campus Sentinel security operations dashboard. Simulated demo environment.">
+<link rel="stylesheet" href="./css/tokens.css">
+<link rel="stylesheet" href="./css/layout.css">
+<link rel="stylesheet" href="./css/components.css">
+</head>
+<body>
+<a class="skip-link" href="#queue-panel">Skip to incident queue</a>
+
+<div class="app">
+  <header class="topbar" id="topbar"></header>
+
+  <section class="healthstrip" id="healthstrip" aria-label="System health"></section>
+
+  <main class="main">
+    <section class="panel panel--wall" id="wall-panel" aria-labelledby="wall-title"></section>
+    <aside class="panel panel--queue" id="queue-panel" aria-labelledby="queue-title"></aside>
+    <section class="panel panel--map" id="map-panel" aria-labelledby="map-title"></section>
+    <aside class="panel panel--detail" id="detail-panel" aria-labelledby="detail-title"></aside>
+    <section class="panel panel--call" id="call-panel" aria-labelledby="call-title" hidden></section>
+  </main>
+
+  <footer class="demobar" id="demobar"></footer>
+</div>
+
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+
+<script type="module" src="./js/app.js"></script>
+</body>
+</html>
