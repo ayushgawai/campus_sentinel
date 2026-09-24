@@ -1,0 +1,6 @@
+{
+  "minor_at": 0.55,
+  "severe_at": 0.80,
+  "source": "demo-stub — replace with Naman precision curve",
+  "notes": "SEVERE slightly lower than code placeholder so WEAPON chase alerts dispatch path in demo"
+}
