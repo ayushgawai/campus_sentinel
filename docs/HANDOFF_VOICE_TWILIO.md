@@ -66,7 +66,11 @@ Ask them to return:
 - [ ] Kill switch honors `CS_KILL_SWITCH=1`
 - [ ] Acceptance test above passes once
 
-Point them at this file in the repo: `docs/HANDOFF_VOICE_TWILIO.md`.
+Point them at this file + `.env.example`. Scaffold already in repo:
+- `services/voice/twilio_bridge.py` — place_call + TwiML Connect/Stream
+- `services/voice/parakeet.py` / `kokoro.py` — stubs until local serves exist
+- `GET /voice/status` · `POST /twilio/voice`
+- Hub calls `place_call` on SEVERE when `CS_TWILIO_ENABLED=1`
 
 ## What we are NOT asking for
 - Cloud OpenAI/Deepgram as the default path (HP story = local ZRT / on-box).

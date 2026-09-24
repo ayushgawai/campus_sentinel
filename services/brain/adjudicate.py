@@ -111,6 +111,9 @@ def adjudicate(
     severity = severity_from_fused(
         fused, allow_placeholder=req.allow_placeholder_thresholds
     )
+    # BENIGN must never page security / open 911 — VLM said nothing actionable.
+    if classify.class_token is IncidentClass.BENIGN:
+        severity = Severity.NONE
 
     description = req.description
     if not description:

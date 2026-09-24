@@ -215,8 +215,8 @@ eq('normalize: missing fused_prob is 0',
 
 const HEALTH_DICT = {
   type: 'health.strip',
-  cameras_online: 12,
-  cameras_total: 12,
+  cameras_online: 6,
+  cameras_total: 6,
   models_resident: true,
   gpu_util: 0.68,
   p95_ms: 182.0,

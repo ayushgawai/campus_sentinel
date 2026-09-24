@@ -33,9 +33,11 @@ cd web && python3 -m http.server 8765 --bind 0.0.0.0
 - Placeholders remain as fallback if Naman pack missing.
 
 ## Voice / Twilio handoff
-- Spec: **`docs/HANDOFF_VOICE_TWILIO.md`** (Twilio Media Streams + Parakeet ASR + Kokoro TTS).
-- Never dial real emergency numbers. Demo phone allowlist only.
-- Until phones land: officer Q&A in `services/voice/agent.py`; cam-02/03 → `notify_whereabouts` + `security_alert:*`.
+- Spec: **`docs/HANDOFF_VOICE_TWILIO.md`**
+- Scaffold ready: `services/voice/twilio_bridge.py` + `parakeet.py` + `kokoro.py`
+- Env template: **`.env.example`** — set `CS_TWILIO_ENABLED=1` + Twilio keys when Naman has them
+- Status: `GET /voice/status` · TwiML: `POST /twilio/voice`
+- Until keys: officer Q&A script + cam-02/03 whereabouts + `security_alert:*`
 - Self-check: `python3 -m services.voice.check`
 
 ## Done
@@ -47,7 +49,7 @@ cd web && python3 -m http.server 8765 --bind 0.0.0.0
 | Who | What |
 |-----|------|
 | **Naman** | Done for ambient — 3 clips wired. Optional: more natural basement/road later |
-| **Voice owner** | Twilio Media Streams + Parakeet + Kokoro (`docs/HANDOFF_VOICE_TWILIO.md`) |
+| **Voice owner** | Drop keys into `.env` from `.env.example`; Media Stream WS still thin |
 | **Indraneel** | Officer F1 polish (same WS events as lab) |
 | **Ayush / open** | OSNet weights · temp calibration fit · MediaMTX optional |
 

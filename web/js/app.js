@@ -62,9 +62,8 @@ function boot() {
         const dict = ev.incident || ev.incident_dict;
         if (!dict) break;
         store.upsertIncident(normalizeIncident(dict));
-        // Nothing is seeded client-side, so the detail panel would sit empty
-        // until the operator clicked. Land on the first incident that arrives.
-        if (!store.getState().selectedId) selectIncident(dict.incident_id);
+        // Auto-select first incident without collapsing the 6-pane wall.
+        if (!store.getState().selectedId) selectIncident(dict.incident_id, { expand: false });
         break;
       }
 
@@ -116,10 +115,10 @@ function boot() {
 
   /* ---------------- outbound: intent -> source ---------------- */
 
-  function selectIncident(incidentId) {
+  function selectIncident(incidentId, { expand = true } = {}) {
     const inc = store.getState().incidents.get(incidentId);
     store.select(incidentId);
-    if (inc) store.expandCamera(inc.cameraId);
+    if (expand && inc) store.expandCamera(inc.cameraId);
   }
 
   function selectCamera(cameraId) {

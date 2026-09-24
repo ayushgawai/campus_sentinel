@@ -110,6 +110,35 @@ class DemoHub:
         DEFAULT_GUARDRAILS.record_dispatch(rec.incident_id)
         brief = assemble_call_brief(rec)
         await self._voice_agent().start_call(rec, brief)
+        # Optional real phone — no-op until Naman sets CS_TWILIO_ENABLED + keys.
+        try:
+            from services.voice.twilio_bridge import place_call
+
+            result = await asyncio.to_thread(place_call, rec.incident_id)
+            if result.get("ok"):
+                await self.publish(
+                    DemoControl(
+                        action="scenario",
+                        scenario_id=f"twilio_call:{result.get('call_sid')}",
+                        ts=_utcnow(),
+                    )
+                )
+            elif not result.get("skipped"):
+                await self.publish(
+                    DemoControl(
+                        action="scenario",
+                        scenario_id=f"twilio_fail:{result.get('reason')}",
+                        ts=_utcnow(),
+                    )
+                )
+        except Exception as exc:  # noqa: BLE001 — never break voice script on Twilio
+            await self.publish(
+                DemoControl(
+                    action="scenario",
+                    scenario_id=f"twilio_error:{type(exc).__name__}",
+                    ts=_utcnow(),
+                )
+            )
 
     async def seed(self, *, force: bool = False) -> None:
         if self._seeded and not force:
@@ -117,6 +146,9 @@ class DemoHub:
         self._seeded = True
         now = _utcnow()
         for cid in ALL_CAMS:
+            await self.publish(CameraOnline(camera_id=cid, online=True, ts=now))
+        # Prefer wall cams online for the six-pane UI; keep ALL_CAMS for legacy.
+        for cid in WALL_CAMS:
             await self.publish(CameraOnline(camera_id=cid, online=True, ts=now))
         await self._health()
         if not vision_enabled():
@@ -230,10 +262,11 @@ class DemoHub:
 
     async def _health(self) -> None:
         self.frames_screened += 30
+        # Wall has six real feeds (CLIP_BY_CAM); do not advertise phantom cam-07..12.
         await self.publish(
             HealthStrip(
-                cameras_online=len(ALL_CAMS),
-                cameras_total=len(ALL_CAMS),
+                cameras_online=len(WALL_CAMS),
+                cameras_total=len(WALL_CAMS),
                 models_resident=True,
                 gpu_util=0.68,
                 p95_ms=182.0,

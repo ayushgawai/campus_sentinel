@@ -166,6 +166,48 @@ class ApiServer:
         if method == "GET" and (path == "/health" or path.startswith("/health?")):
             await self._http_json(writer, 200, {"ok": True, "service": "api"})
             return
+        if method == "GET" and (path == "/voice/status" or path.startswith("/voice/status?")):
+            from services.voice.twilio_bridge import status as twilio_status
+
+            await self._http_json(
+                writer,
+                200,
+                {
+                    "ok": True,
+                    "twilio": twilio_status(),
+                    "parakeet": bool(os.environ.get("CS_PARAKEET_URL")),
+                    "kokoro": bool(os.environ.get("CS_KOKORO_URL")),
+                    "scripted_voice": True,
+                },
+            )
+            return
+        if method == "POST" and path.startswith("/twilio/voice"):
+            # TwiML for Media Streams — keys optional; returns connect stream.
+            from services.voice.twilio_bridge import load_config, twiml_connect_stream
+            from urllib.parse import parse_qs, urlparse
+
+            cfg = load_config()
+            qs = parse_qs(urlparse(path).query)
+            incident_id = (qs.get("incident_id") or ["unknown"])[0]
+            if cfg is None:
+                xml = (
+                    '<?xml version="1.0" encoding="UTF-8"?>'
+                    "<Response><Say>Campus Sentinel demo call is not configured.</Say>"
+                    "<Hangup/></Response>"
+                )
+            else:
+                # Media Stream WS must be wss public.
+                stream = cfg.public_base.replace("https://", "wss://").replace(
+                    "http://", "ws://"
+                ) + f"/twilio/media?incident_id={incident_id}"
+                xml = twiml_connect_stream(stream)
+            await self._http_raw(
+                writer,
+                200,
+                xml.encode(),
+                extra={"Content-Type": "application/xml"},
+            )
+            return
         if method == "GET" and path.startswith("/mjpeg/"):
             cam = unquote(path[len("/mjpeg/") :].split("?")[0])
             await self._mjpeg(writer, cam)
