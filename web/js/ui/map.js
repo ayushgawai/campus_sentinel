@@ -1,17 +1,23 @@
-/* Campus tracking map — twelve pins, trail, predicted next camera.
+/* Campus tracking map — six pins, positioned from real coordinates.
  *
  * The SVG viewBox is kept identical to the element's pixel size, so one user
  * unit is one CSS pixel. A fixed viewBox scaled with `meet` would shrink pin
- * numbers and building labels into illegibility in a short, wide panel.
+ * numbers into illegibility in a short, wide panel.
  *
- * Camera coordinates are UI-only mock data (js/mock/fixtures.js). The real
- * data/camera_map.json is owned by the data owner and is still empty.
+ * Pin positions come from js/cameras.js, which projects the lat/lon in
+ * data/camera_map.json onto this panel. Relative geography is real; absolute
+ * scale is not meaningful.
+ *
+ * No movement trail and no predicted-next ring: nothing on the wire carries
+ * either. `track_path` and `predicted_next` were mock-only fields, and no
+ * service computes a camera-to-camera prediction. The map shows where the
+ * cameras are and which one holds the selected incident.
  */
 
 import { h, mount, svg, clear } from './dom.js';
 import { icons } from './icons.js';
 import { Change } from '../store.js';
-import { BUILDINGS, CAMERAS } from '../mock/fixtures.js';
+import { CAMERAS, cameraById } from '../cameras.js';
 
 const PIN_W = 30;
 const PIN_H = 19;
@@ -29,7 +35,7 @@ export function createMap(root, store, { onSelectCamera }) {
     clear(headRight);
 
     if (inc) {
-      const cam = CAMERAS.find((c) => c.id === inc.cameraId);
+      const cam = cameraById(inc.cameraId);
       headRight.append(h('span', { class: 'cam-chip' }, [
         h('span', { html: icons.pin }),
         `CAM ${cam ? cam.no : '--'}`,
@@ -51,9 +57,7 @@ export function createMap(root, store, { onSelectCamera }) {
     if (W < 40 || H < 40) return;
 
     const inc = store.selected();
-    const trail = inc ? inc.trackPath : [];
     const activeId = inc ? inc.cameraId : null;
-    const predictedId = inc ? inc.predictedNext : null;
 
     svgEl.setAttribute('viewBox', `0 0 ${W} ${H}`);
     clear(svgEl);
@@ -69,67 +73,17 @@ export function createMap(root, store, { onSelectCamera }) {
     }
     svgEl.append(grid);
 
-    /* buildings */
-    for (const b of BUILDINGS) {
-      const a = pt(b.x, b.y);
-      const bw = b.w * W;
-      const bh = b.h * H;
-      svgEl.append(svg('rect', {
-        class: 'map__bldg', x: a.x, y: a.y, width: bw, height: bh, rx: 3,
-      }));
-      // only label when the box can actually hold the text
-      if (bw > 72 && bh > 20) {
-        svgEl.append(svg('text', {
-          class: 'map__bldg-label',
-          x: a.x + bw / 2,
-          y: a.y + bh / 2 + 3,
-          'text-anchor': 'middle',
-          text: b.label,
-        }));
-      }
-    }
-
-    /* trail through visited cameras, then on to the prediction */
-    const trailPts = trail
-      .map((id) => CAMERAS.find((c) => c.id === id))
-      .filter(Boolean)
-      .map((c) => pt(c.x, c.y));
-
-    const predictedCam = predictedId ? CAMERAS.find((c) => c.id === predictedId) : null;
-    const predictedPt = predictedCam ? pt(predictedCam.x, predictedCam.y) : null;
-    const pathPts = predictedPt ? [...trailPts, predictedPt] : trailPts;
-
-    if (pathPts.length > 1) {
-      let d = `M ${pathPts[0].x} ${pathPts[0].y}`;
-      for (let i = 1; i < pathPts.length; i += 1) {
-        const prev = pathPts[i - 1];
-        const cur = pathPts[i];
-        const cx = (prev.x + cur.x) / 2;
-        const cy = Math.min(prev.y, cur.y) - Math.min(30, H * 0.12);
-        d += ` Q ${cx} ${cy} ${cur.x} ${cur.y}`;
-      }
-      svgEl.append(svg('path', { class: 'map__path', d }));
-    }
-
-    if (predictedPt) {
-      svgEl.append(svg('circle', {
-        class: 'map__predict', cx: predictedPt.x, cy: predictedPt.y, r: PIN_W * 0.8,
-      }));
-    }
-
     /* pins */
     for (const cam of CAMERAS) {
       const p = pt(cam.x, cam.y);
       const isActive = cam.id === activeId;
-      const isPredicted = cam.id === predictedId;
 
       const g = svg('g', {
-        class: `pin${isActive ? ' pin--active' : ''}${isPredicted ? ' pin--predicted' : ''}`,
+        class: `pin${isActive ? ' pin--active' : ''}`,
         tabindex: '0',
         role: 'button',
         'aria-label': `Camera ${cam.no}, ${cam.name}`
-          + `${isActive ? ', active incident' : ''}`
-          + `${isPredicted ? ', predicted next' : ''}`,
+          + `${isActive ? ', active incident' : ''}`,
         onClick: () => onSelectCamera(cam.id),
         onKeydown: (ev) => {
           if (ev.key === 'Enter' || ev.key === ' ') {
@@ -172,23 +126,22 @@ export function createMap(root, store, { onSelectCamera }) {
   svgEl = svg('svg', {
     class: 'map-svg',
     role: 'img',
-    'aria-label': 'Campus map showing camera locations, the tracked path and the predicted next camera',
+    'aria-label': 'Campus map showing camera locations and which camera holds the selected incident',
   });
   wrapEl = h('div', { class: 'map-wrap' }, [svgEl]);
 
   mount(root,
     h('div', { class: 'panel__head' }, [
       h('div', { class: 'panel__head-l' }, [
-        h('div', { class: 'eyebrow', text: 'Live location' }),
-        h('h2', { class: 'panel__title', id: 'map-title', text: 'Campus tracking' }),
+        h('div', { class: 'eyebrow', text: 'Camera locations' }),
+        h('h2', { class: 'panel__title', id: 'map-title', text: 'Campus map' }),
       ]),
       headRight,
     ]),
     h('div', { class: 'panel__body panel__body--flush map-body' }, [
       wrapEl,
       h('div', { class: 'map__legend' }, [
-        h('span', {}, [h('i', { style: 'background:var(--critical)' }), 'Active']),
-        h('span', {}, [h('i', { style: 'background:var(--high)' }), 'Predicted next']),
+        h('span', {}, [h('i', { style: 'background:var(--critical)' }), 'Active incident']),
         h('span', {}, [h('i', { style: 'background:var(--accent)' }), 'Online']),
       ]),
     ]),

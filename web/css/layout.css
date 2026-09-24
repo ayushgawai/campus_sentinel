@@ -60,7 +60,7 @@
 
 .healthstrip {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   background: var(--panel);
   border-bottom: 1px solid var(--line);
 }
@@ -104,16 +104,16 @@
 .panel--detail { grid-area: detail; }
 .panel--call   { grid-area: call; }
 
-/* When a call is live the console takes the whole lower half — the dual
-   transcript plus live tool calls need the width. */
+/* While a call runs the transcript takes the cell directly below the camera
+   wall, in place of the campus map. The detail panel stays put, so the operator
+   keeps the evidence and the action buttons in view alongside the call. */
 .main--call {
   grid-template-areas:
     "wall   queue"
-    "call   call";
+    "call   detail";
 }
 
-.main--call .panel--map,
-.main--call .panel--detail { display: none; }
+.main--call .panel--map { display: none; }
 
 .panel__head {
   display: flex;
@@ -182,11 +182,12 @@
     grid-template-areas:
       "wall"
       "queue"
-      "call";
+      "call"
+      "detail";
   }
-  .main--call .panel--call { min-height: 420px; }
+  .main--call .panel--call { min-height: 380px; }
   .main { min-height: 0; }
-  .healthstrip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .healthstrip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .panel--wall   { min-height: 340px; }
   .panel--map    { min-height: 300px; }
 }

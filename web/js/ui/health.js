@@ -1,12 +1,16 @@
-/* Health strip — six tiles.
+/* Health strip — four tiles.
  *
- * Only cameras/models/gpu_util/p95_ms/frames_screened/frames_escalated come
- * off the wire. The screened rate and the escalation percentage are derived
- * here; the model count and chip temperature are optional extras that the
- * mock supplies and the real api will not, so both degrade quietly.
+ * Every value here moves. The GPU load and p95 latency tiles were removed:
+ * DemoHub._health() in services/api/hub.py publishes gpu_util=0.68 and
+ * p95_ms=182.0 as literal constants on every tick, so those tiles read like
+ * live telemetry while reporting nothing. No GPU or latency measurement exists
+ * anywhere in the service yet. Put them back when it does.
+ *
+ * The screened rate and the escalation percentage are derived in the browser;
+ * neither is on the wire.
  */
 
-import { h, mount, fmtInt, fmtPct, fmtPctValue } from './dom.js';
+import { h, mount, fmtInt, fmtPctValue } from './dom.js';
 import { icons } from './icons.js';
 import { Change } from '../store.js';
 
@@ -43,12 +47,6 @@ export function createHealthStrip(root, store) {
 
     const allCamsUp = hs.camerasOnline === hs.camerasTotal;
 
-    // models: prefer the mock's count, fall back to the contract boolean
-    const modelsValue = hs.modelsCount !== null ? String(hs.modelsCount) : '';
-    const modelsUnit = hs.modelsResident
-      ? (hs.modelsCount !== null ? 'resident' : 'RESIDENT')
-      : 'loading';
-
     mount(root,
       tile({
         icon: icons.camera,
@@ -60,24 +58,9 @@ export function createHealthStrip(root, store) {
       tile({
         icon: icons.chip,
         label: 'Models',
-        value: modelsValue,
-        unit: modelsUnit,
+        value: hs.modelsResident ? 'Resident' : 'Loading',
+        unit: '',
         tone: hs.modelsResident ? 'ok' : 'warn',
-      }),
-      tile({
-        icon: icons.gauge,
-        label: 'GPU load',
-        value: fmtPct(hs.gpuUtil),
-        // chip temperature is a mock-only extra
-        unit: hs.gpuTempC !== null ? `${hs.gpuTempC}°C` : '',
-        tone: hs.gpuUtil > 0.9 ? 'warn' : null,
-      }),
-      tile({
-        icon: icons.activity,
-        label: 'p95 latency',
-        value: fmtInt(hs.p95Ms),
-        unit: 'ms',
-        tone: hs.p95Ms > 220 ? 'warn' : null,
       }),
       tile({
         icon: icons.scan,
