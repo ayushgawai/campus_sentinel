@@ -1,4 +1,29 @@
 {
-  "cameras": [],
-  "_note": "Naman fills coordinates, addresses, entrances, adjacency"
+  "cameras": [
+    {
+      "camera_id": "CAM-01",
+      "location": "Lobby entrance",
+      "seville_label": "CAM5",
+      "feed": "seville_option1_3cam_locked",
+      "file": "CAM01_lobby_entrance_IN_then_OUT_339s.mp4",
+      "media_root_zgx": "/home/hp25/Documents/campus_sentinel_media/feeds/seville_option1_3cam_locked"
+    },
+    {
+      "camera_id": "CAM-02",
+      "location": "Yellow hallway east",
+      "seville_label": "CAM1",
+      "feed": "seville_option1_3cam_locked",
+      "file": "CAM02_hallway_east_IN_then_OUT_339s.mp4",
+      "media_root_zgx": "/home/hp25/Documents/campus_sentinel_media/feeds/seville_option1_3cam_locked"
+    },
+    {
+      "camera_id": "CAM-03",
+      "location": "Yellow hallway west",
+      "seville_label": "CAM7",
+      "feed": "seville_option1_3cam_locked",
+      "file": "CAM03_hallway_west_IN_then_OUT_339s.mp4",
+      "media_root_zgx": "/home/hp25/Documents/campus_sentinel_media/feeds/seville_option1_3cam_locked"
+    }
+  ],
+  "_note": "Coordinates / adjacency still TBD (Naman). Mock CCTV mp4s live outside the repo — see data/feeds/seville_option1_3cam_locked.json"
 }

@@ -18,6 +18,7 @@ from typing import Any
 from urllib.parse import unquote
 
 from .hub import DemoHub, dumps
+from .vision_bridge import VisionBridge, vision_enabled
 
 DEFAULT_HOST = "0.0.0.0"
 DEFAULT_PORT = 8080
@@ -97,6 +98,7 @@ class ApiServer:
         self.port = port
         self.clients: set[WsClient] = set()
         self.hub = DemoHub(broadcast=self.broadcast)
+        self.vision = VisionBridge(self.hub) if vision_enabled() else None
 
     async def broadcast(self, envelope: dict[str, Any]) -> None:
         blob = dumps(envelope)
@@ -189,6 +191,8 @@ class ApiServer:
             if first:
                 await self.hub.seed()
                 await self.hub.start_loops()
+                if self.vision is not None:
+                    self.vision.start()
             while client.alive:
                 raw = await client.recv_text()
                 if raw is None:
@@ -221,6 +225,8 @@ class ApiServer:
             client.close()
             if not self.clients:
                 await self.hub.stop_loops()
+                if self.vision is not None:
+                    await self.vision.stop()
 
     async def _mjpeg(self, writer: asyncio.StreamWriter, camera_id: str) -> None:
         name = CLIP_BY_CAM.get(camera_id)

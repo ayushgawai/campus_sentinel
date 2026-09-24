@@ -2,6 +2,7 @@
 
 from .adjudicate import EscalateRequest, EscalateResult, adjudicate
 from .audit import AuditEntry, AuditLog
+from .from_vision import escalate_request_from_vision, normalize_camera_id
 from .fuse import fuse_probs, logprob_to_prob
 from .sampler import sample_from_timestamps, sample_indices
 from .state_machine import StateMachine
@@ -17,8 +18,10 @@ __all__ = [
     "StateMachine",
     "ZRTClient",
     "adjudicate",
+    "escalate_request_from_vision",
     "fuse_probs",
     "logprob_to_prob",
+    "normalize_camera_id",
     "sample_from_timestamps",
     "sample_indices",
     "severity_from_fused",

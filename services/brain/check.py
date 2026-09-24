@@ -13,6 +13,10 @@ if str(ROOT) not in sys.path:
 from contracts import IncidentClass, IncidentState, Severity  # noqa: E402
 from services.brain.adjudicate import EscalateRequest, adjudicate  # noqa: E402
 from services.brain.audit import AuditLog  # noqa: E402
+from services.brain.from_vision import (  # noqa: E402
+    escalate_request_from_vision,
+    normalize_camera_id,
+)
 from services.brain.fuse import fuse_probs, logprob_to_prob  # noqa: E402
 from services.brain.sampler import sample_indices  # noqa: E402
 from services.brain.state_machine import StateMachine  # noqa: E402
@@ -149,6 +153,36 @@ def main() -> None:
         raise AssertionError("placeholder thresholds must require explicit ack")
     except RuntimeError:
         pass
+
+    # vision Escalation → EscalateRequest (duck-typed; no vision import)
+    assert normalize_camera_id("CAM-01") == "cam-01"
+    from dataclasses import dataclass
+    from datetime import datetime, timezone
+
+    @dataclass
+    class _Esc:
+        camera_id: str
+        track_id: str
+        ts: datetime
+        fused: float
+        rules: list[str]
+        vadclip: float = 0.0
+
+    mapped = escalate_request_from_vision(
+        _Esc(
+            camera_id="CAM-01",
+            track_id="t-9",
+            ts=datetime(2026, 9, 24, tzinfo=timezone.utc),
+            fused=0.91,
+            rules=["fall", "Orientation flip"],
+        )
+    )
+    assert mapped.camera_id == "cam-01"
+    assert mapped.router_score == 0.91
+    assert mapped.class_token_forced is IncidentClass.FALL
+    via = adjudicate(mapped, zrt=ZRTClient(forced=True))
+    assert via.record.camera_id == "cam-01"
+    assert via.record.class_token is IncidentClass.FALL
 
     print("brain self-check OK")
 

@@ -4,6 +4,7 @@ data/clips/*
 !data/clips/.gitkeep
 services/vision/weights/
 *.pt
+*.engine
 *.onnx
 *.safetensors
 *.bin
