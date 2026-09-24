@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-24 (ayush) — SSHFS mount fix + Twilio .env on box
+Last updated: 2026-09-24 (ayush) — GB10 stability: 0.40 Qwen fraction + 32G swap
 
 ## HARD RULES
 1. `git pull --rebase origin main` before every push. Work on **main**.
@@ -24,8 +24,8 @@ CS_VISION_SEVILLE=1 CS_VISION_YOLO=pt CS_VISION_DEVICE=cuda:0 \
   CS_VISION_STEP_S=0.5 CS_VISION_COOLDOWN_S=12 \
   services/vision/.venv/bin/python -m services.api --host 0.0.0.0 --port 8080
 ```
-- Prefer **0.40** GPU fraction when coexisting (was 0.55 — left too little headroom).
-- **No swap today** — add 32G `/swapfile` with sudo (commands in STABILITY.md).
+- Prefer **0.40** GPU fraction when coexisting (0.55 left too little headroom and hard-locked the box).
+- **32G swap is on** the shared ZGX box (`/swapfile`). Do not start Qwen at 0.55.
 - A.1 UI-only: do **not** start ZRT.
 
 ## Mac mount

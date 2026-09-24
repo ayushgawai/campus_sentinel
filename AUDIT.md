@@ -32,7 +32,7 @@ Last audited: 2026-09-24 (ayush). Evidence from code reads + ZGX runtime checks.
 | C7 Fusion | Present | `fusion.py` weighted sum + escalate threshold | OK | Fixed broken Mac import |
 | D1 Peak-weighted 16 | Present | `sampler.py` via `bundle.py` | OK | — |
 | D2 ZRT :8000 | Present | Live `zrt status` Ready; client hits `/v1` | OK | — |
-| D3 Qwen FP8 | Present | Served model id matches | OK | Keep **0.55** GPU fraction |
+| D3 Qwen FP8 | Present | Served model id matches | OK | Keep **0.40** GPU fraction (0.55 hard-locks GB10) |
 | D4 Prefill facts only | Present | Prompt bans router scores; `_post_json` rejects `router_score`/`fused_prob` | OK | — |
 | D5 Completion A + logprobs | Present | See critical check; no temp calibration fit | Partial OK | Calibration = later |
 | D6 Completion B | Was missing | No describe path | MISSED → fixed | `ZRTClient.describe` + adjudicate wire |
@@ -66,6 +66,6 @@ Last audited: 2026-09-24 (ayush). Evidence from code reads + ZGX runtime checks.
 
 ## Need from the team
 - **Naman:** real ambient/12 clips + confirm scenario timings against Seville peek.
-- **Pratham:** optional TRT YOLO again at 0.55; fix VadCLIP “random init” warning if real.
+- **Pratham:** optional TRT YOLO again with Qwen at **0.40** (not 0.55); fix VadCLIP “random init” warning if real.
 - **Indraneel:** wire officer UI to live Completion B person text + tool calls; next-cam prediction when OSNet lands.
 - **Group:** ack CallBrief `unknowns` field if you want it on the wire contract.

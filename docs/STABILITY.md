@@ -45,7 +45,6 @@ sudo swapon /swapfile
 echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 ```
 
-## Current box state (post-crash)
-- Qwen / `services.api` **not** running (good — idle).
-- Only light `http.server` processes.
-- ~114 GiB MemAvailable — healthy until we reload models.
+## Current box state
+- **32G `/swapfile` is enabled** and in `/etc/fstab`.
+- Start Qwen at **0.40**, then YOLO. Do not use 0.55.
