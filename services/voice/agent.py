@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
@@ -87,6 +88,7 @@ class VoiceAgent:
         self._person = ""
         self._visible = True
         self._last_answer = ""
+        self._unknown_answer_index = 0
         self._live_brief: CallBrief | None = None
         self._update_q: asyncio.Queue[tuple[str, str]] = asyncio.Queue()
 
@@ -116,6 +118,7 @@ class VoiceAgent:
         self._person = brief.person_description
         self._live_brief = brief
         self._visible = True
+        self._unknown_answer_index = 0
         self._task = asyncio.create_task(
             self._run(rec, brief, script or WEAPON_SCRIPT),
             name=f"call-{rec.incident_id}",
@@ -132,6 +135,7 @@ class VoiceAgent:
         self._person = brief.person_description
         self._live_brief = brief
         self._visible = True
+        self._unknown_answer_index = 0
         facts = scene_facts(rec.camera_id)
         site = site_config()
         self._site_address = str(site.get("address", brief.address)).replace(
@@ -188,7 +192,7 @@ class VoiceAgent:
                 f"The person is in {facts['spoken_location']}."
                 if self._visible
                 and facts.get("spoken_location")
-                else "The person is not currently visible; this is the last confirmed camera."
+                else "I don't see the person now; this is their last confirmed camera."
             )
         elif not self._visible and any(
             word in q
@@ -198,11 +202,11 @@ class VoiceAgent:
                 "look like", "how many", "count", "number of",
             )
         ):
-            answer = "The person is not currently visible, so I cannot confirm that now."
+            answer = "They aren't visible, so I can't verify that now."
         elif any(word in q for word in ("weapon", "gun", "firearm")):
             answer = f"The cameras show a visible {facts.get('visible_weapon', 'weapon')}."
         elif any(word in q for word in ("hurt", "injur", "medical", "conscious", "breath", "pulse")):
-            answer = "I cannot confirm any injuries or medical condition from the cameras."
+            answer = "I can't verify their medical condition from this camera."
         elif any(word in q for word in ("direction", "travel", "going", "headed")):
             answer = f"The person is {facts.get('direction', 'moving in an unconfirmed direction')}."
         elif any(word in q for word in ("describe", "description", "wearing", "clothing", "look like")):
@@ -210,7 +214,7 @@ class VoiceAgent:
         elif any(word in q for word in ("how many", "count", "number of")):
             answer = f"The cameras currently show {facts.get('subject_count', 1)} person of interest."
         elif any(word in q for word in ("name", "identity", "who is", "intent", "why")):
-            answer = "I cannot confirm the person's identity or intent from the cameras."
+            answer = "I can't identify the person or their intent from this footage."
         else:
             if not q.rstrip().endswith("?") and not q.lstrip().startswith(
                 (
@@ -220,10 +224,30 @@ class VoiceAgent:
                 )
             ):
                 return ""
+            await self.publish(
+                CallTranscriptDelta(
+                    incident_id=incident_id,
+                    speaker="sentinel",
+                    text="One moment, I'm checking the latest camera view.",
+                    ts=utcnow(),
+                )
+            )
             try:
                 answer = await asyncio.to_thread(self._zrt.answer_dispatcher, facts, question)
             except Exception:
-                answer = "The cameras do not confirm that detail."
+                answer = ""
+            refusal = answer.strip().lower()
+            if not answer or refusal.startswith(
+                ("the cameras do not confirm", "i cannot confirm", "i can't confirm")
+            ):
+                answers = (
+                    "I don't see that on the current camera.",
+                    "That isn't visible in the current camera view.",
+                )
+                answer = answers[self._unknown_answer_index % len(answers)]
+                self._unknown_answer_index += 1
+            else:
+                answer = re.split(r"(?<=[.!?])\s+", answer, maxsplit=1)[0]
         self._last_answer = answer
         await self.publish(
             CallTranscriptDelta(

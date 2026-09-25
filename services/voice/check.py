@@ -124,6 +124,12 @@ async def _main() -> None:
         def answer_dispatcher(self, facts, question):
             self.calls += 1
             assert facts["camera_id"] == "cam-02"
+            if question == "What color is the door?":
+                return "The door appears gray. I cannot verify whether it is locked."
+            if question == "What is happening near the door?":
+                return "The person is moving east, but I cannot confirm their destination."
+            if question == "Is there smoke?":
+                return "I cannot confirm that from the camera."
             return "The cameras do not confirm that detail."
 
     live_events: list[object] = []
@@ -146,7 +152,12 @@ async def _main() -> None:
     assert address == "One Washington Square, San Jose, California 95192."
     assert await live.answer_dispatcher(rec.incident_id, "Repeat the address.") == address
     assert "long firearm" in await live.answer_dispatcher(rec.incident_id, "What weapon do you see?")
-    assert "cannot confirm any injuries" in await live.answer_dispatcher(rec.incident_id, "Is anyone hurt?")
+    assert await live.answer_dispatcher(rec.incident_id, "Is anyone hurt?") == (
+        "I can't verify their medical condition from this camera."
+    )
+    assert await live.answer_dispatcher(rec.incident_id, "Are they breathing?") == (
+        "I can't verify their medical condition from this camera."
+    )
     assert await live.answer_dispatcher(rec.incident_id, "Where is the person now?") == (
         "The person is in the ground-floor lobby."
     )
@@ -163,22 +174,42 @@ async def _main() -> None:
         "The person is in the east corridor."
     )
     live.update_visual("cam-02", False)
-    assert "not currently visible" in await live.answer_dispatcher(rec.incident_id, "Where is the person now?")
-    assert "not currently visible" in await live.answer_dispatcher(rec.incident_id, "What weapon do you see?")
+    assert "don't see the person" in await live.answer_dispatcher(rec.incident_id, "Where is the person now?")
+    assert "aren't visible" in await live.answer_dispatcher(rec.incident_id, "What weapon do you see?")
     live.update_visual("cam-02", True)
-    assert await live.answer_dispatcher(rec.incident_id, "Is the door locked?") == "The cameras do not confirm that detail."
-    assert qwen.calls == 1
-    assert await live.answer_dispatcher(rec.incident_id, "Please repeat that.") == (
-        "The cameras do not confirm that detail."
+    event_count = len(live_events)
+    assert await live.answer_dispatcher(rec.incident_id, "Is the door locked?") == (
+        "I don't see that on the current camera."
     )
     assert qwen.calls == 1
+    new_lines = [getattr(event, "text", "") for event in live_events[event_count:]]
+    assert new_lines == [
+        "One moment, I'm checking the latest camera view.",
+        "I don't see that on the current camera.",
+    ]
+    assert await live.answer_dispatcher(rec.incident_id, "Is there smoke?") == (
+        "That isn't visible in the current camera view."
+    )
+    assert qwen.calls == 2
+    assert await live.answer_dispatcher(rec.incident_id, "Please repeat that.") == (
+        "That isn't visible in the current camera view."
+    )
+    assert qwen.calls == 2
+    assert await live.answer_dispatcher(rec.incident_id, "What color is the door?") == (
+        "The door appears gray."
+    )
+    assert qwen.calls == 3
+    assert await live.answer_dispatcher(
+        rec.incident_id, "What is happening near the door?"
+    ) == "The person is moving east, but I cannot confirm their destination."
+    assert qwen.calls == 4
     event_count = len(live_events)
     assert await live.answer_dispatcher(rec.incident_id, "Okay.") == ""
-    assert len(live_events) == event_count and qwen.calls == 1
+    assert len(live_events) == event_count and qwen.calls == 4
     assert await live.answer_dispatcher(
         rec.incident_id, "really go and all the pressure clear."
     ) == ""
-    assert len(live_events) == event_count and qwen.calls == 1
+    assert len(live_events) == event_count and qwen.calls == 4
 
     from services.voice.media_bridge import MediaStreamBridge
 
