@@ -22,6 +22,7 @@ import { redactPlaces, cameraTitle } from "../site.js?v=live2";
 import { clear, el, setText } from "../dom.js?v=live2";
 import { OP_STATUS_EVENT, operatorActions, actionBar } from "./operator.js?v=live2";
 import { isDispatchedOrLater } from "../actions.js?v=live2";
+import { phoneCallsLive, subscribeModelStatus } from "../modelStatus.js?v=live2";
 
 const STREAM_MERGE_MS = 700;
 const CALL_STATES = new Set([
@@ -96,6 +97,18 @@ export function findCallIncident(state) {
     if (inc.severity === "SEVERE" && CALL_STATES.has(inc.state)) return inc;
   }
   return null;
+}
+
+/**
+ * Call provider label: the active call's DISPATCHED note says whether the api
+ * placed a SignalWire call; with no call, /voice/status says what it would do.
+ */
+export function callNoteText(state) {
+  const inc = findCallIncident(state);
+  const phone = inc ? state.call?.provider === "signalwire" : phoneCallsLive();
+  if (!phone) return "Simulated call · verified teammate";
+  if (inc && state.call?.providerError) return "SignalWire call failed · verified teammate";
+  return "SignalWire call · verified teammate";
 }
 
 /**
@@ -204,6 +217,7 @@ export function mountCallHost(host, store, actions) {
   const chatScroll = host.querySelector("[data-chat]");
   const toolsHost = host.querySelector("[data-tools]");
   const actionEl = host.querySelector("[data-action]");
+  const noteEl = host.querySelector(".call-sim-note");
 
   let lastThreadLen = -1;
   let lastToolCount = -1;
@@ -346,6 +360,7 @@ export function mountCallHost(host, store, actions) {
 
   function render(state) {
     const inc = findCallIncident(state);
+    setText(noteEl, callNoteText(state));
     paintTimes(state);
     const cand = inc ? null : callCandidate(state);
     paintAction(cand);
@@ -389,10 +404,12 @@ export function mountCallHost(host, store, actions) {
   render(store.getState());
   const unsub = store.subscribe(render);
   const unsubTick = subscribeTick((nowMs) => paintTimes(store.getState(), nowMs));
+  const unsubVoice = subscribeModelStatus(() => render(store.getState()));
 
   return () => {
     unsub();
     unsubTick();
+    unsubVoice();
   };
 }
 
@@ -471,6 +488,7 @@ export function mountCallPanel(root, store, actions) {
   const toolsHost = root.querySelector("[data-tools]");
   const footerEl = root.querySelector("[data-footer]");
   const scrollEl = root.querySelector(".sidebar-stack--scroll");
+  const noteEl = root.querySelector(".call-sim-note");
 
   let lastThreadLen = -1;
   let lastToolId = null;
@@ -583,6 +601,7 @@ export function mountCallPanel(root, store, actions) {
   function render(state) {
     if (!open) return;
     const inc = findCallIncident(state);
+    setText(noteEl, callNoteText(state));
     paintTimes(state);
     paintFooter(inc);
 
@@ -645,6 +664,7 @@ export function mountCallPanel(root, store, actions) {
 
   store.subscribe(render);
   subscribeTick((nowMs) => paintTimes(store.getState(), nowMs));
+  subscribeModelStatus(() => render(store.getState()));
 
   const api = {
     isOpen: () => open,

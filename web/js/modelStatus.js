@@ -39,8 +39,14 @@ async function probeVoice(url) {
     if (!res.ok) return;
     const body = await res.json();
     if (!body || typeof body !== "object") return;
-    const next = { asr: body.parakeet === true, tts: body.kokoro === true };
-    if (voice && voice.asr === next.asr && voice.tts === next.tts) return;
+    const next = {
+      asr: body.parakeet === true,
+      tts: body.kokoro === true,
+      phone: body.signalwire?.configured === true,
+    };
+    if (voice && voice.asr === next.asr && voice.tts === next.tts && voice.phone === next.phone) {
+      return;
+    }
     voice = next;
     for (const fn of listeners) fn();
   } catch {
@@ -86,6 +92,11 @@ export function startModelStatus(store) {
     unsub();
     window.clearInterval(timer);
   };
+}
+
+/** True when /voice/status says SignalWire will place a real phone call. */
+export function phoneCallsLive() {
+  return voice?.phone === true;
 }
 
 /** Re-render hook for voice probe results (store notifies the rest). */

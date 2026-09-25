@@ -96,7 +96,10 @@ async function postJson(url, body) {
       data = null;
     }
     if (res.ok) return { ok: true, data };
-    if ([404, 405, 501].includes(res.status)) return { ok: false, fallback: true };
+    // A JSON error on 404 is the api answering (e.g. incident not found).
+    if ([404, 405, 501].includes(res.status) && !data?.error) {
+      return { ok: false, fallback: true };
+    }
     const reason = data?.error || data?.detail || data?.message || `HTTP ${res.status}`;
     return { ok: false, fallback: false, message: String(reason) };
   } catch {
@@ -189,6 +192,29 @@ export function createActions({ store, getMode, transport }) {
   function getOpStatus(kind, id) {
     return opStatus.get(`${kind}:${id}`) || null;
   }
+
+  /** Api guardrail reasons from demo.control "dispatch_blocked:<reason>". */
+  const BLOCKED_REASONS = {
+    voice_busy: "a voice call is already active",
+    already_dispatched: "incident was already dispatched",
+    kill_switch: "calling is disabled by the kill switch",
+    hourly_cap: "hourly dispatch limit reached",
+  };
+
+  // An automatic (vision) dispatch the api refused has no REST response, so
+  // show it on that incident's Call for help like a declined operator call.
+  let lastBlocked = null;
+  store.subscribe?.((state) => {
+    const blocked = state.call?.blocked;
+    if (!blocked || blocked === lastBlocked) return;
+    lastBlocked = blocked;
+    const key = `dispatch:${blocked.incidentId}`;
+    if (opStatus.get(key)?.state === "pending") return;
+    setOpStatus(key, {
+      state: "declined",
+      message: BLOCKED_REASONS[blocked.reason] || blocked.reason || "dispatch was blocked",
+    });
+  });
 
   const isLive = () => getMode() === "WS";
   const stampIso = () => new Date(now()).toISOString();

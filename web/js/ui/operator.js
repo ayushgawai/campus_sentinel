@@ -21,6 +21,7 @@ import { clear, el, setText } from "../dom.js?v=live2";
 import { icon } from "../icons.js?v=live2";
 import { subscribeTick } from "../clock.js?v=live2";
 import { callElapsedMs, formatCallTimer } from "./call.js?v=live2";
+import { phoneCallsLive } from "../modelStatus.js?v=live2";
 
 export const OP_REPORT_EVENT = "sentinel:op-report";
 export const OP_CALL_EVENT = "sentinel:op-call";
@@ -498,7 +499,9 @@ export function mountOperator(root, store, actions) {
     body.appendChild(
       el("p", {
         className: "dismiss__lead",
-        text: "Simulated call to a verified teammate. No emergency number is dialed.",
+        text: phoneCallsLive()
+          ? "SignalWire phone call to a verified teammate. No emergency number is dialed."
+          : "Simulated call to a verified teammate. No emergency number is dialed.",
       }),
     );
     if (inc.severity !== "SEVERE") {

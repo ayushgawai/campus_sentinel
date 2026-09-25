@@ -50,7 +50,15 @@ function createInitialState() {
       transcript: [],
       tools: [],
       dispatchedAt: null,
+      /** "signalwire" | "simulated", from the DISPATCHED note. */
+      provider: null,
+      /** SignalWire place_call failure reason, if any. */
+      providerError: null,
+      /** Last automatic dispatch the api refused: { incidentId, reason }. */
+      blocked: null,
     },
+    /** Last incident.upsert id; api dispatch_blocked controls follow it. */
+    lastUpsertId: null,
     /** incident_id → ordered camera_id list for pursuit drawing after seek */
     cameraPath: {},
     demo: {
@@ -243,6 +251,7 @@ export function createStore() {
           timeline = prev.timeline.slice();
         }
         state.incidents[id] = { ...rec, timeline };
+        state.lastUpsertId = id;
         if (!state.order.includes(id)) state.order.push(id);
         resortOrder(state);
         capIncidents(state);
@@ -278,6 +287,10 @@ export function createStore() {
         if (event.state === "DISPATCHED") {
           state.call.incidentId = id;
           state.call.dispatchedAt = event.ts || next.updated_at;
+          state.call.provider = /^signalwire\b/i.test(event.note || "")
+            ? "signalwire"
+            : "simulated";
+          state.call.providerError = null;
         }
         resortOrder(state);
         syncSelection(state);
@@ -333,6 +346,22 @@ export function createStore() {
         break;
       }
       case "demo.control": {
+        // Api voice status rides on scenario ids ("kind:detail").
+        const sid = event.action === "scenario" ? String(event.scenario_id || "") : "";
+        const cut = sid.indexOf(":");
+        const kind = cut > 0 ? sid.slice(0, cut) : "";
+        const detail = cut > 0 ? sid.slice(cut + 1) : "";
+        if (kind === "signalwire_call") {
+          state.call.providerError = null;
+        } else if (kind === "signalwire_fail" || kind === "signalwire_error") {
+          state.call.providerError = detail || kind;
+        } else if (kind === "dispatch_blocked") {
+          const inc = state.incidents[state.lastUpsertId];
+          if (!inc || inc.state !== "ALERTED") return;
+          state.call.blocked = { incidentId: inc.incident_id, reason: detail };
+        } else {
+          return;
+        }
         break;
       }
       case "camera.online": {

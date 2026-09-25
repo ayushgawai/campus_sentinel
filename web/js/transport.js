@@ -187,6 +187,13 @@ export function start(handler, hooks = {}) {
   }
 
   setMode("LIVE");
+
+  function clearLive() {
+    if (typeof softReset === "function") softReset();
+    if (window.__map?.clearPredicted) window.__map.clearPredicted();
+    if (window.__map?.clearPursuit) window.__map.clearPursuit();
+  }
+
   let socket = null;
   let closed = false;
   let attempt = 0;
@@ -223,6 +230,9 @@ export function start(handler, hooks = {}) {
       try {
         const data = JSON.parse(msg.data);
         if (LIVE_TS_TYPES.has(data?.type)) sampleServerTime(data.ts);
+        // The api broadcasts reset to every client (it clears its incidents
+        // and restarts INC ids), so drop stale local state here too.
+        if (data?.type === "demo.control" && data.action === "reset") clearLive();
         safeHandle(handler, data);
       } catch (err) {
         console.warn("[transport] bad JSON message", err);
@@ -247,9 +257,7 @@ export function start(handler, hooks = {}) {
     mode: "WS",
     player: null,
     resetDemo() {
-      if (typeof softReset === "function") softReset();
-      if (window.__map?.clearPredicted) window.__map.clearPredicted();
-      if (window.__map?.clearPursuit) window.__map.clearPursuit();
+      clearLive();
       sendControl("reset");
     },
     setScenario(id) {
