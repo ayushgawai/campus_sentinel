@@ -4,10 +4,9 @@
  */
 
 export const SITE = {
-  name: "Demo Site",
-  type: "facility",
+  name: "Primary site",
+  type: "Facility",
   timezone: "America/Los_Angeles",
-  tagline: "Where AI Meets Security.",
 };
 
 /**

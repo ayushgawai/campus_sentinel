@@ -14,13 +14,13 @@ import {
   audienceText,
   isDispatchedOrLater,
   isOperatorReported,
-} from "../actions.js";
-import { WALL_CAMERA_IDS, cameraLabel } from "../site.js";
-import { classLabel, formatPct } from "../format.js";
-import { clear, el, setText } from "../dom.js";
-import { icon } from "../icons.js";
-import { subscribeTick } from "../clock.js";
-import { callElapsedMs, formatCallTimer } from "./call.js";
+} from "../actions.js?v=fix7d";
+import { WALL_CAMERA_IDS, cameraLabel } from "../site.js?v=fix7d";
+import { classLabel, formatPct } from "../format.js?v=fix7d";
+import { clear, el, setText } from "../dom.js?v=fix7d";
+import { icon } from "../icons.js?v=fix7d";
+import { subscribeTick } from "../clock.js?v=fix7d";
+import { callElapsedMs, formatCallTimer } from "./call.js?v=fix7d";
 
 export const OP_REPORT_EVENT = "sentinel:op-report";
 export const OP_CALL_EVENT = "sentinel:op-call";
@@ -43,20 +43,23 @@ export function opButton({ className, iconName, text, onClick, attrs }) {
 export function operatorTag(inc) {
   if (!isOperatorReported(inc)) return null;
   return String(inc.incident_id || "").startsWith("op-local-")
-    ? "Reported by operator · not confirmed"
+    ? "Reported by operator · pending server confirmation"
     : "Reported by operator";
 }
 
 /** Tile chip / list meta: "92%", or "Operator" for a report with no model score. */
 export function confidenceShort(inc) {
-  if (inc?.fused_prob == null && isOperatorReported(inc)) return "· Operator";
-  return formatPct(inc?.fused_prob);
+  if (inc?.fused_prob == null && isOperatorReported(inc)) return "· Reported";
+  if (inc?.fused_prob == null) return "";
+  return formatPct(inc.fused_prob);
 }
 
 /** Sidebar card line: "92% confidence" or "Reported by operator". */
 export function confidenceLong(inc) {
   if (inc?.fused_prob == null && isOperatorReported(inc)) return "Reported by operator";
-  return `${formatPct(inc?.fused_prob)} confidence`;
+  // No score yet: say nothing rather than "Pending confidence".
+  if (inc?.fused_prob == null) return "";
+  return `${formatPct(inc.fused_prob)} confidence`;
 }
 
 // ---------- Dispatched status ticker (one per page, not per bar) ----------
@@ -132,8 +135,8 @@ export function operatorActions(inc, actions, { broadcast = true, call = true } 
 
   let noteText = "";
   for (const st of [call ? dispatchSt : null, broadcast ? broadcastSt : null]) {
-    if (st?.state === "unconfirmed") noteText = "Not confirmed by server";
-    if (st?.state === "declined") noteText = `Server declined: ${st.message || "request refused"}`;
+    if (st?.state === "unconfirmed") noteText = "Pending server confirmation";
+    if (st?.state === "declined") noteText = `Declined by server: ${st.message || "request refused"}`;
   }
   const note = el("p", { className: "op-note", attrs: { role: "status" } });
   setText(note, noteText);
@@ -180,8 +183,8 @@ export function actionBar(inc, actions, { review = true, card = true } = {}) {
 
   let noteText = "";
   for (const st of [dispatchSt, review ? broadcastSt : null]) {
-    if (st?.state === "unconfirmed") noteText = "Not confirmed by server";
-    if (st?.state === "declined") noteText = `Server declined: ${st.message || "request refused"}`;
+    if (st?.state === "unconfirmed") noteText = "Pending server confirmation";
+    if (st?.state === "declined") noteText = `Declined by server: ${st.message || "request refused"}`;
   }
   if (noteText) {
     bar.appendChild(el("p", { className: "op-bar__note", text: noteText, attrs: { role: "status" } }));
@@ -389,7 +392,7 @@ export function mountOperator(root, store, actions) {
       type: "text",
       attrs: {
         maxlength: String(MAX_NOTE),
-        placeholder: "Optional note",
+        placeholder: "Add a note (optional)",
         "aria-label": "Note",
         autocomplete: "off",
       },
@@ -436,7 +439,7 @@ export function mountOperator(root, store, actions) {
         return;
       }
       if (res.message) {
-        setText(err, `Server declined: ${res.message}`);
+        setText(err, `Declined by server: ${res.message}`);
         err.hidden = false;
       }
       paint();
@@ -491,7 +494,7 @@ export function mountOperator(root, store, actions) {
     body.appendChild(
       el("p", {
         className: "dismiss__lead",
-        text: "Simulated call to verified teammate. No emergency number is dialed.",
+        text: "Simulated call to a verified teammate. No emergency number is dialed.",
       }),
     );
     if (inc.severity !== "SEVERE") {
@@ -532,7 +535,7 @@ export function mountOperator(root, store, actions) {
       go.disabled = false;
       setText(go.querySelector("span"), "Call for help");
       if (res.message) {
-        setText(err, `Server declined: ${res.message}`);
+        setText(err, `Declined by server: ${res.message}`);
         err.hidden = false;
       } else {
         close();
@@ -662,8 +665,8 @@ export function mountOperator(root, store, actions) {
         setText(
           result,
           res.ok
-            ? `Broadcast sent to ${audienceText(aud)}`
-            : "Saved on the incident timeline. Not confirmed by server.",
+            ? `Broadcast sent to ${audienceText(aud)}.`
+            : "Saved to the incident timeline. Pending server confirmation.",
         );
         result.hidden = false;
         paint();
@@ -671,7 +674,7 @@ export function mountOperator(root, store, actions) {
         return;
       }
       if (res.message) {
-        setText(result, `Server declined: ${res.message}`);
+        setText(result, `Declined by server: ${res.message}`);
         result.hidden = false;
       }
       paint();

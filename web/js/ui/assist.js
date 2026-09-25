@@ -3,10 +3,10 @@
  * returns when the sidebar is closed.
  */
 
-import { now as clockNow } from "../clock.js";
-import { isOpenIncident } from "../format.js";
-import { OPEN_SIDEBAR_EVENT, MORE_INCIDENTS_EVENT } from "./cameras.js";
-import { LOGO_MARK_INVERSE } from "../logo.js";
+import { now as clockNow } from "../clock.js?v=fix7d";
+import { isOpenIncident } from "../format.js?v=fix7d";
+import { OPEN_SIDEBAR_EVENT, MORE_INCIDENTS_EVENT } from "./cameras.js?v=fix7d";
+import { LOGO_MARK_INVERSE } from "../logo.js?v=fix7d";
 
 function activeCount(state) {
   let n = 0;

@@ -1,15 +1,15 @@
 /** User actions — single place to wire REST / demo control later. */
 
-import { atIso, operatorCallRows } from "./mock.js";
-import { navigate } from "./router.js";
-import * as cameraSources from "./cameraSources.js";
-import { routes, API_TIMEOUT_MS } from "./config.js";
-import { now, mockSecondsFromIso } from "./clock.js";
-import { cameraLabel } from "./site.js";
+import { atIso, operatorCallRows } from "./mock.js?v=fix7d";
+import { navigate } from "./router.js?v=fix7d";
+import * as cameraSources from "./cameraSources.js?v=fix7d";
+import { routes, API_TIMEOUT_MS } from "./config.js?v=fix7d";
+import { now, mockSecondsFromIso } from "./clock.js?v=fix7d";
+import { cameraLabel } from "./site.js?v=fix7d";
 
 export const DISMISS_REASONS = [
   { id: "false_alarm", label: "False alarm" },
-  { id: "authorised", label: "Authorised activity" },
+  { id: "authorised", label: "Authorized activity" },
   { id: "other", label: "Other" },
 ];
 
@@ -263,7 +263,7 @@ export function createActions({ store, getMode, transport }) {
       const id = localReport(
         input,
         "op-local",
-        "Operator reported incident · not confirmed by server",
+        "Operator reported incident · pending server confirmation",
       );
       store.setSelected(id);
       return { ok: false, unconfirmed: true, id };
@@ -318,7 +318,7 @@ export function createActions({ store, getMode, transport }) {
       return { ok: true };
     }
     if (res.fallback) {
-      appendNote(id, "Operator requested dispatch · not confirmed by server");
+      appendNote(id, "Operator requested dispatch · pending server confirmation");
       setOpStatus(key, { state: "unconfirmed" });
       return { ok: false, unconfirmed: true };
     }
@@ -351,7 +351,7 @@ export function createActions({ store, getMode, transport }) {
       return { ok: true };
     }
     if (res.fallback) {
-      if (incidentId) appendNote(incidentId, `${note} · not confirmed by server`);
+      if (incidentId) appendNote(incidentId, `${note} · pending server confirmation`);
       setOpStatus(key, { state: "unconfirmed" });
       return { ok: false, unconfirmed: true };
     }

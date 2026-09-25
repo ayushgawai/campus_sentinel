@@ -1,5 +1,5 @@
-import { cameraLabel, WALL_CAMERA_IDS } from "./site.js";
-import { mockIso, setMockEpoch } from "./clock.js";
+import { cameraLabel, WALL_CAMERA_IDS } from "./site.js?v=fix7d";
+import { mockIso, setMockEpoch } from "./clock.js?v=fix7d";
 
 /**
  * Contract-shaped event helpers + deterministic mock timeline player.
@@ -261,7 +261,7 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
           updated_at: atIso(minorAt),
           rules_fired: ["sudden_acceleration", "running"],
           timeline: [
-            { ts: atIso(minorAt), state: "NEW", note: "Router escalate" },
+            { ts: atIso(minorAt), state: "NEW", note: "Detected" },
           ],
           dismissed_reason: null,
           schema_version: "1.0",
@@ -275,7 +275,7 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
         incident_id: MINOR_ID,
         state: "ALERTED",
         severity: "MINOR",
-        note: "Threshold MINOR",
+        note: "Classified as minor",
         at: minorAt + 1,
       }),
     });
@@ -285,7 +285,7 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
         incident_id: MINOR_ID,
         state: "RESOLVED",
         severity: "MINOR",
-        note: "Security reviewed: jogger",
+        note: "Reviewed by security: jogger",
         at: 55,
       }),
     });
@@ -325,7 +325,7 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
         updated_at: atIso(severeAt),
         state: "NEW",
         timeline: [
-          { ts: atIso(severeAt), state: "NEW", note: "Router escalate" },
+          { ts: atIso(severeAt), state: "NEW", note: "Detected" },
         ],
       },
       severeAt,
@@ -333,10 +333,10 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
   });
 
   const steps = [
-    { at: severeAt + 0.5, state: "ALERTED", note: "Threshold SEVERE" },
+    { at: severeAt + 0.5, state: "ALERTED", note: "Classified as severe" },
     { at: severeAt + 1.5, state: "DISPATCH_PENDING", note: "Dispatch queued" },
-    { at: severeAt + 3.5, state: "DISPATCHED", note: "Outbound call started" },
-    { at: severeAt + 9.5, state: "TRACKING", note: "Cross-camera pursuit" },
+    { at: severeAt + 3.5, state: "DISPATCHED", note: "Call started" },
+    { at: severeAt + 9.5, state: "TRACKING", note: "Tracking across cameras" },
   ];
   for (const s of steps) {
     script.push({
@@ -368,11 +368,11 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
           updated_at: atIso(h.at),
           state: "TRACKING",
           timeline: [
-            { ts: atIso(severeAt), state: "NEW", note: "Router escalate" },
+            { ts: atIso(severeAt), state: "NEW", note: "Detected" },
             {
               ts: atIso(severeAt + 0.5),
               state: "ALERTED",
-              note: "Threshold SEVERE",
+              note: "Classified as severe",
             },
             {
               ts: atIso(severeAt + 1.5),
@@ -382,12 +382,12 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
             {
               ts: atIso(severeAt + 3.5),
               state: "DISPATCHED",
-              note: "Outbound call started",
+              note: "Call started",
             },
             {
               ts: atIso(severeAt + 9.5),
               state: "TRACKING",
-              note: "Cross-camera pursuit",
+              note: "Tracking across cameras",
             },
             { ts: atIso(h.at), state: "TRACKING", note: h.note },
           ],
@@ -632,7 +632,7 @@ export function operatorCallRows({ id, cameraId, person, peakAt, at }) {
       incident_id: id,
       state: "DISPATCHED",
       severity: "SEVERE",
-      note: "Outbound call started",
+      note: "Call started",
       at,
     }),
   });

@@ -3,7 +3,7 @@
  * Never uploads; never writes into the repo.
  */
 
-import { WALL_CAMERA_IDS } from "./site.js";
+import { WALL_CAMERA_IDS } from "./site.js?v=fix7d";
 
 const DB_NAME = "sentinel-demo";
 const DB_STORE = "camera-sources";
@@ -105,7 +105,7 @@ async function idbPut(record) {
     });
     db.close();
   } catch (err) {
-    storageNote = "Browser storage unavailable — videos stay for this session only.";
+    storageNote = "Browser storage unavailable. Videos stay for this session only.";
     console.warn("[cameraSources] idb put failed", err);
   }
 }
@@ -121,7 +121,7 @@ async function idbDelete(cameraId) {
     });
     db.close();
   } catch (err) {
-    storageNote = "Browser storage unavailable — videos stay for this session only.";
+    storageNote = "Browser storage unavailable. Videos stay for this session only.";
     console.warn("[cameraSources] idb delete failed", err);
   }
 }
@@ -137,7 +137,7 @@ async function idbClear() {
     });
     db.close();
   } catch (err) {
-    storageNote = "Browser storage unavailable — videos stay for this session only.";
+    storageNote = "Browser storage unavailable. Videos stay for this session only.";
     console.warn("[cameraSources] idb clear failed", err);
   }
 }
@@ -154,7 +154,7 @@ async function idbGetAll() {
     db.close();
     return rows;
   } catch (err) {
-    storageNote = "Browser storage unavailable — videos stay for this session only.";
+    storageNote = "Browser storage unavailable. Videos stay for this session only.";
     console.warn("[cameraSources] idb read failed", err);
     return [];
   }

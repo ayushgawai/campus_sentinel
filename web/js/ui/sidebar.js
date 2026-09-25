@@ -4,7 +4,7 @@
  * a separate floating call panel (call.js's mountCallPanel).
  */
 
-import { now, subscribeTick } from "../clock.js";
+import { now, subscribeTick } from "../clock.js?v=fix7d";
 import {
   classLabel,
   cameraLabel,
@@ -19,26 +19,32 @@ import {
   pctNumber,
   isOpenIncident,
   isDispatchSimState,
-} from "../format.js";
-import { mountIncidentClip } from "./incidentClip.js";
-import { clear, el, setText } from "../dom.js";
-import { mountMap } from "./map.js";
+} from "../format.js?v=fix7d";
+import { mountIncidentClip } from "./incidentClip.js?v=fix7d";
+import { clear, el, setText } from "../dom.js?v=fix7d";
+import { mountMap } from "./map.js?v=fix7d";
 import {
   legendMarkup,
   mountSiteCamerasList,
   mountTrackingCard,
   mountSiteOverview,
-} from "./sitePlanExtras.js";
-import { findCallIncident, formatCallTimer, callElapsedMs } from "./call.js";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js";
+} from "./sitePlanExtras.js?v=fix7d";
+import { findCallIncident, formatCallTimer, callElapsedMs } from "./call.js?v=fix7d";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix7d";
 import {
   OP_REPORT_EVENT,
   OP_STATUS_EVENT,
   actionBar,
   opButton,
   confidenceLong,
-} from "./operator.js";
-import { detailHeaderCard, detailsCard, clipCard, timelineCard } from "./incidentDetail.js";
+} from "./operator.js?v=fix7d";
+import {
+  detailHeaderCard,
+  detailsCard,
+  clipCard,
+  timelineCard,
+  emptyState,
+} from "./incidentDetail.js?v=fix7d";
 
 /** Same entries by identity (store replaces an incident object when it changes). */
 function sameSig(a, b) {
@@ -57,7 +63,7 @@ export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
   let expandExtras = [];
 
   root.id = "sidebar";
-  root.setAttribute("aria-label", "Incident panel");
+  root.setAttribute("aria-label", "Incidents");
   root.innerHTML = `
     <div class="sidebar">
       <header class="sidebar__head">
@@ -165,7 +171,13 @@ export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
   function paintAgoLine({ node, inc }, nowMs) {
     setText(
       node,
-      `${cameraLabel(inc.camera_id)} · ${formatRel(inc.created_at || inc.peak_ts, nowMs)} · ${confidenceLong(inc)}`,
+      [
+        cameraLabel(inc.camera_id),
+        formatRel(inc.created_at || inc.peak_ts, nowMs),
+        confidenceLong(inc),
+      ]
+        .filter(Boolean)
+        .join(" · "),
     );
   }
 
@@ -256,12 +268,7 @@ export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
       return inc && (inc.severity === "SEVERE" || inc.severity === "MINOR");
     });
     if (!ids.length) {
-      panel.appendChild(
-        el("p", {
-          className: "iq-empty",
-          text: "No activity requiring attention.",
-        }),
-      );
+      panel.appendChild(emptyState("No active incidents", "All cameras are being monitored."));
       return;
     }
 
@@ -299,14 +306,6 @@ export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
           text: stateLabel(inc.state),
         }),
       );
-      if (isDispatchSimState(inc.state)) {
-        chips.appendChild(
-          el("span", {
-            className: "card-chip card-chip--dispatch",
-            text: "SIMULATED",
-          }),
-        );
-      }
       top.appendChild(chips);
       row.appendChild(top);
       row.appendChild(agoLine("div", inc, nowMs));

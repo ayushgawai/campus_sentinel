@@ -10,19 +10,19 @@ import {
   formatPct,
   formatRel,
   formatTimeLocal,
-  notReported,
   pctNumber,
+  ruleLabel,
   severityLabel,
   stateLabel,
-  isDispatchSimState,
-} from "../format.js";
-import { el, setText } from "../dom.js";
-import { now, subscribeTick } from "../clock.js";
-import { isOperatorReported } from "../actions.js";
-import * as cameraSources from "../cameraSources.js";
-import { mountIncidentClip } from "./incidentClip.js";
+} from "../format.js?v=fix7d";
+import { el, setText } from "../dom.js?v=fix7d";
+import { now, subscribeTick } from "../clock.js?v=fix7d";
+import { isOperatorReported } from "../actions.js?v=fix7d";
+import * as cameraSources from "../cameraSources.js?v=fix7d";
+import { mountIncidentClip } from "./incidentClip.js?v=fix7d";
 
-const UNCONFIRMED_RE = /\s*·\s*not confirmed by server\s*$/i;
+/** Timeline notes the UI wrote while the server had not confirmed an action. */
+const UNCONFIRMED_RE = /\s*·\s*(pending server confirmation|not confirmed by server)\s*$/i;
 
 // One ticker for every "27 s ago" in a detail header.
 subscribeTick((nowMs) => {
@@ -32,13 +32,7 @@ subscribeTick((nowMs) => {
 });
 
 function unconfirmedTag() {
-  return el("span", { className: "op-unconfirmed", text: "Not confirmed by server" });
-}
-
-/** operator_report → "Operator report", fast_descent → "Fast descent". */
-export function ruleLabel(rule) {
-  const s = String(rule || "").replaceAll("_", " ").replaceAll("-", " ").trim();
-  return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "";
+  return el("span", { className: "op-unconfirmed", text: "Pending server confirmation" });
 }
 
 /** Report created locally because the server did not confirm it. */
@@ -48,7 +42,7 @@ function reportUnconfirmed(inc) {
 
 /**
  * Header card: optional back link, type + chips, meta line
- * "Camera 3 · 27 s ago · Reported by operator [· Not confirmed by server]".
+ * "Camera 3 · 27 s ago · Reported by operator [· Pending server confirmation]".
  */
 export function detailHeaderCard(inc, { onBack = null } = {}) {
   const card = el("div", { className: "card detail-card inc-head" });
@@ -75,9 +69,6 @@ export function detailHeaderCard(inc, { onBack = null } = {}) {
     }),
   );
   chips.appendChild(el("span", { className: "card-chip", text: stateLabel(inc.state) }));
-  if (isDispatchSimState(inc.state)) {
-    chips.appendChild(el("span", { className: "card-chip card-chip--dispatch", text: "SIMULATED" }));
-  }
   row.appendChild(chips);
   card.appendChild(row);
 
@@ -114,12 +105,13 @@ export function detailsCard(inc) {
   };
 
   const desc = String(inc.description || "").trim();
-  row("Observation", desc || (operator ? "Reported by operator" : notReported()));
+  if (desc || operator) row("Observation", desc || "Reported by operator");
 
   const person = String(inc.person_description || "").trim();
   if (person) row("Person", person);
 
-  if (!(operator && inc.fused_prob == null)) {
+  // Hidden when there is no score (operator reports, or not scored yet).
+  if (inc.fused_prob != null) {
     const wrap = el("div", { className: "inc-dl__conf" });
     wrap.appendChild(el("span", { className: "mono", text: formatPct(inc.fused_prob) }));
     const bar = el("progress", {
@@ -132,7 +124,9 @@ export function detailsCard(inc) {
     row("Confidence", wrap);
   }
 
+  // Internal ids such as "scenario:armed-intruder" are not rules for the operator.
   const rules = (Array.isArray(inc.rules_fired) ? inc.rules_fired : [])
+    .filter((r) => !String(r).startsWith("scenario:"))
     .map(ruleLabel)
     .filter(Boolean);
   if (rules.length) {
@@ -197,4 +191,14 @@ export function timelineCard(inc) {
   }
   card.appendChild(list);
   return card;
+}
+
+/** Calm one-line empty state with an optional muted second line. */
+export function emptyState(title, sub = "") {
+  const box = el("div", { className: "iq-empty" });
+  const text = el("div", { className: "iq-empty__text" });
+  text.appendChild(el("span", { text: title }));
+  if (sub) text.appendChild(el("span", { className: "iq-empty__sub", text: sub }));
+  box.appendChild(text);
+  return box;
 }

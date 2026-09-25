@@ -1,6 +1,6 @@
 /** Call Console — single chat thread + tool cards. No floating overlay. */
 
-import { now, subscribeTick } from "../clock.js";
+import { now, subscribeTick } from "../clock.js?v=fix7d";
 import {
   awaiting,
   classLabel,
@@ -17,11 +17,11 @@ import {
   HIDDEN_TOOL_KEYS,
   isOpenIncident,
   severityLabel,
-} from "../format.js";
-import { redactPlaces } from "../site.js";
-import { clear, el, setText } from "../dom.js";
-import { OP_STATUS_EVENT, operatorActions, actionBar } from "./operator.js";
-import { isDispatchedOrLater } from "../actions.js";
+} from "../format.js?v=fix7d";
+import { redactPlaces } from "../site.js?v=fix7d";
+import { clear, el, setText } from "../dom.js?v=fix7d";
+import { OP_STATUS_EVENT, operatorActions, actionBar } from "./operator.js?v=fix7d";
+import { isDispatchedOrLater } from "../actions.js?v=fix7d";
 
 const STREAM_MERGE_MS = 700;
 const CALL_STATES = new Set([
@@ -139,7 +139,6 @@ export function buildThread(transcript) {
 }
 
 function formatToolValue(key, value) {
-  if (value == null) return notReported();
   if (key === "camera_id") return cameraLabel(String(value));
   if (key === "state") return stateLabel(String(value));
   if (key === "track_id") return personLabel(String(value));
@@ -151,19 +150,10 @@ function formatToolValue(key, value) {
 }
 
 function appendDl(parent, obj, rawHost) {
-  if (!obj || typeof obj !== "object") {
-    parent.appendChild(
-      el("div", { className: "call-tool__empty", text: notReported() }),
-    );
-    return;
-  }
-  const entries = Object.entries(obj);
-  if (!entries.length) {
-    parent.appendChild(
-      el("div", { className: "call-tool__empty", text: notReported() }),
-    );
-    return;
-  }
+  // Empty values are hidden, never shown as a placeholder.
+  if (!obj || typeof obj !== "object") return;
+  const entries = Object.entries(obj).filter(([, v]) => v != null && v !== "");
+  if (!entries.length) return;
   const RAW_KEYS = HIDDEN_TOOL_KEYS;
   const visible = entries.filter(
     ([k]) => !RAW_KEYS.has(k) && !LOCATION_TOOL_KEYS.has(k),
@@ -178,10 +168,6 @@ function appendDl(parent, obj, rawHost) {
       dl.appendChild(dd);
     }
     parent.appendChild(dl);
-  } else {
-    parent.appendChild(
-      el("div", { className: "call-tool__empty", text: notReported() }),
-    );
   }
   if (rawHost) rawHost.replaceChildren();
 }
@@ -195,7 +181,7 @@ export function mountCallHost(host, store, actions) {
       <header class="card call-head-card" data-head>
         <div class="call-head-card__title-row">
           <h2 class="call-head-card__title" data-class>No active call</h2>
-          <span class="card-chip card-chip--dispatch" data-sim hidden>SIMULATED</span>
+          <span class="call-sim-note">Simulated call · verified teammate</span>
         </div>
         <span class="call-head-card__timer mono" data-timer>00:00</span>
         <p class="call-head-card__meta" data-meta></p>
@@ -207,13 +193,12 @@ export function mountCallHost(host, store, actions) {
           <h3 class="card__title call-console__section-h">Conversation</h3>
           <div class="call-console__chat-scroll" data-chat></div>
         </section>
-        <section class="call-console__tools" aria-label="Live tools" data-tools></section>
+        <section class="call-console__tools" aria-label="Call lookups" data-tools></section>
       </div>
     </div>
   `;
 
   const classEl = host.querySelector("[data-class]");
-  const simEl = host.querySelector("[data-sim]");
   const metaEl = host.querySelector("[data-meta]");
   const timerEl = host.querySelector("[data-timer]");
   const chatScroll = host.querySelector("[data-chat]");
@@ -260,13 +245,13 @@ export function mountCallHost(host, store, actions) {
     stickTools = gap < 48;
   });
 
-  function renderChat(thread) {
+  function renderChat(thread, hasCall = false) {
     clear(chatScroll);
     if (!thread.length) {
       chatScroll.appendChild(
         el("p", {
           className: "card__meta",
-          text: "Awaiting dispatch. The console opens when a severe incident is handed to a unit.",
+          text: hasCall ? "Connecting the call." : "Calls appear here when help is dispatched.",
         }),
       );
       return;
@@ -298,7 +283,7 @@ export function mountCallHost(host, store, actions) {
       empty.appendChild(
         el("p", {
           className: "card__meta",
-          text: "No tools used yet.",
+          text: "No information requested yet.",
         }),
       );
       toolsHost.appendChild(empty);
@@ -330,12 +315,8 @@ export function mountCallHost(host, store, actions) {
         appendDl(body, t.result, null);
       } else if (t.args && typeof t.args === "object") {
         appendDl(body, t.args, null);
-      } else {
-        body.appendChild(
-          el("p", { className: "card__meta", text: notReported() }),
-        );
       }
-      card.appendChild(body);
+      if (body.childNodes.length) card.appendChild(body);
       toolsHost.appendChild(card);
       if (i === tools.length - 1) {
         window.setTimeout(() => card.classList.remove("call-tool--flash"), 600);
@@ -360,7 +341,7 @@ export function mountCallHost(host, store, actions) {
       dispatchedTs(inc, state) || inc.created_at || inc.peak_ts,
       nowMs,
     );
-    setText(metaEl, `${cameraLabel(inc.camera_id)} · started ${started}`);
+    setText(metaEl, `${cameraLabel(inc.camera_id)} · Started ${started}`);
   }
 
   function render(state) {
@@ -370,10 +351,10 @@ export function mountCallHost(host, store, actions) {
     paintAction(cand);
     if (!inc) {
       setText(classEl, cand ? classLabel(cand.class_token) : "No active call");
-      simEl.hidden = true;
-      if (lastThreadLen !== 0) {
+      // -2 = "no call" empty state, distinct from a call with no lines yet.
+      if (lastThreadLen !== -2) {
         renderChat([]);
-        lastThreadLen = 0;
+        lastThreadLen = -2;
       }
       if (lastToolCount !== 0) {
         renderTools([]);
@@ -383,7 +364,6 @@ export function mountCallHost(host, store, actions) {
     }
 
     setText(classEl, `${classLabel(inc.class_token)} call`);
-    simEl.hidden = false;
 
     const all = (state.call?.transcript || []).filter(
       (t) => !state.call.incidentId || t.incident_id === inc.incident_id,
@@ -394,7 +374,7 @@ export function mountCallHost(host, store, actions) {
 
     const thread = buildThread(all);
     if (thread.length !== lastThreadLen) {
-      renderChat(thread);
+      renderChat(thread, true);
       lastThreadLen = thread.length;
     }
     if (tools.length !== lastToolCount) {
@@ -439,6 +419,7 @@ export function mountCallPanel(root, store, actions) {
     <div class="sidebar callpanel">
       <header class="sidebar__head">
         <span class="callpanel__label">Call</span>
+        <span class="call-sim-note">Simulated call · verified teammate</span>
         <button type="button" class="btn btn--ghost" data-close aria-label="Close call panel">Close</button>
       </header>
       <div class="sidebar__body">
@@ -447,7 +428,6 @@ export function mountCallPanel(root, store, actions) {
             <div class="call-head-card__title-row">
               <h2 class="call-head-card__title" data-class>No active call</h2>
               <span class="callpanel__cam mono" data-head-cam hidden></span>
-              <span class="card-chip card-chip--dispatch" data-sim hidden>SIMULATED</span>
             </div>
             <span class="call-head-card__timer mono" data-timer>00:00</span>
           </div>
@@ -481,7 +461,6 @@ export function mountCallPanel(root, store, actions) {
 
   const classEl = root.querySelector("[data-class]");
   const headCamEl = root.querySelector("[data-head-cam]");
-  const simEl = root.querySelector("[data-sim]");
   const timerEl = root.querySelector("[data-timer]");
   const briefEl = root.querySelector("[data-brief]");
   const briefCamEl = root.querySelector("[data-brief-cam]");
@@ -524,13 +503,13 @@ export function mountCallPanel(root, store, actions) {
 
   root.querySelector("[data-close]").addEventListener("click", () => api.close());
 
-  function renderChat(thread) {
+  function renderChat(thread, hasCall = false) {
     clear(chatHost);
     if (!thread.length) {
       chatHost.appendChild(
         el("p", {
           className: "card__meta",
-          text: "Awaiting dispatch conversation.",
+          text: hasCall ? "Connecting the call." : "Calls appear here when help is dispatched.",
         }),
       );
       return;
@@ -573,10 +552,8 @@ export function mountCallPanel(root, store, actions) {
       appendDl(body, t.result, null);
     } else if (t.args && typeof t.args === "object") {
       appendDl(body, t.args, null);
-    } else {
-      body.appendChild(el("p", { className: "card__meta", text: notReported() }));
     }
-    card.appendChild(body);
+    if (body.childNodes.length) card.appendChild(body);
     toolsHost.appendChild(card);
     window.setTimeout(() => card.classList.remove("call-tool--flash"), 600);
   }
@@ -592,7 +569,13 @@ export function mountCallPanel(root, store, actions) {
         timelineTs(inc, ENDED_CALL_STATES) || inc.updated_at || inc.created_at || inc.peak_ts;
       setText(
         endedEl,
-        `Call ended ${formatRel(endIso, nowMs)} · ${cameraLabel(inc.camera_id)} · ${textOr(inc.person_description, notReported())}`,
+        [
+          `Call ended ${formatRel(endIso, nowMs)}`,
+          cameraLabel(inc.camera_id),
+          String(inc.person_description || "").trim(),
+        ]
+          .filter(Boolean)
+          .join(" · "),
       );
     }
   }
@@ -608,10 +591,10 @@ export function mountCallPanel(root, store, actions) {
       headCamEl.hidden = true;
       briefEl.hidden = true;
       endedEl.hidden = true;
-      simEl.hidden = true;
-      if (lastThreadLen !== 0) {
+      // -2 = "no call" empty state, distinct from a call with no lines yet.
+      if (lastThreadLen !== -2) {
         renderChat([]);
-        lastThreadLen = 0;
+        lastThreadLen = -2;
       }
       if (lastToolId !== null) {
         renderLatestTool([]);
@@ -624,7 +607,6 @@ export function mountCallPanel(root, store, actions) {
     setText(classEl, `${classLabel(inc.class_token)} call`);
     headCamEl.hidden = false;
     setText(headCamEl, cameraLabel(inc.camera_id));
-    simEl.hidden = false;
 
     if (ended) {
       briefEl.hidden = true;
@@ -633,7 +615,10 @@ export function mountCallPanel(root, store, actions) {
       briefEl.hidden = false;
       endedEl.hidden = true;
       setText(briefCamEl, cameraLabel(inc.camera_id));
-      setText(briefPersonEl, textOr(inc.person_description, notReported()));
+      // The brief grid needs the cell: muted "Pending" until a description arrives.
+      const person = String(inc.person_description || "").trim();
+      briefPersonEl.classList.toggle("is-pending", !person);
+      setText(briefPersonEl, person || notReported());
     }
 
     const all = (state.call?.transcript || []).filter(
@@ -645,7 +630,7 @@ export function mountCallPanel(root, store, actions) {
 
     const thread = buildThread(all);
     if (thread.length !== lastThreadLen) {
-      renderChat(thread);
+      renderChat(thread, true);
       lastThreadLen = thread.length;
     }
     const lastTool = tools[tools.length - 1];

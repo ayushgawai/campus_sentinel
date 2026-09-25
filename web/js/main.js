@@ -1,35 +1,42 @@
 /** Boot. */
 
-import { createStore } from "./store.js";
-import { start } from "./transport.js";
-import { createActions } from "./actions.js";
-import { startRouter, getRoute, navigate } from "./router.js";
-import { mountTopbar } from "./ui/topbar.js";
-import { mountBanner } from "./ui/banner.js";
-import { mountCameras } from "./ui/cameras.js";
-import { createCameraLayout } from "./ui/cameraLayout.js";
-import { mountSidebar } from "./ui/sidebar.js";
-import { mountAssist } from "./ui/assist.js";
-import { mountCallPage } from "./ui/callpage.js";
-import { mountCallPanel } from "./ui/call.js";
-import { mountDemo } from "./ui/demo.js";
-import { mountDismiss } from "./ui/dismiss.js";
-import { mountOperator } from "./ui/operator.js";
-import { mountIncidents } from "./ui/incidents.js";
-import { mountSystem } from "./ui/system.js";
-import { startAutoFollow } from "./ui/autofollow.js";
-import {
-  playSplash,
-  shouldHoldMockForSplash,
-  createSplashElement,
-} from "./ui/splash.js";
-import * as cameraSources from "./cameraSources.js";
+import { createStore } from "./store.js?v=fix7d";
+import { start } from "./transport.js?v=fix7d";
+import { createActions } from "./actions.js?v=fix7d";
+import { startRouter, getRoute, navigate } from "./router.js?v=fix7d";
+import { mountTopbar } from "./ui/topbar.js?v=fix7d";
+import { mountBanner } from "./ui/banner.js?v=fix7d";
+import { mountCameras } from "./ui/cameras.js?v=fix7d";
+import { createCameraLayout } from "./ui/cameraLayout.js?v=fix7d";
+import { mountSidebar } from "./ui/sidebar.js?v=fix7d";
+import { mountAssist } from "./ui/assist.js?v=fix7d";
+import { mountCallPage } from "./ui/callpage.js?v=fix7d";
+import { mountCallPanel } from "./ui/call.js?v=fix7d";
+import { mountDemo } from "./ui/demo.js?v=fix7d";
+import { mountDismiss } from "./ui/dismiss.js?v=fix7d";
+import { mountOperator } from "./ui/operator.js?v=fix7d";
+import { mountIncidents } from "./ui/incidents.js?v=fix7d";
+import { mountSystem } from "./ui/system.js?v=fix7d";
+import { startAutoFollow } from "./ui/autofollow.js?v=fix7d";
+import { playSplash, shouldHoldMockForSplash } from "./ui/splash.js?v=fix7d";
+import * as cameraSources from "./cameraSources.js?v=fix7d";
 
 const store = createStore();
 const layoutCtl = createCameraLayout();
 const holdMock = shouldHoldMockForSplash();
 
-await cameraSources.hydrate();
+// Start timing the brand intro now, not after the app mounts: its CSS reveal
+// began on first paint, and loading stored camera videos below can take
+// seconds. It fades out once both ~5.4 s have passed and the app is mounted.
+let markAppReady = () => {};
+const appReady = new Promise((resolve) => {
+  markAppReady = resolve;
+});
+const splashDone = playSplash({
+  root: document.getElementById("splash"),
+  appEl: document.getElementById("app"),
+  ready: appReady,
+});
 
 const transport = start(
   (event) => store.handle(event),
@@ -51,6 +58,10 @@ const actions = createActions({
   transport,
 });
 
+// Local camera videos (IndexedDB) before the camera wall mounts. Live has
+// already started connecting above; mock stays held until the intro ends.
+await cameraSources.hydrate();
+
 mountTopbar(document.getElementById("topbar"), store, actions, layoutCtl);
 mountBanner(document.getElementById("banner"), store, actions, layoutCtl);
 mountCameras(document.getElementById("cameras"), store, actions, layoutCtl);
@@ -71,29 +82,7 @@ document.addEventListener("sentinel:open-call-panel", () => callPanelApi.open())
 
 mountCallPage(document.getElementById("call-page"), store, actions);
 
-async function replayIntro() {
-  document.getElementById("demo")?._demoApi?.close?.();
-  if (transport.mode === "MOCK") {
-    transport.pause?.();
-    transport.seek?.(0);
-  }
-  const existing = document.getElementById("splash");
-  if (existing) existing.remove();
-  const splash = createSplashElement();
-  document.body.insertBefore(splash, document.body.firstChild);
-  await playSplash({
-    root: splash,
-    appEl: document.getElementById("app"),
-    restart: true,
-  });
-  if (transport.mode === "MOCK") {
-    actions.demoReset();
-  }
-}
-
-mountDemo(document.getElementById("demo"), store, actions, {
-  onReplayIntro: replayIntro,
-});
+mountDemo(document.getElementById("demo"), store, actions);
 mountDismiss(document.getElementById("dismiss"), store, actions);
 mountIncidents(
   document.getElementById("incidents-list"),
@@ -214,13 +203,12 @@ window.__navigate = navigate;
 window.__sidebar = sidebarApi;
 window.__callPanel = callPanelApi;
 window.__cameraLayout = layoutCtl;
-window.__replayIntro = replayIntro;
+
+markAppReady();
 
 (async () => {
-  await playSplash({
-    root: document.getElementById("splash"),
-    appEl: document.getElementById("app"),
-  });
+  await splashDone;
+  // Mock timeline starts at t=0 only after the intro.
   if (transport.mode === "MOCK" && holdMock) {
     actions.demoReset();
   }

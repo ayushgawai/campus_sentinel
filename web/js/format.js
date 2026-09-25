@@ -1,16 +1,30 @@
 /** Display helpers — never show raw enums, dashes, or nullish junk. */
 
-import { SITE, cameraLabel as siteCameraLabel } from "./site.js";
-import { now } from "./clock.js";
+import { SITE, cameraLabel as siteCameraLabel } from "./site.js?v=fix7d";
+import { now } from "./clock.js?v=fix7d";
 
-export { cameraLabel } from "./site.js";
+export { cameraLabel } from "./site.js?v=fix7d";
+
+/** The one fallback for a value that has not arrived yet (never a dash). */
+export const PENDING = "Pending";
 
 export function awaiting() {
-  return "Awaiting data";
+  return PENDING;
 }
 
 export function notReported() {
-  return "Not reported";
+  return PENDING;
+}
+
+/** snake_case / kebab-case → "Sentence case words". */
+export function sentenceCase(raw) {
+  const s = String(raw ?? "").replaceAll("_", " ").replaceAll("-", " ").trim();
+  return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "";
+}
+
+/** Rule id → "Fast descent". */
+export function ruleLabel(rule) {
+  return sentenceCase(rule);
 }
 
 export function textOr(value, fallback = notReported()) {
@@ -25,9 +39,9 @@ const CLASS_LABELS = {
   WEAPON: "Weapon",
   FIGHT: "Fight",
   THEFT: "Theft",
-  RUN: "Run",
+  RUN: "Running",
   MEDICAL: "Medical",
-  BENIGN: "Benign",
+  BENIGN: "No threat",
 };
 
 const STATE_LABELS = {
@@ -93,12 +107,12 @@ export const HIDDEN_TOOL_KEYS = new Set([
 ]);
 
 export function toolKeyLabel(key) {
-  return TOOL_KEY_LABELS[key] || String(key).replaceAll("_", " ");
+  return TOOL_KEY_LABELS[key] || sentenceCase(key);
 }
 
 export function classLabel(token) {
   if (token == null || token === "") return awaiting();
-  return CLASS_LABELS[token] || String(token);
+  return CLASS_LABELS[token] || sentenceCase(token);
 }
 
 export function stateLabel(state) {
@@ -114,7 +128,7 @@ export function stateLabel(state) {
 
 export function severityLabel(sev) {
   if (sev == null || sev === "") return awaiting();
-  return SEVERITY_LABELS[sev] || String(sev);
+  return SEVERITY_LABELS[sev] || sentenceCase(sev);
 }
 
 /** @deprecated Prefer importing cameraLabel from site.js directly. */
@@ -126,7 +140,7 @@ export function personLabel(trackId) {
   if (!trackId) return awaiting();
   const m = String(trackId).match(/(\d+)/);
   if (!m) return `Person ${trackId}`;
-  return `Person #${Number(m[1])}`;
+  return `Person ${Number(m[1])}`;
 }
 
 function pad2(n) {
@@ -210,9 +224,7 @@ export function toolNameLabel(tool) {
   };
   const id = String(tool);
   if (KEY[id]) return KEY[id];
-  return id
-    .replaceAll("_", " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return sentenceCase(id);
 }
 
 /** Wall time from ISO using site timezone. */

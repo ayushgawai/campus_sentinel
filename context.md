@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-25 07:25 UTC - web fix 5/5b: operator actions + cleaner incident detail panel (manav)
+Last updated: 2026-09-25 08:26 UTC - web fix 7 to 7d: wording pass, demo control redesign, splash fix, cache busting (manav)
 
 ## HARD RULES
 1. `git pull --rebase origin main` before every push. Work on **main**.
@@ -33,6 +33,7 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - **32G swap is on** the shared ZGX box (`/swapfile`). Do not start Qwen at 0.55.
 - A.1 UI-only: do **not** start ZRT.
 - Live dashboard: `http://100.83.170.35:8090/?ws=ws%3A%2F%2F100.83.170.35%3A8080%2Fws&nosplash=1`
+- For recording use the same URL without &nosplash=1 so the brand intro plays.
 - Current detached sessions: `sentinel-api` and `sentinel-web`. ZRT serves Qwen on `127.0.0.1:8000`.
 
 ## Mac mount
@@ -68,6 +69,7 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - web: live clock, one shared ticker, real time in live and mock (fix 3)
 - web: floating incidents panel with a second call panel beside it, autofollow keeps map and call visible during tracking (fix 4)
 - web: operator actions (report incident, call for help, broadcast) with local fallback until api routes exist; cleaner incident detail panel (wider, merged details card, aligned action bar); fixed swallowed clicks (fix 5, 5b)
+- web: professional wording, Demo control redesign (collapsible sections, intro section removed), splash reveal in CSS starting on first paint and independent of video loading, js/boot.js for ?nosplash=1, module cache busting with one ?v= tag (bump it on every change), All cameras in camera toolbar (fix 7 to 7d)
 
 ## Pending (owners)
 | Who | What |

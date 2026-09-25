@@ -9,12 +9,12 @@ import {
   cameraLabel,
   fromCameraMap,
   getCamera,
-} from "../site.js";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js";
-import { clear, setText } from "../dom.js";
-import { themeColors } from "../theme.js";
-import { classLabel, formatElapsedPlus } from "../format.js";
-import { now, subscribeTick } from "../clock.js";
+} from "../site.js?v=fix7d";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix7d";
+import { clear, setText } from "../dom.js?v=fix7d";
+import { themeColors } from "../theme.js?v=fix7d";
+import { classLabel, formatElapsedPlus } from "../format.js?v=fix7d";
+import { now, subscribeTick } from "../clock.js?v=fix7d";
 
 const LEVEL_RANK = { none: 0, minor: 1, severe: 2 };
 

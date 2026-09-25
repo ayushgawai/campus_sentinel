@@ -8,6 +8,7 @@
   --surface-2: #33344a;
   --surface-3: #3e4059;
   --grape: #4b4e6d;
+  --steel: #95a3b3;
   --feed-well: #1a1a1c;
   --carbon: #222222;
   --on-carbon: #f2f4f7;
@@ -29,6 +30,7 @@
   --card: #ffffff;
   --card-subtle: #f4f5f7;
   --card-border: #e4e7ec;
+  --card-border-strong: #b9c0ca; /* control borders on white (inputs, secondary buttons) */
   --card-text: #222222;
   --card-text-2: #4b4e6d;
   --card-text-3: #5f6b7a;
@@ -102,10 +104,10 @@
 
   /* Splash (light intro on white) */
   --splash-bg: #ffffff;
-  --splash-ink: #000000;
+  --splash-ink: #222222; /* Carbon */
   --splash-muted: #2a2a2a;
-  --splash-track: rgba(0, 0, 0, 0.14);
-  --splash-accent: #000000;
+  --splash-track: rgba(34, 34, 34, 0.1);
+  --splash-accent: #84dcc6; /* Pearl Aqua */
 
   /* White header bar */
   --header-bg: #ffffff;

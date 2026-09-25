@@ -1,14 +1,14 @@
 /** System page — site info, health, cameras. */
 
-import { SITE, CAMERAS } from "../site.js";
+import { SITE, CAMERAS } from "../site.js?v=fix7d";
 import {
   awaiting,
   formatInt,
   formatMs,
   formatPct,
   cameraLabel,
-} from "../format.js";
-import { clear, el, setText } from "../dom.js";
+} from "../format.js?v=fix7d";
+import { clear, el, setText } from "../dom.js?v=fix7d";
 
 export function mountSystem(root, store) {
   root.innerHTML = `
@@ -21,7 +21,7 @@ export function mountSystem(root, store) {
       </article>
       <article class="panel">
         <header class="panel__header">
-          <h2 class="panel__title">Health</h2>
+          <h2 class="panel__title">System health</h2>
         </header>
         <div class="panel__body system__body" data-health></div>
       </article>
@@ -40,10 +40,14 @@ export function mountSystem(root, store) {
   const camsEl = root.querySelector("[data-cams]");
   const camN = root.querySelector("[data-cam-n]");
 
-  function row(label, value) {
+  /** `pending` renders the value as a muted "Pending". */
+  function row(label, value, pending = false) {
     const r = el("div", { className: "system__row" });
     r.appendChild(el("span", { className: "system__k", text: label }));
-    const v = el("span", { className: "system__v metric", text: value });
+    const v = el("span", {
+      className: `system__v metric${pending ? " is-pending" : ""}`,
+      text: pending ? awaiting() : value,
+    });
     if (value) v.title = value;
     r.appendChild(v);
     return r;
@@ -55,30 +59,30 @@ export function mountSystem(root, store) {
     siteEl.appendChild(row("Type", SITE.type));
     siteEl.appendChild(row("Timezone", SITE.timezone));
     siteEl.appendChild(row("Product", "Sentinel"));
-    siteEl.appendChild(row("Tagline", SITE.tagline));
 
     const h = state.health || {};
     clear(healthEl);
     healthEl.appendChild(
       row(
         "Cameras online",
-        h.cameras_online != null
-          ? `${h.cameras_online} / ${h.cameras_total}`
-          : awaiting(),
+        `${h.cameras_online} / ${h.cameras_total}`,
+        h.cameras_online == null,
       ),
     );
+    healthEl.appendChild(row("Models", h.models_resident ? "Ready" : "Loading"));
+    healthEl.appendChild(row("GPU", formatPct(h.gpu_util), h.gpu_util == null));
+    healthEl.appendChild(row("Latency (p95)", formatMs(h.p95_ms), h.p95_ms == null));
     healthEl.appendChild(
-      row("Models", h.models_resident ? "Resident" : "Loading"),
-    );
-    healthEl.appendChild(row("GPU", formatPct(h.gpu_util)));
-    healthEl.appendChild(row("p95 latency", formatMs(h.p95_ms)));
-    healthEl.appendChild(row("Frames screened", formatInt(h.frames_screened)));
-    healthEl.appendChild(
-      row("Frames escalated", formatInt(h.frames_escalated)),
+      row("Frames analyzed", formatInt(h.frames_screened), h.frames_screened == null),
     );
     healthEl.appendChild(
-      row("Connection", state.connection?.status || awaiting()),
+      row("Frames flagged", formatInt(h.frames_escalated), h.frames_escalated == null),
     );
+    // Connection: "Live" / "Reconnecting"; hidden in mock (never "Mock").
+    const conn = state.connection?.status;
+    if (conn === "LIVE" || conn === "RECONNECTING") {
+      healthEl.appendChild(row("Connection", conn === "LIVE" ? "Live" : "Reconnecting"));
+    }
 
     clear(camsEl);
     camsEl.className = "system__cam-grid";
@@ -103,7 +107,7 @@ export function mountSystem(root, store) {
       r.appendChild(
         el("span", {
           className: "system__cam-meta mono metric",
-          text: online ? `Online · ${tracks} tracks` : "Offline",
+          text: online ? `Online · ${tracks} in view` : "Offline",
         }),
       );
       camsEl.appendChild(r);

@@ -1,6 +1,6 @@
 /** Incidents page — list + full detail. Status via type weight, not badges. */
 
-import { now, subscribeTick } from "../clock.js";
+import { now, subscribeTick } from "../clock.js?v=fix7d";
 import {
   classLabel,
   cameraLabel,
@@ -13,16 +13,16 @@ import {
   formatTimeLocal,
   pctNumber,
   isOpenIncident,
-  isDispatchSimState,
-} from "../format.js";
-import { clear, el, setText } from "../dom.js";
-import { mountIncidentClip } from "./incidentClip.js";
+} from "../format.js?v=fix7d";
+import { clear, el, setText } from "../dom.js?v=fix7d";
+import { OP_STATUS_EVENT, actionBar, confidenceShort } from "./operator.js?v=fix7d";
 import {
-  OP_STATUS_EVENT,
-  actionBar,
-  operatorTag,
-  confidenceShort,
-} from "./operator.js";
+  detailHeaderCard,
+  detailsCard,
+  clipCard,
+  timelineCard,
+  emptyState,
+} from "./incidentDetail.js?v=fix7d";
 
 /** Same entries by identity (store replaces an incident object when it changes). */
 function sameSig(a, b) {
@@ -43,7 +43,7 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
       </header>
       <div class="panel__body iq__body">
         <div class="iq-list" data-list></div>
-        <p class="iq-empty" data-empty hidden>No incidents match this filter.</p>
+        <div data-empty hidden></div>
       </div>
     </article>
   `;
@@ -81,126 +81,18 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
   function paintDetail(inc) {
     clear(detailBody);
     if (!inc) {
-      detailBody.appendChild(
-        el("p", {
-          className: "iq-empty",
-          text: "Select an incident to review.",
-        }),
-      );
+      detailBody.appendChild(emptyState("Select an incident to review."));
       return;
     }
 
-    const head = el("header", { className: "incidents-detail__head" });
-    head.appendChild(
-      el("h2", {
-        className: "detail__class",
-        text: classLabel(inc.class_token),
-      }),
-    );
-    head.appendChild(
-      el("span", {
-        className: `status status--${inc.severity === "SEVERE" ? "severe" : inc.severity === "MINOR" ? "warn" : "info"}`,
-        text: severityLabel(inc.severity),
-      }),
-    );
-    head.appendChild(
-      el("span", {
-        className: "status",
-        text: stateLabel(inc.state),
-      }),
-    );
-    if (isDispatchSimState(inc.state)) {
-      head.appendChild(el("span", { className: "sim-tag", text: "SIMULATED" }));
-    }
-    const opTag = operatorTag(inc);
-    if (opTag) head.appendChild(el("span", { className: "status status--info", text: opTag }));
-    detailBody.appendChild(head);
-
-    detailBody.appendChild(
-      el("p", {
-        className: "detail__line",
-        text: `${cameraLabel(inc.camera_id)} · ${formatTimeLocal(inc.peak_ts)}`,
-      }),
-    );
-
-    const conf = el("div", { className: "detail__conf mono" });
-    setText(conf, `Confidence ${formatPct(inc.fused_prob)}`);
-    // Operator reports carry no model confidence.
-    const showConf = inc.fused_prob != null || !opTag;
-    if (showConf) detailBody.appendChild(conf);
-    const bar = el("progress", {
-      className: "detail__conf-progress",
-      attrs: {
-        max: "100",
-        value: String(Math.round(pctNumber(inc.fused_prob) || 0)),
-        "aria-label": "Confidence",
-      },
-    });
-    bar.max = 100;
-    bar.value = Math.round(pctNumber(inc.fused_prob) || 0);
-    if (showConf) detailBody.appendChild(bar);
-
-    detailBody.appendChild(
-      el("h3", {
-        className: "call-col-h",
-        text: "Observation",
-      }),
-    );
-    detailBody.appendChild(
-      el("blockquote", {
-        className: "detail__quote",
-        text: textOr(inc.description, notReported()),
-      }),
-    );
-    detailBody.appendChild(
-      el("p", {
-        className: "detail__line",
-        text: `Person: ${textOr(inc.person_description, notReported())}`,
-      }),
-    );
-    detailBody.appendChild(
-      el("p", {
-        className: "detail__line",
-        text: `Camera: ${cameraLabel(inc.camera_id)}`,
-      }),
-    );
-
-    const clipHost = el("div", { className: "detail__clip-host" });
-    detailBody.appendChild(clipHost);
-    if ((window.__transport?.mode || "MOCK") === "MOCK") {
-      mountIncidentClip(clipHost, {
-        cameraId: inc.camera_id,
-        endTs: inc.peak_ts || inc.created_at,
-      });
-    }
-
-    const rules = Array.isArray(inc.rules_fired) ? inc.rules_fired : [];
-    detailBody.appendChild(
-      el("h3", { className: "call-col-h", text: "Rules fired" }),
-    );
-    if (!rules.length) {
-      detailBody.appendChild(
-        el("p", { className: "iq-empty", text: "None" }),
-      );
-    } else {
-      const rulesList = el("p", { className: "detail__line mono" });
-      setText(rulesList, rules.map(String).join(" · "));
-      detailBody.appendChild(rulesList);
-    }
-
-    detailBody.appendChild(
-      el("h3", { className: "call-col-h", text: "Timeline" }),
-    );
-    const tl = el("ol", { className: "detail__timeline" });
-    for (const ev of Array.isArray(inc.timeline) ? inc.timeline : []) {
-      const li = el("li", { className: "detail__line mono" });
-      setText(
-        li,
-        `${formatTimeLocal(ev.ts)} · ${stateLabel(ev.state)}${ev.note ? ` · ${ev.note}` : ""}`,
-      );
-      tl.appendChild(li);
-    }
-    detailBody.appendChild(tl);
+    // Same cards as the incidents panel detail (header, Details, clip, timeline).
+    const stack = el("div", { className: "inc-detail inc-detail--page" });
+    stack.appendChild(detailHeaderCard(inc));
+    stack.appendChild(detailsCard(inc));
+    const clip = clipCard(inc);
+    if (clip) stack.appendChild(clip);
+    stack.appendChild(timelineCard(inc));
+    detailBody.appendChild(stack);
 
     if (isOpenIncident(inc)) {
       // Same action bar as the incidents panel.
@@ -240,6 +132,14 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
 
     clear(listEl);
     emptyEl.hidden = ids.length > 0;
+    clear(emptyEl);
+    if (!ids.length) {
+      emptyEl.appendChild(
+        state.order.length
+          ? emptyState("No incidents match this filter.")
+          : emptyState("No active incidents", "All cameras are being monitored."),
+      );
+    }
 
     for (const id of ids) {
       const inc = state.incidents[id];
@@ -270,9 +170,6 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
           text: stateLabel(inc.state),
         }),
       );
-      if (isDispatchSimState(inc.state)) {
-        stateWrap.appendChild(el("span", { className: "sim-tag", text: "SIMULATED" }));
-      }
       top.appendChild(stateWrap);
       const meta = el("div", { className: "iq-row__meta" });
       meta.appendChild(

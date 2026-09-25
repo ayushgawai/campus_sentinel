@@ -3,18 +3,18 @@
  * Shared by sidebar Site plan tab and the expand modal.
  */
 
-import { WALL_CAMERA_IDS, cameraLabel } from "../site.js";
-import { predictedCameraAt } from "../mock.js";
+import { WALL_CAMERA_IDS, cameraLabel } from "../site.js?v=fix7d";
+import { predictedCameraAt } from "../mock.js?v=fix7d";
 import {
   classLabel,
   severityLabel,
   formatRel,
   formatElapsedPlus,
   isOpenIncident,
-} from "../format.js";
-import { clear, el, setText } from "../dom.js";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js";
-import { now, subscribeTick } from "../clock.js";
+} from "../format.js?v=fix7d";
+import { clear, el, setText } from "../dom.js?v=fix7d";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix7d";
+import { now, subscribeTick } from "../clock.js?v=fix7d";
 
 function activeHit(state, cameraId) {
   for (const id of state.order) {
@@ -82,8 +82,8 @@ export function legendMarkup() {
     <span class="leg-item"><i class="leg leg--minor"></i> Minor</span>
     <span class="leg-item"><i class="leg leg--severe"></i> Severe</span>
     <span class="leg-item"><i class="leg leg--off"></i> Offline</span>
-    <span class="leg-item"><i class="leg leg--path"></i> Pursuit</span>
-    <span class="leg-item"><i class="leg leg--pred"></i> Predicted</span>
+    <span class="leg-item"><i class="leg leg--path"></i> Tracked path</span>
+    <span class="leg-item"><i class="leg leg--pred"></i> Predicted next</span>
   `;
 }
 
@@ -327,7 +327,7 @@ export function mountTrackingCard(host, opts) {
       setText(mark, cameraLabel(predicted));
       pred.appendChild(mark);
       pred.appendChild(
-        el("span", { className: "site-track__time", text: "next" }),
+        el("span", { className: "site-track__time", text: "Next" }),
       );
       route.appendChild(pred);
     }

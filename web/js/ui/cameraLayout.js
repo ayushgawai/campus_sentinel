@@ -3,9 +3,9 @@
  * Pure placement logic; cameras.js applies geometry with transitions.
  */
 
-import { WALL_CAMERA_IDS } from "../site.js";
-import { isOpenIncident } from "../format.js";
-import { now as clockNow } from "../clock.js";
+import { WALL_CAMERA_IDS } from "../site.js?v=fix7d";
+import { isOpenIncident } from "../format.js?v=fix7d";
+import { now as clockNow } from "../clock.js?v=fix7d";
 
 const HOLD_MS = 5000;
 const LEFT_VIEW_MS = 5000;

@@ -1,7 +1,7 @@
 /** Camera wall — layout modes, VMS OSD, corner brackets. */
 
-import { WALL_CAMERA_IDS, cameraLabel, SITE } from "../site.js";
-import { now, subscribeTick } from "../clock.js";
+import { WALL_CAMERA_IDS, cameraLabel, SITE } from "../site.js?v=fix7d";
+import { now, subscribeTick } from "../clock.js?v=fix7d";
 import {
   classLabel,
   formatPct,
@@ -11,15 +11,14 @@ import {
   stateLabel,
   severityLabel,
   isOpenIncident,
-  isDispatchSimState,
-} from "../format.js";
-import { clear, el, setText } from "../dom.js";
-import { createCameraLayout } from "./cameraLayout.js";
-import { themeColors } from "../theme.js";
-import * as cameraSources from "../cameraSources.js";
-import { cameraStream } from "../transport.js";
-import { icon } from "../icons.js";
-import { OP_REPORT_EVENT, confidenceShort } from "./operator.js";
+} from "../format.js?v=fix7d";
+import { clear, el, setText } from "../dom.js?v=fix7d";
+import { createCameraLayout } from "./cameraLayout.js?v=fix7d";
+import { themeColors } from "../theme.js?v=fix7d";
+import * as cameraSources from "../cameraSources.js?v=fix7d";
+import { cameraStream } from "../transport.js?v=fix7d";
+import { icon } from "../icons.js?v=fix7d";
+import { OP_REPORT_EVENT, confidenceShort } from "./operator.js?v=fix7d";
 
 export const FOCUS_CAMERA_EVENT = "sentinel:focus-camera";
 export const OPEN_SIDEBAR_EVENT = "sentinel:open-sidebar";
@@ -144,8 +143,17 @@ export function mountCameras(root, store, actions, layout) {
   root.innerHTML = `
     <div class="camwall">
       <div class="camwall__toolbar">
-        <span class="camwall__title">Live cameras</span>
+        <span class="camwall__title">Cameras</span>
         <span class="camwall__slot metric mono" data-cam-count>0 online</span>
+        <button type="button" class="btn btn--secondary btn--sm camwall__all" data-all-cams hidden aria-label="Show all cameras" title="All cameras">
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" focusable="false">
+            <rect x="1" y="1" width="5" height="5" rx="1" fill="currentColor"/>
+            <rect x="8" y="1" width="5" height="5" rx="1" fill="currentColor"/>
+            <rect x="1" y="8" width="5" height="5" rx="1" fill="currentColor"/>
+            <rect x="8" y="8" width="5" height="5" rx="1" fill="currentColor"/>
+          </svg>
+          <span>All cameras</span>
+        </button>
       </div>
       <div class="camwall__stage" data-stage></div>
       <div class="camwall__more" data-more hidden></div>
@@ -155,6 +163,8 @@ export function mountCameras(root, store, actions, layout) {
   const stage = root.querySelector("[data-stage]");
   const countEl = root.querySelector("[data-cam-count]");
   const moreEl = root.querySelector("[data-more]");
+  const allCamsBtn = root.querySelector("[data-all-cams]");
+  allCamsBtn.addEventListener("click", () => layoutCtl.showAll());
   const tiles = new Map();
   /** @type {Map<string, HTMLVideoElement>} */
   const videos = new Map();
@@ -214,7 +224,7 @@ export function mountCameras(root, store, actions, layout) {
     const offline = document.createElement("div");
     offline.className = "cam-tile__offline";
     offline.hidden = true;
-    offline.textContent = "Signal lost";
+    offline.textContent = "No signal";
     media.appendChild(video);
     media.appendChild(streamImg);
     media.appendChild(canvas);
@@ -226,12 +236,6 @@ export function mountCameras(root, store, actions, layout) {
     dropHint.hidden = true;
     dropHint.setAttribute("aria-hidden", "true");
 
-    const osdTl = document.createElement("div");
-    osdTl.className = "cam-tile__osd cam-tile__osd--tl";
-    const osdNum = document.createElement("div");
-    osdNum.className = "cam-tile__osd-name";
-    osdNum.textContent = `CAM ${camNum(id)}`;
-    osdTl.appendChild(osdNum);
 
     const liveRow = document.createElement("div");
     liveRow.className = "cam-tile__live";
@@ -270,12 +274,11 @@ export function mountCameras(root, store, actions, layout) {
     const leftNote = document.createElement("div");
     leftNote.className = "cam-tile__left-note";
     leftNote.hidden = true;
-    leftNote.textContent = "Subject left view";
+    leftNote.textContent = "Person left view";
 
     tile.appendChild(media);
     tile.appendChild(dropHint);
     tile.appendChild(liveRow);
-    tile.appendChild(osdTl);
     tile.appendChild(osdTr);
     tile.appendChild(osdBl);
     tile.appendChild(osdBr);
@@ -694,9 +697,6 @@ export function mountCameras(root, store, actions, layout) {
         text: cameraLabel(inc.camera_id),
       }),
     );
-    if (isDispatchSimState(inc.state)) {
-      header.appendChild(el("span", { className: "sim-tag", text: "SIMULATED" }));
-    }
     const agoEl = el("span", { className: "cam-inc-bar__ago mono" });
     const agoIso = inc.created_at || inc.peak_ts;
     setText(agoEl, formatRel(agoIso, now()));
@@ -740,6 +740,8 @@ export function mountCameras(root, store, actions, layout) {
     lastPlanKey = key;
 
     root.dataset.layout = plan.mode;
+    // "All cameras" only when the wall is not already the grid.
+    allCamsBtn.hidden = plan.mode === "grid";
 
     const mainByCam = new Map(plan.mains.map((m) => [m.cameraId, m]));
 
@@ -796,7 +798,7 @@ export function mountCameras(root, store, actions, layout) {
     const clock = formatOsdClock(nowMs);
     for (const id of WALL_CAMERA_IDS) {
       const online = Boolean(state.cameras[id]?.online);
-      setText(tiles.get(id).clockEl, online ? clock : "NO SIGNAL");
+      setText(tiles.get(id).clockEl, online ? clock : "");
     }
     for (const { node, iso } of headerAgo.values()) {
       setText(node, formatRel(iso, nowMs));
@@ -849,8 +851,9 @@ export function mountCameras(root, store, actions, layout) {
       tile.tile.classList.toggle("is-offline", !online);
       tile.offlineEl.hidden = online;
       tile.recDot.hidden = !online;
-      setText(tile.clockEl, online ? clock : "NO SIGNAL");
-      setText(tile.fpsEl, online ? "12.0 fps" : "0.0 fps");
+      // Offline: one centred "No signal"; the footer shows time and fps only when live.
+      setText(tile.clockEl, online ? clock : "");
+      setText(tile.fpsEl, online ? "12.0 fps" : "");
 
       const boxes = Array.isArray(cam.boxes) ? cam.boxes : [];
       if (!boxesEqual(tile.boxes, boxes)) {

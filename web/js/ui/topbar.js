@@ -1,16 +1,16 @@
 /** Header: mark + SENTINEL | nav | health | clock · reconnecting only */
 
-import { ROUTES, navigate, getRoute, subscribeRoute } from "../router.js";
+import { ROUTES, navigate, getRoute, subscribeRoute } from "../router.js?v=fix7d";
 import {
   awaiting,
   formatHeaderClock,
   formatInt,
   formatMs,
   formatPct,
-} from "../format.js";
-import { setText } from "../dom.js";
-import { LOGO_MARK } from "../logo.js";
-import { now, subscribeTick } from "../clock.js";
+} from "../format.js?v=fix7d";
+import { setText } from "../dom.js?v=fix7d";
+import { LOGO_MARK } from "../logo.js?v=fix7d";
+import { now, subscribeTick } from "../clock.js?v=fix7d";
 
 export function mountTopbar(el, store, actions, layoutCtl) {
   el.innerHTML = `
@@ -26,22 +26,12 @@ export function mountTopbar(el, store, actions, layoutCtl) {
         <div class="hm"><span class="hm__label">Cameras</span><span class="hm__value"><span class="dot" data-cam-dot></span><span class="metric mono" data-cams></span></span></div>
         <div class="hm"><span class="hm__label">Models</span><span class="hm__value"><span class="dot" data-model-dot></span><span class="metric" data-models></span></span></div>
         <div class="hm"><span class="hm__label">GPU</span><span class="hm__value"><span class="metric mono" data-gpu></span></span></div>
-        <div class="hm"><span class="hm__label">p95</span><span class="hm__value"><span class="metric mono" data-p95></span></span></div>
+        <div class="hm"><span class="hm__label">Latency</span><span class="hm__value"><span class="metric mono" data-p95></span></span></div>
         <div class="hm"><span class="hm__label">Screened</span><span class="hm__value"><span class="metric mono" data-screened>0</span></span></div>
         <div class="hm"><span class="hm__label">Escalated</span><span class="hm__value"><span class="metric mono" data-escalated>0</span></span></div>
       </div>
 
       <div class="topbar__right">
-        <button type="button" class="topbar__all-cams" data-all-cams hidden aria-label="Show all cameras" title="All cameras">
-          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-            <rect x="1" y="1" width="5" height="5" rx="1" fill="currentColor"/>
-            <rect x="8" y="1" width="5" height="5" rx="1" fill="currentColor"/>
-            <rect x="1" y="8" width="5" height="5" rx="1" fill="currentColor"/>
-            <rect x="8" y="8" width="5" height="5" rx="1" fill="currentColor"/>
-          </svg>
-          <span>All cameras</span>
-        </button>
-        <button type="button" class="topbar__reset" data-reset>Reset demo</button>
         <span class="topbar__reconnect" data-reconnect hidden>Reconnecting</span>
         <time class="topbar__clock metric mono" data-clock></time>
       </div>
@@ -49,9 +39,6 @@ export function mountTopbar(el, store, actions, layoutCtl) {
   `;
 
   const nav = el.querySelector("[data-nav]");
-  el
-    .querySelector("[data-reset]")
-    .addEventListener("click", () => actions.demoReset());
   for (const route of ROUTES) {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -83,18 +70,6 @@ export function mountTopbar(el, store, actions, layoutCtl) {
   const escalatedEl = $("[data-escalated]");
   const reconnectEl = $("[data-reconnect]");
   const clockEl = $("[data-clock]");
-  const allCamsBtn = $("[data-all-cams]");
-
-  allCamsBtn?.addEventListener("click", () => layoutCtl?.showAll?.());
-
-  function paintAllCams(state) {
-    if (!allCamsBtn || !layoutCtl) return;
-    const live = (state.route || getRoute()) === "live";
-    allCamsBtn.hidden = !live;
-    if (!live) return;
-    const mode = layoutCtl.plan(state).mode;
-    allCamsBtn.classList.toggle("is-invisible", mode === "grid");
-  }
 
   let screenedDisplay = 0;
   let screenedTarget = 0;
@@ -126,16 +101,18 @@ export function mountTopbar(el, store, actions, layoutCtl) {
     setText(clockEl, formatHeaderClock(ms));
     const iso = new Date(ms).toISOString();
     if (clockEl.dateTime !== iso) clockEl.dateTime = iso;
-    // The wall can return to grid on a timer with no event; keep the
-    // All cameras button in step with it.
-    paintAllCams(store.getState());
   }
 
   function render(state) {
     paintNav(state.route || getRoute());
-    paintAllCams(state);
 
     const h = state.health || {};
+    // Values that have not arrived yet read a muted "Pending".
+    const pending = (node, missing) => node.classList.toggle("is-pending", missing);
+    pending(camsEl, h.cameras_online == null);
+    pending(gpuEl, h.gpu_util == null);
+    pending(p95El, h.p95_ms == null);
+    pending(escalatedEl, h.frames_escalated == null);
     if (h.cameras_online == null) {
       setText(camsEl, awaiting());
       camDot.className = "dot dot--off";
@@ -148,7 +125,7 @@ export function mountTopbar(el, store, actions, layoutCtl) {
     }
 
     if (h.models_resident) {
-      setText(modelsEl, "Resident");
+      setText(modelsEl, "Ready");
       modelDot.className = "dot dot--ok";
     } else {
       setText(modelsEl, "Loading");
@@ -175,12 +152,10 @@ export function mountTopbar(el, store, actions, layoutCtl) {
   const unsubTick = subscribeTick(tickClock);
   render(store.getState());
   const unsub = store.subscribe(render);
-  const unsubLayout = layoutCtl?.subscribe?.(() => paintAllCams(store.getState()));
 
   return () => {
     unsub();
     unsubRoute();
-    unsubLayout?.();
     unsubTick();
     if (tweenRaf) cancelAnimationFrame(tweenRaf);
   };

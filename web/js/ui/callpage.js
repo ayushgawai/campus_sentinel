@@ -1,3 +1,3 @@
 /** Call Console page entry. */
 
-export { mountCallPage } from "./call.js";
+export { mountCallPage } from "./call.js?v=fix7d";
