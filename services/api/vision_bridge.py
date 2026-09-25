@@ -130,8 +130,7 @@ class VisionBridge:
         media = _resolve_media(feed)
         paths = {c["camera_id"]: str(media / c["file"]) for c in feed["cameras"]}
         src = FileSource(paths)
-        # ONE VisionRouter for the process lifetime — recreating reloads TensorRT
-        # and has knocked this box over before.
+        # ONE VisionRouter for the process lifetime — recreating reloads YOLO.
         router = VisionRouter(list(paths), forced=False, source=src)
         zrt = ZRTClient(forced=False, timeout_s=90.0)
         width = float(getattr(src, "width", 960) or 960)
@@ -156,7 +155,7 @@ class VisionBridge:
                 step_ms = (time.perf_counter() - t0) * 1000.0
                 if not ovs:
                     print(
-                        "[vision-bridge] EOF — rewind FileSource (keep TRT warm)",
+                        "[vision-bridge] EOF — rewind FileSource (keep YOLO warm)",
                         flush=True,
                     )
                     src.close()

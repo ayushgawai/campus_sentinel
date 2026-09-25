@@ -1,7 +1,7 @@
 """OSNet re-id stub — affinity without loading weights (GPU-safe).
 
 Real OSNet weights swap later (Pratham). Demo uses appearance hash of the crop
-bbox so cross-cam tracks can soft-match without TensorRT.
+bbox so cross-cam tracks can soft-match without a re-id model.
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 """YOLO26s-pose — boxes, 17 keypoints, confidence (playbook C).
 
-Live path: official Ultralytics checkpoint, TensorRT engine when present.
+Live path: official Ultralytics yolo26s-pose.pt on CUDA.
 Forced path: boxes follow the synthetic person. No weights, no GPU.
 """
 
@@ -14,9 +14,6 @@ from .decode import Frame
 
 WEIGHTS_DIR = Path(__file__).resolve().parent / "weights"
 DEFAULT_PT = WEIGHTS_DIR / "yolo26s-pose.pt"
-DEFAULT_ENGINE = WEIGHTS_DIR / "yolo26s-pose.engine"
-# Engine was exported with this batch (playbook: batched across cameras).
-ENGINE_BATCH = 2
 # 17 COCO pose joints — playbook: one model, 17 keypoints.
 N_KPTS = 17
 
@@ -70,35 +67,24 @@ class PoseDetector:
         self._model = None
         self._loaded_path: Path | None = None
 
+    def _resolve_path(self) -> Path:
+        if self.weights is not None:
+            return Path(self.weights)
+        return Path(os.environ.get("VISION_YOLO_PT", DEFAULT_PT))
+
     def _load(self):
         if self._model is not None:
             return self._model
         from ultralytics import YOLO  # local import — forced path stays light
 
-        engine = Path(os.environ.get("VISION_YOLO_ENGINE", DEFAULT_ENGINE))
-        pt = self.weights or Path(os.environ.get("VISION_YOLO_PT", DEFAULT_PT))
-        prefer_pt = os.environ.get("CS_VISION_YOLO", "").strip().lower() in {
-            "pt",
-            "pytorch",
-            "cpu",
-        }
-        path = pt if prefer_pt and pt.is_file() else (engine if engine.is_file() else pt)
+        path = self._resolve_path()
         if not path.is_file():
             raise FileNotFoundError(
                 f"YOLO26s-pose weights missing at {path}. "
                 "Run: python3 services/vision/pull_weights.py"
             )
-        try:
-            self._model = YOLO(str(path))
-            self._loaded_path = path
-        except Exception as exc:
-            # TensorRT often OOMs when ZRT/Qwen already owns the GPU — fall back to .pt
-            if path.suffix == ".engine" and pt.is_file():
-                print(f"[detector] engine load failed ({exc}); falling back to {pt}", flush=True)
-                self._model = YOLO(str(pt))
-                self._loaded_path = pt
-            else:
-                raise
+        self._model = YOLO(str(path))
+        self._loaded_path = path
         return self._model
 
     @property
@@ -131,33 +117,13 @@ class PoseDetector:
             return []
         model = self._load()
         images = [fr.image for fr in frames]
-        n = len(images)
-        # Fixed-shape TensorRT engine: pad / chunk to ENGINE_BATCH.
-        using_engine = (
-            self._loaded_path is not None and self._loaded_path.suffix == ".engine"
+        results = model.predict(
+            images,
+            conf=self.conf,
+            verbose=False,
+            batch=len(images),
+            device=self.device,
         )
-        batches: list[list] = []
-        if using_engine:
-            pad = images[:]
-            while len(pad) % ENGINE_BATCH:
-                pad.append(images[-1])
-            for i in range(0, len(pad), ENGINE_BATCH):
-                batches.append(pad[i : i + ENGINE_BATCH])
-        else:
-            batches.append(images)
-        results = []
-        device = self.device
-        for b in batches:
-            results.extend(
-                model.predict(
-                    b,
-                    conf=self.conf,
-                    verbose=False,
-                    batch=len(b),
-                    device=device,
-                )
-            )
-        results = results[:n]
         out: list[list[Detection]] = []
         for res in results:
             dets: list[Detection] = []

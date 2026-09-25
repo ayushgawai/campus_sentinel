@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-24 (ayush) — GB10 stability: 0.40 Qwen fraction + 32G swap
+Last updated: 2026-09-24 (pratham) — TensorRT removed; detector is YOLO26s-pose .pt only
 
 ## HARD RULES
 1. `git pull --rebase origin main` before every push. Work on **main**.
@@ -20,10 +20,11 @@ See **`docs/STABILITY.md`**. Box had repeated **hard crashes** under Qwen+YOLO (
 zrt serve hf:Qwen/Qwen3-VL-30B-A3B-Instruct-FP8 --force --gpu-memory-fraction 0.40 \
   --extra "--max-model-len=8192"
 # YOLO CUDA only after ZRT is healthy; or use CS_VISION_DEVICE=cpu for light tests
-CS_VISION_SEVILLE=1 CS_VISION_YOLO=pt CS_VISION_DEVICE=cuda:0 \
+CS_VISION_SEVILLE=1 CS_VISION_DEVICE=cuda:0 \
   CS_VISION_STEP_S=0.5 CS_VISION_COOLDOWN_S=12 \
   services/vision/.venv/bin/python -m services.api --host 0.0.0.0 --port 8080
 ```
+- **Detector = YOLO26s-pose `.pt` only.** TensorRT path removed (engine/onnx deleted, no export).
 - Prefer **0.40** GPU fraction when coexisting (0.55 left too little headroom and hard-locked the box).
 - **32G swap is on** the shared ZGX box (`/swapfile`). Do not start Qwen at 0.55.
 - A.1 UI-only: do **not** start ZRT.

@@ -201,7 +201,7 @@ def local_vision_step_ms(n: int = 5) -> dict | None:
         "boxes_total": boxes,
         "escalations_total": escs,
         "device": os.environ.get("CS_VISION_DEVICE", "cuda:0"),
-        "yolo": os.environ.get("CS_VISION_YOLO", "engine"),
+        "yolo": "yolo26s-pose.pt",
     }
 
 
