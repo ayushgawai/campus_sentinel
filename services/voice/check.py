@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import threading
 import time
 import sys
 from pathlib import Path
@@ -183,10 +184,7 @@ async def _main() -> None:
     )
     assert qwen.calls == 1
     new_lines = [getattr(event, "text", "") for event in live_events[event_count:]]
-    assert new_lines == [
-        "One moment, I'm checking the latest camera view.",
-        "I don't see that on the current camera.",
-    ]
+    assert new_lines == ["I don't see that on the current camera."]
     assert await live.answer_dispatcher(rec.incident_id, "Is there smoke?") == (
         "That isn't visible in the current camera view."
     )
@@ -231,6 +229,83 @@ async def _main() -> None:
     bridge._asr = type("_Asr", (), {"transcribe": lambda _self, _pcm: "What is the location?"})()
     await bridge._transcribe_and_publish(b"pcm")
     assert asked == [(rec.incident_id, "What is the location?")]
+
+    timing_events: list[object] = []
+
+    async def timing_pub(ev: object) -> None:
+        timing_events.append(ev)
+
+    class _BlockingAsr:
+        started = threading.Event()
+        release = threading.Event()
+
+        def transcribe(self, _pcm):
+            self.started.set()
+            self.release.wait(1)
+            return "What is happening near the door?"
+
+    timing_bridge = MediaStreamBridge(
+        incident_id=rec.incident_id,
+        send=lambda _text: asyncio.sleep(0),
+        recv=lambda: asyncio.sleep(0, result=None),
+        subscribe=lambda _id: asyncio.Queue(),
+        unsubscribe=lambda _id, _q: None,
+        publish=timing_pub,
+        answer=answer,
+    )
+    blocking_asr = _BlockingAsr()
+    timing_bridge._asr = blocking_asr
+    pending = asyncio.create_task(timing_bridge._transcribe_and_publish(b"x" * 48_000))
+    try:
+        await asyncio.to_thread(blocking_asr.started.wait, 1)
+        assert [getattr(event, "text", "") for event in timing_events] == ["One moment."]
+    finally:
+        blocking_asr.release.set()
+    await pending
+    assert [getattr(event, "speaker", "") for event in timing_events] == [
+        "sentinel",
+        "dispatcher",
+    ]
+
+    timing_events.clear()
+    timing_bridge._asr = type(
+        "_SecondAsr", (), {"transcribe": lambda _self, _pcm: "Where is the person?"}
+    )()
+    await timing_bridge._transcribe_and_publish(b"x" * 48_000)
+    assert [getattr(event, "text", "") for event in timing_events] == [
+        "Let me check that.",
+        "Where is the person?",
+    ]
+
+    timing_events.clear()
+    timing_bridge._asr = type(
+        "_AckAsr", (), {"transcribe": lambda _self, _pcm: "Okay."}
+    )()
+    await timing_bridge._transcribe_and_publish(b"x" * 40_000)
+    assert [getattr(event, "speaker", "") for event in timing_events] == ["dispatcher"]
+
+    timing_events.clear()
+    timing_bridge._asr = type(
+        "_EmptyAsr", (), {"transcribe": lambda _self, _pcm: ""}
+    )()
+    await timing_bridge._transcribe_and_publish(b"x" * 48_000)
+    assert [getattr(event, "text", "") for event in timing_events] == [
+        "Give me a moment.",
+        "I didn't catch that. Please repeat.",
+    ]
+
+    timing_bridge._tts = type(
+        "_Tts", (), {"synthesize": lambda _self, _text: b""}
+    )()
+    timing_bridge._inbound_buf.extend(b"race-window audio")
+    timing_bridge._heard_speech = True
+    timing_bridge._turn_q.put_nowait(b"queued race-window turn")
+    await timing_bridge._speak("One moment.")
+    assert (
+        not timing_bridge._inbound_buf
+        and timing_bridge._heard_speech is False
+        and timing_bridge._turn_q.empty()
+    )
 
     class _SlowAsr:
         active = 0

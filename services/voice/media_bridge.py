@@ -61,6 +61,8 @@ _FRAME_S = 0.02
 _SPEECH_RMS = 300
 _SILENCE_FLUSH_BYTES = 16_000  # 500 ms at PCM16 mono 16kHz
 _MAX_UTTERANCE_BYTES = 480_000  # 15 seconds; discard longer noisy turns
+_FILLER_MIN_BYTES = 48_000  # one second of speech plus the closing silence
+_FILLERS = ("One moment.", "Let me check that.", "Give me a moment.")
 
 
 def _pcm16_to_mulaw(pcm16: bytes, in_rate: int) -> bytes:
@@ -135,6 +137,7 @@ class MediaStreamBridge:
     _discarding_turn: bool = field(default=False, repr=False)
     _speaking: bool = field(default=False, repr=False)
     _ignore_inbound_until: float = field(default=0.0, repr=False)
+    _filler_index: int = field(default=0, repr=False)
     # Test/inspection hook: every decoded inbound PCM16 chunk, in order.
     inbound_pcm16: list[bytes] = field(default_factory=list, repr=False)
 
@@ -251,10 +254,32 @@ class MediaStreamBridge:
             await self._transcribe_and_publish(pcm16)
 
     async def _transcribe_and_publish(self, pcm16: bytes) -> None:
+        filler_sent = False
+        if self.publish is not None and len(pcm16) >= _FILLER_MIN_BYTES:
+            filler = _FILLERS[self._filler_index % len(_FILLERS)]
+            self._filler_index += 1
+            await self.publish(
+                CallTranscriptDelta(
+                    incident_id=self.incident_id,
+                    speaker="sentinel",
+                    text=filler,
+                    ts=utcnow(),
+                )
+            )
+            filler_sent = True
         try:
             text = str(await asyncio.to_thread(self._asr.transcribe, pcm16) or "").strip()
         except (OSError, TimeoutError):
-            return
+            text = ""
+        if not text and filler_sent and self.publish is not None:
+            await self.publish(
+                CallTranscriptDelta(
+                    incident_id=self.incident_id,
+                    speaker="sentinel",
+                    text="I didn't catch that. Please repeat.",
+                    ts=utcnow(),
+                )
+            )
         if not text or self.publish is None:
             return
         await self.publish(
@@ -290,6 +315,14 @@ class MediaStreamBridge:
 
     async def _speak(self, text: str) -> None:
         self._speaking = True
+        self._inbound_buf.clear()
+        self._heard_speech = False
+        self._silence_bytes = 0
+        while True:
+            try:
+                self._turn_q.get_nowait()
+            except asyncio.QueueEmpty:
+                break
         try:
             pcm16 = await asyncio.to_thread(self._tts.synthesize, text)
             audio = (

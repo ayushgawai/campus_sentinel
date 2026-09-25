@@ -224,14 +224,6 @@ class VoiceAgent:
                 )
             ):
                 return ""
-            await self.publish(
-                CallTranscriptDelta(
-                    incident_id=incident_id,
-                    speaker="sentinel",
-                    text="One moment, I'm checking the latest camera view.",
-                    ts=utcnow(),
-                )
-            )
             try:
                 answer = await asyncio.to_thread(self._zrt.answer_dispatcher, facts, question)
             except Exception:
