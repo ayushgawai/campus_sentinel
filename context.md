@@ -1,5 +1,9 @@
 # context.md
+<<<<<<< HEAD
 Last updated: 2026-09-24 (pratham) — TensorRT removed; detector is YOLO26s-pose .pt only
+=======
+Last updated: 2026-09-24 18:20 by manav — Sentinel console in web/ (+ README)
+>>>>>>> f4dea50 (web: README and context.md dashboard status)
 
 ## HARD RULES
 1. `git pull --rebase origin main` before every push. Work on **main**.
@@ -49,6 +53,10 @@ CS_VISION_SEVILLE=1 CS_VISION_DEVICE=cuda:0 \
 - Officer 911 script + cross-cam whereabouts + security re-alerts
 - Naman 3+3 · lab `:8765` · SSHFS mount recovered
 - Health strip **measured** (`services/api/telemetry.py`): nvidia-smi GPU, router-step p95, real counters. No constants on the wire; `null` when unmeasured. GPU/p95 tiles restored.
+<<<<<<< HEAD
+=======
+- **web:** Sentinel console (plain HTML/JS, no build) — splash, Live Operations camera wall (auto/split focus), assist + sidebar (incidents, site plan, call), Incidents / Call Console / System pages, Demo control (scenarios, reset, auto follow, local camera video in-browser only). Mock by default; `?ws=<url>` for live. `web/README.md` added. Replaces prior lab UI in `web/`. (manav)
+>>>>>>> f4dea50 (web: README and context.md dashboard status)
 
 ## Pending (owners)
 | Who | What |
@@ -57,6 +65,24 @@ CS_VISION_SEVILLE=1 CS_VISION_DEVICE=cuda:0 \
 | **Voice / Ayush** | Verify phone → buy FROM → set TO + public HTTPS |
 | **Indraneel** | Officer F1 polish |
 | **Ayush / open** | OSNet weights · temp calibration · MediaMTX optional |
+<<<<<<< HEAD
 
 ## Ownership
 Ayush: brain/api/lab/audit · Pratham: vision/voice · Indraneel: web · Naman: data/clips
+=======
+| **Ayush / api** | WS URL for live events |
+| **Ayush / api** | REST routes: confirm, dismiss, demo reset |
+| **Ayush / api** | CallBrief event (when available) |
+| **Ayush / api** | Confirm BBox units (UI assumes 0–1); MJPEG URLs per camera |
+
+## Decisions made since the playbook
+- UI branded **Sentinel**; cameras only as Camera 1–6; no place names in UI or mock (public video). (manav)
+- Mock-only UI: predicted next camera, clip from local video, confirm/dismiss in mock. (manav)
+- BBox assumed normalised 0–1 until api confirms. (manav)
+- **SIMULATED** on every call and dispatch surface. (manav)
+- Deployment is Docker Compose only.
+- WS overlays are `overlay.boxes` only.
+
+## Ownership
+Ayush: brain/api/lab/audit · Pratham: vision/voice · **Manav: web/** · Naman: data/clips
+>>>>>>> f4dea50 (web: README and context.md dashboard status)
