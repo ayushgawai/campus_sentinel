@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-25 - complete live-wiring baseline and design
+Last updated: 2026-09-25 - live voice conversation and audio validation
 
 ## HARD RULES
 1. `git pull --rebase origin main` before every push. Work on **main**.
@@ -34,7 +34,7 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - A.1 UI-only: do **not** start ZRT.
 - Live dashboard: `http://100.83.170.35:8090/?ws=ws%3A%2F%2F100.83.170.35%3A8080%2Fws&nosplash=1`
 - For recording use the same URL without &nosplash=1 so the brand intro plays.
-- Current detached sessions: `sentinel-api` and `sentinel-web`. ZRT serves Qwen on `127.0.0.1:8000`.
+- Current detached sessions: `sentinel-api`, `sentinel-web`, `sentinel-asr`, and `sentinel-tts`. ZRT serves Qwen on `127.0.0.1:8000`.
 
 ## Mac mount
 - `~/mnt/zgx-b505` = SSHFS of `/home/hp25` via **`zgx-up`** (must show in `mount`, not a local folder).
@@ -47,11 +47,12 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 ## Voice / SignalWire
 - Active provider: SignalWire Compatibility API (`signalwire_bridge`); legacy `twilio_bridge` remains inactive only for rollback. Credentials live in ZGX **`.env` only** (gitignored).
 - Outbound calls use `/signalwire/voice`; bidirectional audio uses `/signalwire/media`. `GET /voice/status` reports configuration without returning secrets. `CS_KILL_SWITCH=1` blocks calling.
-- The media bridge voices live `speaker=="sentinel"` transcript lines via Kokoro and sends inbound caller audio through Parakeet in ~2 s batches. SignalWire's live stream event compatibility still requires one real-call validation.
-- Kokoro/Parakeet endpoints are configured for ports 8092/8093, but neither speech process is currently listening. Start them in tmux before the real audio test; their isolated `services/voice/.venv` does not touch the live vision environment.
-- Local round-trip tested: Kokoro → mulaw compatibility stream → Parakeet → near-exact transcript. Provider transport is pending the first SignalWire call.
+- The media bridge voices live `speaker=="sentinel"` transcript lines via Kokoro and closes dispatcher turns after 500 ms of silence. One worker serializes ASR and answers; overlong 15-second/noisy turns are discarded as one turn instead of split into multiple answers.
+- Kokoro and faster-whisper endpoints are live on ports 8092/8093 in an isolated `services/voice/.venv`; the UI keeps the historical Parakeet label, but the runtime backend is faster-whisper `base.en` on CPU.
+- SignalWire outbound calling, public WSS media, inbound audio, ASR, Qwen fallback, Kokoro return audio, and dashboard transcript transport were validated on real calls. Outbound calling is currently disabled with `CS_SIGNALWIRE_ENABLED=0` while local conversation tuning continues.
+- Phone-codec local simulation transcribed emergency, exact-address, repeat, current-location, and unknown-detail questions exactly. Time from end of speech to generated answer audio was 0.75 to 1.20 seconds; deterministic text answers were under 1 ms and one Qwen refusal took 365 ms.
 - Stub docstrings say Parakeet/Kokoro land with **Naman**, ownership table says **Pratham** owns `voice/` — Naman is doing it now, table should be updated.
-- The WEAPON demo promotes to SEVERE and uses the scripted transcript only while SignalWire is disabled. When enabled, the live call opens with the SJSU/MacQuarrie report, Parakeet questions are published to the dashboard, common answers come from current-camera facts, unmatched questions use bounded text-only Qwen, and Kokoro voices the same Sentinel transcript.
+- The WEAPON demo promotes to SEVERE and uses the scripted transcript only while SignalWire is disabled. When enabled, the live call uses a short SJSU/MacQuarrie opener, answers one dispatcher question at a time, remembers repeat requests, publishes dispatcher speech to the dashboard, uses current-camera facts for common answers, and reserves bounded Qwen for unmatched questions.
 - Live call facts advance only on observed Camera 1 to 2 to 3 handoffs. Overlay presence also updates whether the person is currently visible, so the agent does not claim a subject remains on screen after the box clears.
 
 ## Canonical demo site
@@ -93,13 +94,11 @@ Design and verified pre-change baseline: `docs/superpowers/specs/2026-09-25-comp
 | Who | What |
 |-----|------|
 | **Naman** | Ambient clips done. Optional more later |
-| **Voice / Ayush** | Validate SignalWire media events on one real call |
+| **Voice / Ayush** | Optional voice upgrade beyond local Kokoro; current `af_heart` is Kokoro's highest-graded American voice, but 8 kHz phone audio remains less natural than paid conversational TTS |
 | **Indraneel** | Officer F1 polish |
 | **Ayush / open** | OSNet weights · temp calibration · MediaMTX optional |
-| **Ayush / api** | REST routes: confirm, dismiss (demo reset is already WS) |
 | **Ayush / api** | CallBrief event (when available) |
-| **Ayush / api** | POST /api/incidents/manual, /api/incidents/{id}/dispatch, /api/broadcast, /confirm, /dismiss; CORS allow POST from :8090; rules_fired ['operator_report'] on manual incidents (blocks web fix 5 live path) |
-| **Ayush / api** | Send camera.online per camera every few seconds as a heartbeat, and camera.online false when a feed stops |
+| **Web / Manav** | Replace the fixed simulated-call label with the live provider state when SignalWire is enabled |
 
 ## Decisions made since the playbook
 - UI branded **Sentinel**; cameras only as Camera 1–6; no place names in UI or mock (public video). (manav)

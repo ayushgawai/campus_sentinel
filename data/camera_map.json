@@ -1,6 +1,7 @@
 {
   "site": {
     "name": "San Jose State University",
+    "spoken_name": "San Jose State",
     "type": "University campus",
     "address": "One Washington Square, San Jose, CA 95192",
     "timezone": "America/Los_Angeles"
@@ -21,6 +22,7 @@
       "vehicle_access": "Use the nearest MacQuarrie Hall entrance; exact curb access is not confirmed",
       "scene_facts": {
         "subject_count": 1,
+        "spoken_location": "the ground-floor lobby",
         "person_description": "Adult in dark clothing carrying a visible long firearm",
         "visible_weapon": "long firearm",
         "current_observation": "Person 1 is entering the ground-floor lobby with a visible long firearm",
@@ -52,6 +54,7 @@
       "vehicle_access": "Use the nearest MacQuarrie Hall entrance; exact curb access is not confirmed",
       "scene_facts": {
         "subject_count": 1,
+        "spoken_location": "the east corridor",
         "person_description": "Adult in dark clothing carrying a visible long firearm",
         "visible_weapon": "long firearm",
         "current_observation": "Person 1 is moving through the east corridor with a visible long firearm",
@@ -83,6 +86,7 @@
       "vehicle_access": "Use the nearest MacQuarrie Hall entrance; exact curb access is not confirmed",
       "scene_facts": {
         "subject_count": 1,
+        "spoken_location": "the west corridor near the stairwell",
         "person_description": "Adult in dark clothing carrying a visible long firearm",
         "visible_weapon": "long firearm",
         "current_observation": "Person 1 is moving through the west corridor near the stairwell with a visible long firearm",

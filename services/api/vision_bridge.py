@@ -16,6 +16,7 @@ import os
 import time
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 
 from contracts import BBox, IncidentClass, IncidentUpsert, OverlayBoxes, Severity
@@ -129,6 +130,7 @@ class VisionBridge:
         self._qwen_started = False
         self._cached_record: Any = None
         self._last_camera: str | None = None
+        self._pending_reuse: dict[str, Any] = {}
         hub.on_reset = self.reset_demo
 
     def start(self) -> None:
@@ -152,6 +154,7 @@ class VisionBridge:
         self._qwen_started = False
         self._cached_record = None
         self._last_camera = None
+        self._pending_reuse.clear()
         self._last_fire.clear()
         self._upsert_times.clear()
 
@@ -257,10 +260,12 @@ class VisionBridge:
                     await asyncio.sleep(1.0)
                     continue
                 telemetry.ROUTER_LATENCY.record(step_ms)
-                for remapped in _display_overlays(
-                    list(paths), ovs, width, height
-                ):
+                shown = _display_overlays(list(paths), ovs, width, height)
+                for remapped in shown:
                     await self.hub.publish(remapped)
+                    record = self._reuse_from_overlay(remapped)
+                    if record is not None:
+                        await self.hub.publish(IncidentUpsert(incident=record))
                 for mode, esc, frames in packed:
                     if mode == "reuse":
                         record = self._reuse_record(esc)
@@ -294,7 +299,6 @@ class VisionBridge:
             cam = normalize_camera_id(esc.camera_id)
             if self._qwen_started:
                 if cam != self._last_camera:
-                    self._last_camera = cam
                     packed.append(("reuse", esc, []))
                 continue
             if cam != "cam-01":
@@ -317,9 +321,11 @@ class VisionBridge:
         return ovs, packed
 
     def _reuse_record(self, esc: Any) -> Any:
-        if self._cached_record is None:
-            return None
         cam = normalize_camera_id(esc.camera_id)
+        if self._cached_record is None:
+            self._pending_reuse[cam] = esc
+            return None
+        self._last_camera = cam
         now = self._cached_record.updated_at.__class__.now(
             self._cached_record.updated_at.tzinfo
         )
@@ -335,6 +341,37 @@ class VisionBridge:
             rules_fired=list(getattr(esc, "rules", []) or []),
         )
         return self._cached_record
+
+    def _drain_pending_reuse(self) -> list[Any]:
+        records: list[Any] = []
+        for camera_id in ("cam-02", "cam-03"):
+            esc = self._pending_reuse.pop(camera_id, None)
+            if esc is not None:
+                record = self._reuse_record(esc)
+                if record is not None:
+                    records.append(record)
+        return records
+
+    def _reuse_from_overlay(self, overlay: OverlayBoxes) -> Any:
+        """Fallback handoff from what is visible, without another Qwen call."""
+        next_camera = {"cam-01": "cam-02", "cam-02": "cam-03"}.get(
+            self._last_camera or ""
+        )
+        if (
+            not overlay.boxes
+            or overlay.camera_id != next_camera
+        ):
+            return None
+        strongest = max(overlay.boxes, key=lambda box: float(box.score or 0.0))
+        return self._reuse_record(
+            SimpleNamespace(
+                camera_id=overlay.camera_id,
+                track_id=strongest.track_id,
+                ts=overlay.ts,
+                fused=float(strongest.score or 0.0),
+                rules=["overlay_handoff"],
+            )
+        )
 
     async def _classify_loop(self, zrt: ZRTClient) -> None:
         assert self._classify_q is not None
@@ -354,6 +391,8 @@ class VisionBridge:
             self.hub.frames_escalated += 1
             self._cached_record = result.record
             await self.hub.publish(IncidentUpsert(incident=result.record))
+            for record in self._drain_pending_reuse():
+                await self.hub.publish(IncidentUpsert(incident=record))
             print(
                 f"[vision-bridge] upsert {result.record.incident_id} "
                 f"{result.record.class_token.value} "

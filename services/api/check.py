@@ -10,6 +10,7 @@ import os
 import struct
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -164,6 +165,37 @@ async def main() -> None:
         [],
     )
     assert result.record.severity is Severity.SEVERE
+    bridge._cached_record = result.record
+    bridge._last_camera = "cam-01"
+    handoff = bridge._reuse_from_overlay(
+        OverlayBoxes(
+            camera_id="cam-02",
+            ts=utcnow(),
+            boxes=[BBox(x=0.1, y=0.1, w=0.2, h=0.4, track_id="t-1", label="weapon", score=0.3)],
+        )
+    )
+    assert handoff is not None and handoff.camera_id == "cam-02"
+    assert bridge._reuse_from_overlay(
+        OverlayBoxes(camera_id="cam-02", ts=utcnow(), boxes=[])
+    ) is None
+    bridge._cached_record = None
+    bridge._qwen_started = True
+    bridge._last_camera = "cam-01"
+    router = SimpleNamespace(
+        last_escalations=[
+            SimpleNamespace(
+                camera_id="cam-02", track_id="t-1", ts=utcnow(), fused=0.8, rules=[]
+            )
+        ],
+        step=lambda: [],
+    )
+    _overlays, packed = bridge._step(router)
+    assert packed[0][0] == "reuse" and bridge._last_camera == "cam-01"
+    assert bridge._reuse_record(router.last_escalations[0]) is None
+    bridge._cached_record = result.record
+    pending = bridge._drain_pending_reuse()
+    assert [record.camera_id for record in pending] == ["cam-02"]
+    assert bridge._last_camera == "cam-02"
 
     server = await asyncio.start_server(srv.handle, srv.host, 0)
     port = server.sockets[0].getsockname()[1]

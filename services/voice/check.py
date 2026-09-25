@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import time
 import sys
 from pathlib import Path
 from urllib.parse import parse_qs
@@ -134,19 +135,39 @@ async def _main() -> None:
     live = VoiceAgent(live_pub, zrt=qwen)  # type: ignore[arg-type]
     await live.start_live_call(rec, assemble_call_brief(rec))
     opener = getattr(live_events[-2], "text", "")
-    assert opener.startswith("Hi, I am Campus Sentinel AI from San Jose State University.")
-    assert "MacQuarrie Hall" in opener and "visible long firearm" in opener
-    assert "One Washington Square" in await live.answer_dispatcher(rec.incident_id, "Where are you?")
+    assert opener == (
+        "Hi, this is Campus Sentinel AI at San Jose State. "
+        "I'm reporting an armed person at MacQuarrie Hall, One Washington Square."
+    )
+    assert await live.answer_dispatcher(rec.incident_id, "911, what is your emergency?") == (
+        "I'm reporting an armed person at MacQuarrie Hall."
+    )
+    address = await live.answer_dispatcher(rec.incident_id, "What is the exact address?")
+    assert address == "One Washington Square, San Jose, California 95192."
+    assert await live.answer_dispatcher(rec.incident_id, "Repeat the address.") == address
     assert "long firearm" in await live.answer_dispatcher(rec.incident_id, "What weapon do you see?")
     assert "cannot confirm any injuries" in await live.answer_dispatcher(rec.incident_id, "Is anyone hurt?")
+    assert await live.answer_dispatcher(rec.incident_id, "Where is the person now?") == (
+        "The person is in the ground-floor lobby."
+    )
+    assert await live.answer_dispatcher(
+        rec.incident_id, "Where are you seeing the person now?"
+    ) == "The person is in the ground-floor lobby."
     assert "toward the east corridor" in await live.answer_dispatcher(rec.incident_id, "Direction of travel?")
     assert qwen.calls == 0
     await live.notify_whereabouts("cam-02", assemble_call_brief(rec).address)
-    assert "east corridor" in await live.answer_dispatcher(rec.incident_id, "Where is the person now?")
+    assert await live.answer_dispatcher(rec.incident_id, "Where is the person now?") == (
+        "The person is in the east corridor."
+    )
     live.update_visual("cam-02", False)
     assert "not currently visible" in await live.answer_dispatcher(rec.incident_id, "Where is the person now?")
+    assert "not currently visible" in await live.answer_dispatcher(rec.incident_id, "What weapon do you see?")
     live.update_visual("cam-02", True)
     assert await live.answer_dispatcher(rec.incident_id, "Is the door locked?") == "The cameras do not confirm that detail."
+    assert qwen.calls == 1
+    assert await live.answer_dispatcher(rec.incident_id, "Please repeat that.") == (
+        "The cameras do not confirm that detail."
+    )
     assert qwen.calls == 1
 
     from services.voice.media_bridge import MediaStreamBridge
@@ -169,6 +190,65 @@ async def _main() -> None:
     bridge._asr = type("_Asr", (), {"transcribe": lambda _self, _pcm: "What is the location?"})()
     await bridge._transcribe_and_publish(b"pcm")
     assert asked == [(rec.incident_id, "What is the location?")]
+
+    class _SlowAsr:
+        active = 0
+        max_active = 0
+
+        def transcribe(self, _pcm):
+            self.active += 1
+            self.max_active = max(self.max_active, self.active)
+            time.sleep(0.05)
+            self.active -= 1
+            return "Repeat that."
+
+    ordered: list[str] = []
+
+    async def ordered_answer(_incident_id: str, question: str) -> str:
+        if question == "first":
+            await asyncio.sleep(0.05)
+        ordered.append(question)
+        return "answered"
+
+    bridge.answer = ordered_answer
+    bridge._asr = type(
+        "_OrderAsr", (), {"transcribe": lambda _self, pcm: pcm.decode()}
+    )()
+    for utterance in (b"first", b"second", b"third", b"fourth", b"fifth"):
+        bridge._inbound_buf.extend(utterance)
+        bridge._flush_inbound()
+    assert bridge._asr_task is not None
+    await bridge._asr_task
+    assert ordered == ["first", "second", "third", "fourth", "fifth"]
+
+    slow = _SlowAsr()
+    bridge.answer = answer
+    bridge._asr = slow
+    for utterance in (b"first utterance", b"second utterance"):
+        bridge._inbound_buf.extend(utterance)
+        bridge._flush_inbound()
+    assert bridge._asr_task is not None
+    await bridge._asr_task
+    assert slow.max_active == 1
+
+    bridge._asr = type("_Asr", (), {"transcribe": lambda _self, _pcm: "Is anyone hurt?"})()
+    speech = (1000).to_bytes(2, "little", signed=True) * 320
+    silence = b"\0" * 640
+    for _ in range(300):
+        bridge._buffer_inbound(silence)
+    assert not bridge._inbound_buf
+    for _ in range(751):
+        bridge._buffer_inbound(speech)
+    for _ in range(25):
+        bridge._buffer_inbound(silence)
+    assert not bridge._inbound_buf and bridge._turn_q.empty()
+    for _ in range(10):
+        bridge._buffer_inbound(speech)
+    for _ in range(25):
+        bridge._buffer_inbound(silence)
+    assert bridge._asr_task is not None
+    await bridge._asr_task
+    assert asked[-1] == (rec.incident_id, "Is anyone hurt?")
     print("voice self-check OK")
 
 

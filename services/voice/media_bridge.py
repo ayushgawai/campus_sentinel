@@ -14,9 +14,8 @@ more. Kokoro is the outbound TTS; if it has nothing to give us (unconfigured
 CS_KOKORO_URL), we play a short synthesized tone instead of dead air, so the
 audio pipe itself is provably working even without real TTS.
 
-Inbound audio (the dispatcher's real speech) is decoded, batched into
-~2s chunks (no VAD — batch-per-utterance is an explicitly acceptable demo
-shortcut per docs/HANDOFF_VOICE_TWILIO.md), sent to Parakeet (CS_PARAKEET_URL)
+Inbound audio (the dispatcher's real speech) is decoded, closed after 500 ms
+of silence, sent serially to the ASR service (CS_PARAKEET_URL)
 for transcription, and published back as a CallTranscriptDelta(speaker=
 "dispatcher", ...) so it lands on the dashboard the same way a scripted line
 would. If CS_PARAKEET_URL is unset the stub returns "" and nothing is
@@ -57,9 +56,10 @@ AnswerFn = Callable[[str, str], Awaitable[str]]
 # Compatibility stream cadence: 20ms frames of 8kHz mono mulaw = 160 bytes.
 _FRAME_BYTES = 160
 _FRAME_S = 0.02
-# ~2s of 16kHz PCM16 mono per ASR call. No VAD/silence detection — a fixed
-# batch window is an explicitly acceptable demo shortcut (see module docstring).
-_INBOUND_FLUSH_BYTES = 64_000
+# ponytail: RMS VAD fits the quiet demo line; use WebRTC VAD if field noise creates false turns.
+_SPEECH_RMS = 300
+_SILENCE_FLUSH_BYTES = 16_000  # 500 ms at PCM16 mono 16kHz
+_MAX_UTTERANCE_BYTES = 480_000  # 15 seconds; discard longer noisy turns
 
 
 def _pcm16_to_mulaw(pcm16: bytes, in_rate: int) -> bytes:
@@ -126,7 +126,12 @@ class MediaStreamBridge:
     _tts: Any = field(default=None, repr=False)
     _asr: Any = field(default=None, repr=False)
     _inbound_buf: bytearray = field(default_factory=bytearray, repr=False)
-    _asr_tasks: set[asyncio.Task] = field(default_factory=set, repr=False)
+    # ponytail: one live call makes this queue safe; add backpressure if concurrency grows.
+    _turn_q: "asyncio.Queue[bytes]" = field(default_factory=asyncio.Queue, repr=False)
+    _asr_task: asyncio.Task | None = field(default=None, repr=False)
+    _heard_speech: bool = field(default=False, repr=False)
+    _silence_bytes: int = field(default=0, repr=False)
+    _discarding_turn: bool = field(default=False, repr=False)
     # Test/inspection hook: every decoded inbound PCM16 chunk, in order.
     inbound_pcm16: list[bytes] = field(default_factory=list, repr=False)
 
@@ -150,13 +155,8 @@ class MediaStreamBridge:
                 await speak_task
             except asyncio.CancelledError:
                 pass
-            for t in list(self._asr_tasks):
-                t.cancel()
-            for t in list(self._asr_tasks):
-                try:
-                    await t
-                except asyncio.CancelledError:
-                    pass
+            if self._asr_task is not None:
+                await self._asr_task
             self.unsubscribe(self.incident_id, self._queue)
 
     async def _await_start(self) -> bool:
@@ -178,8 +178,7 @@ class MediaStreamBridge:
         return False
 
     async def _listen_loop(self) -> None:
-        """Inbound audio from the real caller — decoded, batched, and sent to
-        Parakeet in ~2s chunks (see _INBOUND_FLUSH_BYTES)."""
+        """Decode caller audio and close each turn after 500 ms of silence."""
         while True:
             raw = await self.recv()
             if raw is None:
@@ -200,21 +199,57 @@ class MediaStreamBridge:
             if not pcm16:
                 continue
             self.inbound_pcm16.append(pcm16)
-            self._inbound_buf.extend(pcm16)
-            if len(self._inbound_buf) >= _INBOUND_FLUSH_BYTES:
-                self._flush_inbound()
+            self._buffer_inbound(pcm16)
+
+    def _buffer_inbound(self, pcm16: bytes) -> None:
+        speaking = audioop is None or audioop.rms(pcm16, 2) >= _SPEECH_RMS
+        if self._discarding_turn:
+            self._silence_bytes = 0 if speaking else self._silence_bytes + len(pcm16)
+            if self._silence_bytes >= _SILENCE_FLUSH_BYTES:
+                self._discarding_turn = False
+                self._silence_bytes = 0
+            return
+        if not speaking and not self._heard_speech:
+            return
+        if len(self._inbound_buf) + len(pcm16) > _MAX_UTTERANCE_BYTES:
+            self._inbound_buf.clear()
+            self._heard_speech = False
+            self._silence_bytes = 0
+            self._discarding_turn = True
+            return
+        self._inbound_buf.extend(pcm16)
+        if speaking:
+            self._heard_speech = True
+            self._silence_bytes = 0
+        elif self._heard_speech:
+            self._silence_bytes += len(pcm16)
+        if self._heard_speech and self._silence_bytes >= _SILENCE_FLUSH_BYTES:
+            self._flush_inbound()
+            self._heard_speech = False
+            self._silence_bytes = 0
 
     def _flush_inbound(self) -> None:
         if not self._inbound_buf:
             return
         chunk = bytes(self._inbound_buf)
         self._inbound_buf.clear()
-        task = asyncio.create_task(self._transcribe_and_publish(chunk))
-        self._asr_tasks.add(task)
-        task.add_done_callback(self._asr_tasks.discard)
+        self._turn_q.put_nowait(chunk)
+        if self._asr_task is None or self._asr_task.done():
+            self._asr_task = asyncio.create_task(self._drain_turns())
+
+    async def _drain_turns(self) -> None:
+        while True:
+            try:
+                pcm16 = self._turn_q.get_nowait()
+            except asyncio.QueueEmpty:
+                return
+            await self._transcribe_and_publish(pcm16)
 
     async def _transcribe_and_publish(self, pcm16: bytes) -> None:
-        text = str(await asyncio.to_thread(self._asr.transcribe, pcm16) or "").strip()
+        try:
+            text = str(await asyncio.to_thread(self._asr.transcribe, pcm16) or "").strip()
+        except (OSError, TimeoutError):
+            return
         if not text or self.publish is None:
             return
         await self.publish(

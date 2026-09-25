@@ -82,8 +82,11 @@ class VoiceAgent:
         self._incident_id: str | None = None
         self._camera = ""
         self._address = ""
+        self._building = ""
+        self._site_address = ""
         self._person = ""
         self._visible = True
+        self._last_answer = ""
         self._live_brief: CallBrief | None = None
         self._update_q: asyncio.Queue[tuple[str, str]] = asyncio.Queue()
 
@@ -106,6 +109,10 @@ class VoiceAgent:
         self._incident_id = rec.incident_id
         self._camera = rec.camera_id
         self._address = brief.address
+        self._building = brief.building or "MacQuarrie Hall"
+        self._site_address = str(site_config().get("address", brief.address)).replace(
+            ", CA ", ", California "
+        )
         self._person = brief.person_description
         self._live_brief = brief
         self._visible = True
@@ -121,18 +128,22 @@ class VoiceAgent:
         self._incident_id = rec.incident_id
         self._camera = rec.camera_id
         self._address = brief.address
+        self._building = brief.building or "MacQuarrie Hall"
         self._person = brief.person_description
         self._live_brief = brief
         self._visible = True
         facts = scene_facts(rec.camera_id)
         site = site_config()
-        text = (
-            f"Hi, I am Campus Sentinel AI from {site.get('name', 'San Jose State University')}. "
-            f"I want to report an armed person with a visible "
-            f"{facts.get('visible_weapon', 'weapon')} at "
-            f"{brief.building or 'MacQuarrie Hall'}, {site.get('address', brief.address)}. "
-            f"Current camera observation: {facts.get('current_observation', rec.description)}."
+        self._site_address = str(site.get("address", brief.address)).replace(
+            ", CA ", ", California "
         )
+        text = (
+            f"Hi, this is Campus Sentinel AI at "
+            f"{site.get('spoken_name', site.get('name', 'San Jose State'))}. "
+            f"I'm reporting an armed person at {self._building}, "
+            "One Washington Square."
+        )
+        self._last_answer = text
         await self.publish(
             CallTranscriptDelta(
                 incident_id=rec.incident_id,
@@ -159,13 +170,31 @@ class VoiceAgent:
             person_description=self._person,
         )
         q = question.lower()
-        if any(word in q for word in ("where", "location", "address")):
-            observation = (
-                facts.get("current_observation", "")
+        if "repeat" in q or "say that again" in q:
+            if "address" in q:
+                answer = f"{self._site_address}."
+            else:
+                answer = self._last_answer
+        elif "emergency" in q or "what are you reporting" in q:
+            answer = f"I'm reporting an armed person at {self._building}."
+        elif "address" in q or q.strip(" ?.!") == "where are you":
+            answer = f"{self._site_address}."
+        elif "where" in q or "location" in q:
+            answer = (
+                f"The person is in {facts['spoken_location']}."
                 if self._visible
+                and facts.get("spoken_location")
                 else "The person is not currently visible; this is the last confirmed camera."
             )
-            answer = f"The person is at {self._address}. {observation}".strip()
+        elif not self._visible and any(
+            word in q
+            for word in (
+                "weapon", "gun", "firearm", "direction", "travel", "going",
+                "headed", "describe", "description", "wearing", "clothing",
+                "look like", "how many", "count", "number of",
+            )
+        ):
+            answer = "The person is not currently visible, so I cannot confirm that now."
         elif any(word in q for word in ("weapon", "gun", "firearm")):
             answer = f"The cameras show a visible {facts.get('visible_weapon', 'weapon')}."
         elif any(word in q for word in ("hurt", "injur", "medical", "conscious", "breath", "pulse")):
@@ -183,6 +212,7 @@ class VoiceAgent:
                 answer = await asyncio.to_thread(self._zrt.answer_dispatcher, facts, question)
             except Exception:
                 answer = "The cameras do not confirm that detail."
+        self._last_answer = answer
         await self.publish(
             CallTranscriptDelta(
                 incident_id=incident_id,

@@ -32,7 +32,7 @@ class StubParakeet:
             headers={"Content-Type": "application/octet-stream"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=30) as resp:
             return resp.read().decode("utf-8", errors="replace").strip()
 
 
