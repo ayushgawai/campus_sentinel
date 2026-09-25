@@ -95,6 +95,7 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - web: AI models card and System page AI models section (models actually running); System page rebuilt (full height camera status grid, stat cards); one camera status helper for tiles, pins, lists and header (MJPEG online from first frame until error, with 5 s retry; video online from frames; 10 s timeout); removed hard-coded fps (fix 10 to 10h)
 - web: SignalWire voice wiring (`2f5a0d0`) - call label shows SignalWire call / SignalWire call failed / Simulated call from the live provider state (idle label follows `/voice/status` `signalwire.configured`); backend reset clears every open dashboard; `voice_busy` blocked auto-calls show the "Declined by server" note; incident-not-found errors surface. JS only, no styling. (ayush)
 - voice: Twilio removed (`af75737`); SignalWire is the only provider. (ayush)
+- brain: temperature-calibration plumbing, default off. `CS_CALIB_LOG` writes JSONL, `scripts/fit_temperature.py` fits T, `CS_VLM_TEMPERATURE` applies it (1.0 = identity). There is no labelled data yet, so T is not fitted. (ayush)
 - voice: ElevenLabs phone TTS with Kokoro fallback, opt-in via `CS_TTS_PROVIDER=elevenlabs` (see Voice). (ayush)
 - web: real SJSU site map (OpenStreetMap export, attribution and 'Illustrative layout' note), cameras named and placed on the backend camera graph, pursuit along walkways, ?map=plan fallback, ?mapedit=1 placement tool (fix 9b)
 
@@ -106,7 +107,7 @@ Design and verified pre-change baseline: `docs/superpowers/specs/2026-09-25-comp
 | **Naman** | Ambient clips done. Optional more later |
 | **Voice / Ayush** | Decide whether to enable ElevenLabs on the live call. It sounds more natural but adds about 2 s before each uncached line; do a real-call listen test with `CS_TTS_PROVIDER=elevenlabs` |
 | **Indraneel** | Officer F1 polish |
-| **Ayush / open** | OSNet weights · temp calibration · MediaMTX optional |
+| **Ayush / open** | See `docs/OPEN_ML_ITEMS.md`. OSNet: stub with no callers; needs model code, weights, a crop path and a handoff consumer. Temperature: collect labelled rows with `CS_CALIB_LOG`, run `scripts/fit_temperature.py`, set `CS_VLM_TEMPERATURE`. MediaMTX: optional, document only; keep FileSource for the demo |
 | **Group → Ayush / api** | CallBrief event: **blocked on a contract decision, not data.** `assemble_call_brief()` already works, but `contracts/events.py` (frozen) has no brief event type, and the 2026-09-25 wiring spec/plan chose *not* to add one (the call panel reads `incident.upsert`). To proceed, the group must approve adding `call.brief` (payload = `call_brief_to_dict`) to `EventType`; the hub would then publish it on dispatch/handoff through the normal replay path |
 | **Web / Manav** | Browser-test the SignalWire wiring (`2f5a0d0`) against the live API; `node web/check.mjs` was not run (no node on ZGX) |
 | **Web / Manav** | Bump the `?v=` module cache tag for `store.js`, `transport.js`, `actions.js`, `modelStatus.js`, `ui/call.js`, `ui/operator.js` |

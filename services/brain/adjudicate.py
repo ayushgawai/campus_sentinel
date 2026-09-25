@@ -5,7 +5,9 @@ Forced/demo path works offline. Live classify posts the 16-frame bundle to ZRT.
 
 from __future__ import annotations
 
+import json
 import math
+import os
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -21,10 +23,27 @@ from contracts import (
 from contracts.incident import require_utc
 
 from .audit import AuditLog
-from .fuse import fuse_probs, logprob_to_prob
+from .fuse import apply_temperature, fuse_probs, logprob_to_prob, vlm_temperature
 from .state_machine import StateMachine
 from .thresholds import severity_from_fused
 from .zrt_client import ZRTClient
+
+
+def log_classification(**row: object) -> None:
+    """Append one live classification to CS_CALIB_LOG (JSONL, off by default).
+
+    A human adds `"label": "<true class>"` per row; scripts/fit_temperature.py
+    then fits CS_VLM_TEMPERATURE from it.
+    """
+    path = os.environ.get("CS_CALIB_LOG", "").strip()
+    if not path:
+        return
+    row = {k: (v.isoformat() if isinstance(v, datetime) else v) for k, v in row.items()}
+    try:
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(row) + "\n")
+    except OSError:
+        pass  # calibration logging must never break adjudication
 
 
 @dataclass
@@ -80,8 +99,18 @@ def adjudicate(
         person_hint=req.person_description,
         frames=list(req.frames) or None,
     )
-    vlm_prob = logprob_to_prob(classify.logprob)
-    calibrated_logprob = classify.logprob
+    raw_prob = logprob_to_prob(classify.logprob)
+    vlm_prob = apply_temperature(raw_prob, vlm_temperature())
+    calibrated_logprob = math.log(max(vlm_prob, 1e-12))
+    if not classify.forced:
+        log_classification(
+            incident_id=iid,
+            camera_id=req.camera_id,
+            track_id=req.track_id,
+            class_token=classify.class_token.value,
+            logprob=classify.logprob,
+            ts=now,
+        )
     if classify.forced:
         # Forced path: demo confidence, keep record logprob consistent with fuse.
         vlm_prob = 1.0 if classify.class_token is not IncidentClass.BENIGN else 0.05

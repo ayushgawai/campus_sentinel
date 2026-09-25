@@ -6,6 +6,7 @@ Plain code — never done inside the model prompt.
 from __future__ import annotations
 
 import math
+import os
 
 
 def logprob_to_prob(logprob: float) -> float:
@@ -14,6 +15,24 @@ def logprob_to_prob(logprob: float) -> float:
         return max(0.0, min(1.0, math.exp(logprob)))
     except OverflowError:
         return 1.0 if logprob > 0 else 0.0
+
+
+def vlm_temperature() -> float:
+    """CS_VLM_TEMPERATURE from scripts/fit_temperature.py; 1.0 = uncalibrated."""
+    try:
+        t = float(os.environ.get("CS_VLM_TEMPERATURE", "1.0"))
+    except ValueError:
+        return 1.0
+    return t if t > 0 else 1.0
+
+
+def apply_temperature(prob: float, temperature: float) -> float:
+    """Binary confidence temperature scaling: sigmoid(logit(p) / T)."""
+    if temperature == 1.0:
+        return prob
+    p = min(max(prob, 1e-6), 1 - 1e-6)
+    z = math.log(p / (1 - p)) / temperature
+    return 1.0 / (1.0 + math.exp(-z))
 
 
 def fuse_probs(

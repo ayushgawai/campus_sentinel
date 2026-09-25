@@ -218,7 +218,38 @@ def main() -> None:
     assert "west corridor" in scene_facts("cam-03")["current_observation"]
     assert "cam-02" not in str(scene_facts("cam-01"))
 
+    _check_temperature()
     print("brain self-check OK")
+
+
+def _check_temperature() -> None:
+    import json
+    import os
+    import tempfile
+
+    from services.brain.adjudicate import log_classification
+    from services.brain.fuse import apply_temperature, vlm_temperature
+
+    assert apply_temperature(0.9, 1.0) == 0.9
+    assert 0.5 < apply_temperature(0.9, 2.0) < 0.9  # T>1 softens overconfidence
+    assert apply_temperature(0.9, 0.5) > 0.9
+    saved = {k: os.environ.pop(k, None) for k in ("CS_VLM_TEMPERATURE", "CS_CALIB_LOG")}
+    try:
+        assert vlm_temperature() == 1.0
+        os.environ["CS_VLM_TEMPERATURE"] = "bogus"
+        assert vlm_temperature() == 1.0
+        log_classification(incident_id="i", logprob=-0.1)  # unset: no file, no error
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "calib.jsonl")
+            os.environ["CS_CALIB_LOG"] = path
+            log_classification(incident_id="i", class_token="WEAPON", logprob=-0.1)
+            row = json.loads(Path(path).read_text().splitlines()[0])
+            assert row == {"incident_id": "i", "class_token": "WEAPON", "logprob": -0.1}
+    finally:
+        for k, v in saved.items():
+            os.environ.pop(k, None)
+            if v is not None:
+                os.environ[k] = v
 
 
 if __name__ == "__main__":
