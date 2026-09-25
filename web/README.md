@@ -68,21 +68,18 @@ Field names follow `contracts/` exactly. Change points:
 
 - `web/js/transport.js` — connection and mock vs live
 - `web/js/site.js` — Camera 1–6 ids, adjacency, site label
-- `web/js/actions.js` — confirm, dismiss, demo reset (REST hooks pending)
+- `web/js/actions.js` — report, dispatch, broadcast, confirm, dismiss and demo reset
 
-## Mock only today
+## Mock-only UI affordances
 
 - Predicted next camera ring on the site plan
 - Clip segment from local camera video at incident time
-- Confirm and dismiss applied in the UI / mock path only
+- Playback scrubbing and local clip selection
 
-Open asks for `services/api`:
-
-- WebSocket URL for live events
-- REST routes for confirm, dismiss and demo reset
-- `CallBrief` event (when available)
-- Bounding-box units (UI assumes normalised 0–1)
-- MJPEG / stream URLs per camera
+Live REST routes are `/api/incidents/manual`, `/api/incidents/{id}/dispatch`,
+`/confirm`, `/dismiss`, `/api/broadcast`, and `/api/site`. Bounding boxes use
+normalised 0–1 units; camera video is served by `/mjpeg/{camera}` and
+`/media/{camera}`.
 
 ## Rules this UI keeps
 

@@ -75,8 +75,8 @@ export function isDispatchedOrLater(inc) {
 export const OP_STATUS_EVENT = "sentinel:op-status";
 
 /**
- * POST JSON with a timeout. `fallback` is true when the route is missing
- * (404/405/501) or the server cannot be reached (network, CORS, timeout).
+ * POST JSON with a timeout. `fallback` identifies unavailable legacy routes;
+ * live actions still surface it as an error instead of claiming local success.
  */
 async function postJson(url, body) {
   if (!url) return { ok: false, fallback: true };
@@ -119,10 +119,16 @@ export function createActions({ store, getMode, transport }) {
     return atIso(t);
   }
 
-  function confirm(id) {
+  async function confirm(id) {
     if (getMode() === "WS") {
-      console.info("REST endpoint pending", { action: "confirm", id });
-      return;
+      const key = `confirm:${id}`;
+      setOpStatus(key, { state: "pending" });
+      const res = await postJson(routes.confirm(id), {});
+      setOpStatus(
+        key,
+        res.ok ? null : { state: "declined", message: res.message || "Backend unavailable" },
+      );
+      return { ok: res.ok, message: res.message };
     }
     store.handle({
       type: "incident.state_change",
@@ -134,10 +140,16 @@ export function createActions({ store, getMode, transport }) {
     });
   }
 
-  function dismiss(id, reason = "Officer dismissed") {
+  async function dismiss(id, reason = "Officer dismissed") {
     if (getMode() === "WS") {
-      console.info("REST endpoint pending", { action: "dismiss", id, reason });
-      return;
+      const key = `dismiss:${id}`;
+      setOpStatus(key, { state: "pending" });
+      const res = await postJson(routes.dismiss(id), { reason });
+      setOpStatus(
+        key,
+        res.ok ? null : { state: "declined", message: res.message || "Backend unavailable" },
+      );
+      return { ok: res.ok, message: res.message };
     }
     store.handle({
       type: "incident.state_change",
@@ -259,16 +271,7 @@ export function createActions({ store, getMode, transport }) {
       }
       return { ok: true, id: rec?.incident_id };
     }
-    if (res.fallback) {
-      const id = localReport(
-        input,
-        "op-local",
-        "Operator reported incident · pending server confirmation",
-      );
-      store.setSelected(id);
-      return { ok: false, unconfirmed: true, id };
-    }
-    return { ok: false, message: res.message };
+    return { ok: false, message: res.message || "Backend unavailable" };
   }
 
   /**
@@ -317,13 +320,9 @@ export function createActions({ store, getMode, transport }) {
       setOpStatus(key, null);
       return { ok: true };
     }
-    if (res.fallback) {
-      appendNote(id, "Operator requested dispatch · pending server confirmation");
-      setOpStatus(key, { state: "unconfirmed" });
-      return { ok: false, unconfirmed: true };
-    }
-    setOpStatus(key, { state: "declined", message: res.message });
-    return { ok: false, message: res.message };
+    const message = res.message || "Backend unavailable";
+    setOpStatus(key, { state: "declined", message });
+    return { ok: false, message };
   }
 
   /** Warn people on site. Timeline entry shows audience and message. */
@@ -350,13 +349,9 @@ export function createActions({ store, getMode, transport }) {
       setOpStatus(key, null);
       return { ok: true };
     }
-    if (res.fallback) {
-      if (incidentId) appendNote(incidentId, `${note} · pending server confirmation`);
-      setOpStatus(key, { state: "unconfirmed" });
-      return { ok: false, unconfirmed: true };
-    }
-    setOpStatus(key, { state: "declined", message: res.message });
-    return { ok: false, message: res.message };
+    const reason = res.message || "Backend unavailable";
+    setOpStatus(key, { state: "declined", message: reason });
+    return { ok: false, message: reason };
   }
 
   function demoReset() {

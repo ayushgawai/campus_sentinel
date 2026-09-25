@@ -19,6 +19,8 @@ from typing import Any
 from urllib.parse import unquote
 
 from contracts import CameraOnline, event_to_dict, utcnow
+from contracts import incident_to_dict
+from services.brain.call_brief import load_camera_map
 
 from .hub import WALL_CAMS, DemoHub, dumps
 from .vision_bridge import VisionBridge, vision_enabled
@@ -191,6 +193,12 @@ class ApiServer:
         if method == "GET" and (path == "/health" or path.startswith("/health?")):
             await self._http_json(writer, 200, {"ok": True, "service": "api"})
             return
+        if method == "GET" and (path == "/api/site" or path.startswith("/api/site?")):
+            await self._http_json(writer, 200, load_camera_map())
+            return
+        if method == "POST" and path.split("?", 1)[0].startswith("/api/"):
+            await self._api_post(reader, writer, path.split("?", 1)[0], headers)
+            return
         if method == "GET" and (path == "/voice/status" or path.startswith("/voice/status?")):
             from services.voice.signalwire_bridge import status as signalwire_status
 
@@ -260,6 +268,56 @@ class ApiServer:
             )
             return
         await self._http_raw(writer, 404, b"not found\n")
+
+    async def _api_post(
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+        path: str,
+        headers: dict[str, str],
+    ) -> None:
+        try:
+            length = int(headers.get("content-length", "0"))
+        except ValueError:
+            await self._http_json(writer, 400, {"error": "invalid content-length"})
+            return
+        if length > 64 * 1024:
+            await self._http_json(writer, 413, {"error": "request body too large"})
+            return
+        try:
+            body = json.loads(await reader.readexactly(length)) if length else {}
+            if not isinstance(body, dict):
+                raise ValueError
+            if path == "/api/incidents/manual":
+                rec = await self.hub.manual_incident(body)
+                await self._http_json(writer, 201, incident_to_dict(rec))
+                return
+            if path == "/api/broadcast":
+                await self._http_json(writer, 200, await self.hub.broadcast_message(body))
+                return
+            parts = path.strip("/").split("/")
+            if len(parts) == 4 and parts[:2] == ["api", "incidents"]:
+                incident_id, action = unquote(parts[2]), parts[3]
+                if action == "dispatch":
+                    rec = await self.hub.dispatch_incident(incident_id)
+                elif action == "confirm":
+                    rec = await self.hub.confirm_incident(incident_id)
+                elif action == "dismiss":
+                    rec = await self.hub.dismiss_incident(
+                        incident_id, str(body.get("reason") or "Officer dismissed")
+                    )
+                else:
+                    await self._http_json(writer, 404, {"error": "unknown action"})
+                    return
+                await self._http_json(writer, 200, incident_to_dict(rec))
+                return
+            await self._http_json(writer, 404, {"error": "not found"})
+        except (json.JSONDecodeError, asyncio.IncompleteReadError, ValueError):
+            await self._http_json(writer, 400, {"error": "invalid request"})
+        except KeyError:
+            await self._http_json(writer, 404, {"error": "incident not found"})
+        except RuntimeError as exc:
+            await self._http_json(writer, 409, {"error": str(exc)})
 
     async def _ws(
         self,
@@ -541,7 +599,7 @@ class ApiServer:
         *,
         extra: dict[str, str] | None = None,
     ) -> None:
-        reason = {200: "OK", 204: "No Content", 400: "Bad Request", 404: "Not Found", 416: "Range Not Satisfiable", 503: "Unavailable"}.get(
+        reason = {200: "OK", 201: "Created", 204: "No Content", 400: "Bad Request", 404: "Not Found", 409: "Conflict", 413: "Content Too Large", 416: "Range Not Satisfiable", 503: "Unavailable"}.get(
             code, "OK"
         )
         headers = {

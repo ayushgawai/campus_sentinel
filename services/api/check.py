@@ -64,6 +64,26 @@ async def _send_text(writer: asyncio.StreamWriter, obj: dict) -> None:
     await writer.drain()
 
 
+async def _http_json(
+    port: int, method: str, path: str, body: dict | None = None
+) -> tuple[int, dict]:
+    payload = json.dumps(body).encode() if body is not None else b""
+    reader, writer = await asyncio.open_connection("127.0.0.1", port)
+    writer.write(
+        (
+            f"{method} {path} HTTP/1.1\r\nHost: localhost\r\n"
+            f"Content-Type: application/json\r\nContent-Length: {len(payload)}\r\n\r\n"
+        ).encode()
+        + payload
+    )
+    await writer.drain()
+    raw = await reader.read()
+    writer.close()
+    head, response_body = raw.split(b"\r\n\r\n", 1)
+    code = int(head.split(b" ", 2)[1])
+    return code, json.loads(response_body or b"{}")
+
+
 async def main() -> None:
     srv = ApiServer(host="127.0.0.1", port=0)
 
@@ -148,6 +168,52 @@ async def main() -> None:
     server = await asyncio.start_server(srv.handle, srv.host, 0)
     port = server.sockets[0].getsockname()[1]
 
+    code, site = await _http_json(port, "GET", "/api/site")
+    assert code == 200 and site["site"]["name"] == "San Jose State University"
+    code, manual = await _http_json(
+        port,
+        "POST",
+        "/api/incidents/manual",
+        {
+            "camera_id": "cam-02",
+            "class_token": "THEFT",
+            "severity": "MINOR",
+            "note": "Operator saw a bag taken",
+        },
+    )
+    assert code == 201 and manual["incident_id"].startswith("INC-")
+    incident_id = manual["incident_id"]
+    assert srv.hub.get_incident(incident_id) is not None
+    code, _ = await _http_json(port, "POST", "/api/incidents/manual", {"camera_id": "cam-99"})
+    assert code == 400
+    code, _ = await _http_json(port, "POST", "/api/incidents/missing/confirm", {})
+    assert code == 404
+    code, dispatched = await _http_json(
+        port, "POST", f"/api/incidents/{incident_id}/dispatch", {}
+    )
+    assert code == 200 and dispatched["state"] == "DISPATCHED"
+    code, confirmed = await _http_json(
+        port, "POST", f"/api/incidents/{incident_id}/confirm", {}
+    )
+    assert code == 200 and confirmed["state"] == "RESOLVED"
+    code, broadcast = await _http_json(
+        port,
+        "POST",
+        "/api/broadcast",
+        {"incident_id": incident_id, "audience": ["security"], "message": "Avoid Camera 2"},
+    )
+    assert code == 200 and broadcast["ok"] is True
+    code, dismissed = await _http_json(
+        port,
+        "POST",
+        f"/api/incidents/{incident_id}/dismiss",
+        {"reason": "false alarm"},
+    )
+    assert code == 409, dismissed
+    await srv.hub.reset()
+    assert srv.hub.get_incident(incident_id) is None
+    await srv.hub.run_scenario("armed-intruder")
+
     # /health
     r, w = await asyncio.open_connection("127.0.0.1", port)
     w.write(b"GET /health HTTP/1.1\r\nHost: localhost\r\n\r\n")
@@ -176,12 +242,13 @@ async def main() -> None:
     r, w = await asyncio.open_connection("127.0.0.1", port)
     await _ws_handshake(r, w)
     types: list[str] = []
-    for _ in range(32):
+    for _ in range(40):
         env = await _recv_frame(r)
         types.append(env["type"])
         if env["type"] == "incident.upsert":
             assert "incident" in env and env["incident"]["camera_id"] == "cam-01"
             assert env["incident"]["class_token"] == "WEAPON"
+        if {"camera.online", "health.strip", "incident.upsert"}.issubset(types):
             break
     assert "camera.online" in types
     assert "health.strip" in types
@@ -189,12 +256,12 @@ async def main() -> None:
 
     followup_types: list[str] = []
     for _ in range(20):
+        if "incident.state_change" in types + followup_types and "call.transcript_delta" in types + followup_types:
+            break
         env = await _recv_frame(r)
         followup_types.append(env["type"])
-        if "incident.state_change" in followup_types and "call.transcript_delta" in followup_types:
-            break
-    assert "incident.state_change" in followup_types
-    assert "call.transcript_delta" in followup_types
+    assert "incident.state_change" in types + followup_types
+    assert "call.transcript_delta" in types + followup_types
 
     # A refreshed/replacement dashboard also needs its own camera snapshot.
     r2, w2 = await asyncio.open_connection("127.0.0.1", port)

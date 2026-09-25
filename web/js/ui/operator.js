@@ -90,6 +90,8 @@ export function operatorActions(inc, actions, { broadcast = true, call = true } 
   const row = el("div", { className: "op-row" });
   const dispatchSt = actions.getOpStatus("dispatch", inc.incident_id);
   const broadcastSt = actions.getOpStatus("broadcast", inc.incident_id);
+  const confirmSt = actions.getOpStatus("confirm", inc.incident_id);
+  const dismissSt = actions.getOpStatus("dismiss", inc.incident_id);
 
   if (broadcast) {
     const b = opButton({
@@ -182,7 +184,7 @@ export function actionBar(inc, actions, { review = true, card = true } = {}) {
   }
 
   let noteText = "";
-  for (const st of [dispatchSt, review ? broadcastSt : null]) {
+  for (const st of [dispatchSt, review ? broadcastSt : null, confirmSt, dismissSt]) {
     if (st?.state === "unconfirmed") noteText = "Pending server confirmation";
     if (st?.state === "declined") noteText = `Declined by server: ${st.message || "request refused"}`;
   }
@@ -204,27 +206,27 @@ export function actionBar(inc, actions, { review = true, card = true } = {}) {
     });
     b.disabled = broadcastSt?.state === "pending";
     grid.appendChild(b);
-    grid.appendChild(
-      opButton({
+    const confirm = opButton({
         className: `btn op-btn ${dispatched ? "btn--primary" : "btn--secondary"}`,
         iconName: "check",
-        text: "Confirm",
+        text: confirmSt?.state === "pending" ? "Confirming…" : "Confirm",
         attrs: { "data-focus-key": "confirm" },
         onClick: () => actions.confirm(inc.incident_id),
-      }),
-    );
-    grid.appendChild(
-      opButton({
+      });
+    confirm.disabled = confirmSt?.state === "pending";
+    grid.appendChild(confirm);
+    const dismiss = opButton({
         className: "btn btn--secondary op-btn",
         iconName: "close",
-        text: "Dismiss",
+        text: dismissSt?.state === "pending" ? "Dismissing…" : "Dismiss",
         attrs: { "data-focus-key": "dismiss" },
         onClick: () =>
           document.dispatchEvent(
             new CustomEvent("sentinel:dismiss", { detail: { incidentId: inc.incident_id } }),
           ),
-      }),
-    );
+      });
+    dismiss.disabled = dismissSt?.state === "pending";
+    grid.appendChild(dismiss);
     bar.appendChild(grid);
   }
   return bar;

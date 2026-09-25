@@ -27,5 +27,9 @@ export const routes = {
   manualIncident: () => (BASE ? `${BASE}/api/incidents/manual` : null),
   dispatch: (incidentId) =>
     BASE ? `${BASE}/api/incidents/${encodeURIComponent(incidentId)}/dispatch` : null,
+  confirm: (incidentId) =>
+    BASE ? `${BASE}/api/incidents/${encodeURIComponent(incidentId)}/confirm` : null,
+  dismiss: (incidentId) =>
+    BASE ? `${BASE}/api/incidents/${encodeURIComponent(incidentId)}/dismiss` : null,
   broadcast: () => (BASE ? `${BASE}/api/broadcast` : null),
 };

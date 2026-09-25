@@ -19,15 +19,18 @@ from contracts import (
     DemoControl,
     HealthStrip,
     IncidentClass,
+    IncidentRecord,
     IncidentState,
     IncidentStateChange,
     IncidentUpsert,
     OverlayBoxes,
     Severity,
+    TimelineEvent,
     event_to_dict,
+    incident_to_dict,
 )
 from services.brain.adjudicate import EscalateRequest, adjudicate
-from services.brain.call_brief import assemble_call_brief
+from services.brain.call_brief import assemble_call_brief, scene_facts
 from services.brain.guardrails import DEFAULT_GUARDRAILS
 from services.brain.zrt_client import ZRTClient
 from services.api import telemetry
@@ -35,7 +38,6 @@ from services.api.vision_bridge import vision_enabled
 from services.voice import VoiceAgent
 
 WALL_CAMS = [f"cam-{i:02d}" for i in range(1, 7)]
-ALL_CAMS = [f"cam-{i:02d}" for i in range(1, 13)]
 
 SCENARIOS: dict[str, tuple[IncidentClass, str]] = {
     # Primary demo: Seville armed chase
@@ -79,9 +81,23 @@ class DemoHub:
     _seeded: bool = False
     _voice: VoiceAgent | None = field(default=None, repr=False)
     _replay: list[dict[str, Any]] = field(default_factory=list, repr=False)
+    _incidents: dict[str, IncidentRecord] = field(default_factory=dict, repr=False)
+    _incident_seq: int = field(default=0, repr=False)
     on_reset: Callable[[], None] | None = field(default=None, repr=False)
 
     async def publish(self, ev: Any) -> None:
+        if isinstance(ev, IncidentUpsert) and ev.incident is not None:
+            self._incidents[ev.incident.incident_id] = ev.incident
+        elif isinstance(ev, IncidentStateChange):
+            rec = self._incidents.get(ev.incident_id)
+            if rec is not None:
+                rec.state = ev.state
+                rec.updated_at = ev.ts or _utcnow()
+                if ev.severity is not None:
+                    rec.severity = ev.severity
+                rec.timeline.append(
+                    TimelineEvent(ts=rec.updated_at, state=ev.state, note=ev.note)
+                )
         envelope = event_to_dict(ev)
         if envelope.get("type") in _REPLAY_TYPES:
             # ponytail: in-memory demo replay; persist if sessions grow beyond one run.
@@ -93,6 +109,9 @@ class DemoHub:
 
     def replay_events(self) -> list[dict[str, Any]]:
         return list(self._replay)
+
+    def get_incident(self, incident_id: str) -> IncidentRecord | None:
+        return self._incidents.get(incident_id)
 
     def _voice_agent(self) -> VoiceAgent:
         if self._voice is None:
@@ -106,7 +125,8 @@ class DemoHub:
         if active and voice.busy() and rec.camera_id in {"cam-02", "cam-03", "cam-01"}:
             brief = assemble_call_brief(rec)
             await voice.notify_whereabouts(rec.camera_id, brief.address)
-        await self._maybe_start_voice(rec)
+        if "operator_report" not in getattr(rec, "rules_fired", []):
+            await self._maybe_start_voice(rec)
 
     async def _maybe_start_voice(self, rec: Any) -> None:
         if getattr(rec, "severity", None) is not Severity.SEVERE:
@@ -170,18 +190,15 @@ class DemoHub:
                 )
             )
 
-    async def seed(self, *, force: bool = False) -> None:
+    async def seed(self, *, force: bool = False, run_scenario: bool = True) -> None:
         if self._seeded and not force:
             return
         self._seeded = True
         now = _utcnow()
-        for cid in ALL_CAMS:
-            await self.publish(CameraOnline(camera_id=cid, online=True, ts=now))
-        # Prefer wall cams online for the six-pane UI; keep ALL_CAMS for legacy.
         for cid in WALL_CAMS:
             await self.publish(CameraOnline(camera_id=cid, online=True, ts=now))
         await self._health()
-        if not vision_enabled():
+        if not vision_enabled() and run_scenario:
             await self._overlays()
             # Scenario seed only when not on live Seville vision.
             await self.run_scenario("armed-intruder")
@@ -219,6 +236,10 @@ class DemoHub:
         if self.on_reset is not None:
             self.on_reset()
         self._replay.clear()
+        self._incidents.clear()
+        self._incident_seq = 0
+        DEFAULT_GUARDRAILS._dispatched.clear()
+        DEFAULT_GUARDRAILS._hour_hits.clear()
         await self.publish(
             DemoControl(action="reset", scenario_id=None, ts=_utcnow())
         )
@@ -226,7 +247,94 @@ class DemoHub:
         self.frames_escalated = 0
         telemetry.reset()
         self._seeded = False
-        await self.seed(force=True)
+        await self.seed(force=True, run_scenario=False)
+
+    async def manual_incident(self, payload: dict[str, Any]) -> IncidentRecord:
+        camera_id = str(payload.get("camera_id") or "")
+        if camera_id not in WALL_CAMS:
+            raise ValueError("camera_id must be cam-01 through cam-06")
+        try:
+            class_token = IncidentClass(str(payload.get("class_token") or ""))
+            severity = Severity(str(payload.get("severity") or ""))
+        except ValueError as exc:
+            raise ValueError("invalid class_token or severity") from exc
+        note = str(payload.get("note") or "").strip()[:500]
+        self._incident_seq += 1
+        now = _utcnow()
+        facts = scene_facts(camera_id)
+        rec = IncidentRecord(
+            incident_id=f"INC-{self._incident_seq:04d}",
+            track_id="T-1",
+            camera_id=camera_id,
+            peak_ts=now,
+            class_token=class_token,
+            class_logprob_calibrated=0.0,
+            router_score=0.0,
+            fused_prob=0.0,
+            severity=severity,
+            description=note or "Reported by operator",
+            location_text="",
+            person_description=str(facts.get("person_description") or "Unknown"),
+            state=IncidentState.ALERTED,
+            clip_uri="",
+            created_at=now,
+            updated_at=now,
+            rules_fired=["operator_report"],
+            timeline=[TimelineEvent(ts=now, state=IncidentState.ALERTED, note="Operator reported incident")],
+        )
+        rec.location_text = assemble_call_brief(rec).address
+        await self.publish(IncidentUpsert(incident=rec))
+        return rec
+
+    async def dispatch_incident(self, incident_id: str) -> IncidentRecord:
+        rec = self._require_incident(incident_id)
+        if rec.state is not IncidentState.ALERTED:
+            raise RuntimeError(f"incident is already {rec.state.value}")
+        rec.severity = Severity.SEVERE
+        await self.send_state_change(incident_id, "DISPATCH_PENDING", "Operator requested dispatch")
+        await self._maybe_start_voice(rec)
+        return rec
+
+    async def confirm_incident(self, incident_id: str) -> IncidentRecord:
+        rec = self._require_incident(incident_id)
+        if rec.state in {IncidentState.RESOLVED, IncidentState.DISMISSED}:
+            raise RuntimeError(f"incident is already {rec.state.value}")
+        await self.send_state_change(incident_id, "RESOLVED", "Officer confirmed")
+        return rec
+
+    async def dismiss_incident(self, incident_id: str, reason: str) -> IncidentRecord:
+        rec = self._require_incident(incident_id)
+        if rec.state is not IncidentState.ALERTED:
+            raise RuntimeError(f"cannot dismiss incident in {rec.state.value}")
+        rec.dismissed_reason = reason[:200] or "Officer dismissed"
+        await self.send_state_change(incident_id, "DISMISSED", rec.dismissed_reason)
+        return rec
+
+    async def broadcast_message(self, payload: dict[str, Any]) -> dict[str, Any]:
+        message = str(payload.get("message") or "").strip()
+        audience = payload.get("audience")
+        if not message or not isinstance(audience, list) or not audience:
+            raise ValueError("message and audience are required")
+        incident_id = str(payload.get("incident_id") or "")
+        if incident_id:
+            rec = self._require_incident(incident_id)
+            now = _utcnow()
+            rec.timeline.append(
+                TimelineEvent(
+                    ts=now,
+                    state=rec.state,
+                    note=f"Broadcast to {', '.join(map(str, audience))}: {message[:280]}",
+                )
+            )
+            rec.updated_at = now
+            await self.publish(IncidentUpsert(incident=rec))
+        return {"ok": True, "incident_id": incident_id or None}
+
+    def _require_incident(self, incident_id: str) -> IncidentRecord:
+        rec = self.get_incident(incident_id)
+        if rec is None:
+            raise KeyError(incident_id)
+        return rec
 
     async def run_scenario(
         self, scenario_id: str, *, camera_id: str | None = None

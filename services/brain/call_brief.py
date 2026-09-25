@@ -15,7 +15,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_MAP = _ROOT / "data" / "camera_map.json"
 
 
-def _load_camera_map(path: Path | None = None) -> dict[str, Any]:
+def load_camera_map(path: Path | None = None) -> dict[str, Any]:
     p = path or _DEFAULT_MAP
     if not p.is_file():
         return {}
@@ -37,7 +37,7 @@ def _norm_cam(cid: str) -> str:
 
 def site_config(camera_map: dict[str, Any] | None = None) -> dict[str, Any]:
     """Return canonical site facts used by both the API and voice agent."""
-    cmap = camera_map if camera_map is not None else _load_camera_map()
+    cmap = camera_map if camera_map is not None else load_camera_map()
     site = cmap.get("site")
     return dict(site) if isinstance(site, dict) else {}
 
@@ -46,7 +46,7 @@ def scene_facts(
     camera_id: str, camera_map: dict[str, Any] | None = None
 ) -> dict[str, Any]:
     """Return only the current camera's pre-described demo facts."""
-    cmap = camera_map if camera_map is not None else _load_camera_map()
+    cmap = camera_map if camera_map is not None else load_camera_map()
     want = _norm_cam(camera_id)
     for camera in cmap.get("cameras") or []:
         if isinstance(camera, dict) and want in {
@@ -64,7 +64,7 @@ def assemble_call_brief(
     camera_map: dict[str, Any] | None = None,
     map_path: Path | None = None,
 ) -> CallBrief:
-    cmap = camera_map if camera_map is not None else _load_camera_map(map_path)
+    cmap = camera_map if camera_map is not None else load_camera_map(map_path)
     cams = cmap.get("cameras") if isinstance(cmap.get("cameras"), list) else None
     entry: dict[str, Any] = {}
     want = _norm_cam(rec.camera_id)
