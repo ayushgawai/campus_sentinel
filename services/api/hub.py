@@ -83,6 +83,7 @@ class DemoHub:
     _replay: list[dict[str, Any]] = field(default_factory=list, repr=False)
     _incidents: dict[str, IncidentRecord] = field(default_factory=dict, repr=False)
     _incident_seq: int = field(default=0, repr=False)
+    _dispatch_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
     on_reset: Callable[[], None] | None = field(default=None, repr=False)
     camera_ready: Callable[[str], bool] | None = field(default=None, repr=False)
 
@@ -137,71 +138,84 @@ class DemoHub:
         if "operator_report" not in getattr(rec, "rules_fired", []):
             await self._maybe_start_voice(rec)
 
-    async def _maybe_start_voice(self, rec: Any) -> None:
+    async def _maybe_start_voice(self, rec: Any, *, operator_requested: bool = False) -> bool:
         if getattr(rec, "severity", None) is not Severity.SEVERE:
-            return
-        ok, reason = DEFAULT_GUARDRAILS.can_dispatch(rec.incident_id)
-        if not ok:
-            # Still allow whereabouts if this is a follow-on cam during an active call.
-            if self._voice and self._voice.busy():
-                brief = assemble_call_brief(rec)
-                await self._voice.notify_whereabouts(rec.camera_id, brief.address)
-            await self.publish(
-                DemoControl(
-                    action="scenario",
-                    scenario_id=f"dispatch_blocked:{reason}",
-                    ts=_utcnow(),
+            return False
+        async with self._dispatch_lock:
+            if self._voice_agent().busy():
+                await self.publish(
+                    DemoControl(
+                        action="scenario",
+                        scenario_id="dispatch_blocked:voice_busy",
+                        ts=_utcnow(),
+                    )
                 )
-            )
-            return
-        DEFAULT_GUARDRAILS.record_dispatch(rec.incident_id)
-        brief = assemble_call_brief(rec)
-        now = _utcnow()
-        rec.state = IncidentState.DISPATCHED
-        rec.updated_at = now
-        from services.voice.signalwire_bridge import load_config, place_call
+                return False
+            ok, reason = DEFAULT_GUARDRAILS.can_dispatch(rec.incident_id)
+            if not ok:
+                await self.publish(
+                    DemoControl(
+                        action="scenario",
+                        scenario_id=f"dispatch_blocked:{reason}",
+                        ts=_utcnow(),
+                    )
+                )
+                return False
+            if operator_requested:
+                await self.send_state_change(
+                    rec.incident_id,
+                    "DISPATCH_PENDING",
+                    "Operator requested dispatch",
+                )
+            DEFAULT_GUARDRAILS.record_dispatch(rec.incident_id)
+            brief = assemble_call_brief(rec)
+            now = _utcnow()
+            rec.state = IncidentState.DISPATCHED
+            rec.updated_at = now
+            from services.voice.signalwire_bridge import load_config, place_call
 
-        signalwire = load_config()
-        await self.publish(
-            IncidentStateChange(
-                incident_id=rec.incident_id,
-                state=IncidentState.DISPATCHED,
-                severity=Severity.SEVERE,
-                ts=now,
-                note="SignalWire call started" if signalwire else "Simulated call started",
-            )
-        )
-        if signalwire:
-            await self._voice_agent().start_live_call(rec, brief)
-        else:
-            await self._voice_agent().start_call(rec, brief)
-        # Optional real phone — no-op until SignalWire is configured.
-        try:
-            result = await asyncio.to_thread(place_call, rec.incident_id, config=signalwire)
-            if result.get("ok"):
-                await self.publish(
-                    DemoControl(
-                        action="scenario",
-                        scenario_id=f"signalwire_call:{result.get('call_sid')}",
-                        ts=_utcnow(),
-                    )
-                )
-            elif not result.get("skipped"):
-                await self.publish(
-                    DemoControl(
-                        action="scenario",
-                        scenario_id=f"signalwire_fail:{result.get('reason')}",
-                        ts=_utcnow(),
-                    )
-                )
-        except Exception as exc:  # noqa: BLE001 — never break the voice script
+            signalwire = load_config()
             await self.publish(
-                DemoControl(
-                    action="scenario",
-                    scenario_id=f"signalwire_error:{type(exc).__name__}",
-                    ts=_utcnow(),
+                IncidentStateChange(
+                    incident_id=rec.incident_id,
+                    state=IncidentState.DISPATCHED,
+                    severity=Severity.SEVERE,
+                    ts=now,
+                    note="SignalWire call started" if signalwire else "Simulated call started",
                 )
             )
+            if signalwire:
+                await self._voice_agent().start_live_call(rec, brief)
+            else:
+                await self._voice_agent().start_call(rec, brief)
+            # Optional real phone — no-op until SignalWire is configured.
+            try:
+                result = await asyncio.to_thread(place_call, rec.incident_id, config=signalwire)
+                if result.get("ok"):
+                    await self.publish(
+                        DemoControl(
+                            action="scenario",
+                            scenario_id=f"signalwire_call:{result.get('call_sid')}",
+                            ts=_utcnow(),
+                        )
+                    )
+                elif not result.get("skipped"):
+                    await self.publish(
+                        DemoControl(
+                            action="scenario",
+                            scenario_id=f"signalwire_fail:{result.get('reason')}",
+                            ts=_utcnow(),
+                        )
+                    )
+            except Exception as exc:  # noqa: BLE001 — never break the voice script
+                await self.publish(
+                    DemoControl(
+                        action="scenario",
+                        scenario_id=f"signalwire_error:{type(exc).__name__}",
+                        ts=_utcnow(),
+                    )
+                )
+            return True
 
     async def answer_dispatcher(self, incident_id: str, question: str) -> str:
         return await self._voice_agent().answer_dispatcher(incident_id, question)
@@ -307,8 +321,10 @@ class DemoHub:
         if rec.state is not IncidentState.ALERTED:
             raise RuntimeError(f"incident is already {rec.state.value}")
         rec.severity = Severity.SEVERE
-        await self.send_state_change(incident_id, "DISPATCH_PENDING", "Operator requested dispatch")
-        await self._maybe_start_voice(rec)
+        if not await self._maybe_start_voice(rec, operator_requested=True):
+            if self._voice is not None and self._voice.busy():
+                raise RuntimeError("a voice call is already active")
+            raise RuntimeError("dispatch was blocked")
         return rec
 
     async def confirm_incident(self, incident_id: str) -> IncidentRecord:

@@ -155,7 +155,7 @@ async def main() -> None:
     _, work = bridge._step(router)
     assert work[0][0] == "reuse"
 
-    from contracts import Severity
+    from contracts import IncidentState, Severity
     from services.brain.zrt_client import ZRTClient
 
     result, _ = bridge._classify_one(
@@ -204,6 +204,7 @@ async def main() -> None:
 
     class _ActiveVoice:
         updates: list[str] = []
+        starts = 0
 
         def active_incident_id(self):
             return result.record.incident_id
@@ -213,6 +214,12 @@ async def main() -> None:
 
         async def notify_whereabouts(self, camera_id, _address):
             self.updates.append(camera_id)
+
+        async def start_call(self, _rec, _brief):
+            self.starts += 1
+
+        async def start_live_call(self, _rec, _brief):
+            self.starts += 1
 
     active_voice = _ActiveVoice()
     srv.hub._voice = active_voice  # type: ignore[assignment]
@@ -224,7 +231,71 @@ async def main() -> None:
     )
     await srv.hub._on_incident(foreign)
     assert active_voice.updates == []
+    automatic = replace(
+        foreign,
+        incident_id="later-vision-incident",
+        rules_fired=["weapon"],
+        state=IncidentState.ALERTED,
+    )
+    await srv.hub._on_incident(automatic)
+    assert active_voice.starts == 0
+    assert automatic.state is IncidentState.ALERTED
+
+    manual_busy = replace(
+        foreign,
+        incident_id="manual-while-busy",
+        state=IncidentState.ALERTED,
+    )
+    srv.hub._incidents[manual_busy.incident_id] = manual_busy
+    try:
+        await srv.hub.dispatch_incident(manual_busy.incident_id)
+        raise AssertionError("busy manual dispatch must be rejected")
+    except RuntimeError as exc:
+        assert "active" in str(exc)
+    assert manual_busy.state is IncidentState.ALERTED
     srv.hub._voice = None
+
+    class _ConcurrentVoice:
+        starts = 0
+        active = False
+
+        def busy(self):
+            return self.active
+
+        async def start_call(self, _rec, _brief):
+            self.active = True
+            self.starts += 1
+
+        async def start_live_call(self, _rec, _brief):
+            await self.start_call(_rec, _brief)
+
+    concurrent_voice = _ConcurrentVoice()
+    srv.hub._voice = concurrent_voice  # type: ignore[assignment]
+    original_broadcast = srv.hub.broadcast
+
+    async def slow_broadcast(_payload):
+        await asyncio.sleep(0.02)
+
+    srv.hub.broadcast = slow_broadcast
+    from services.brain.guardrails import DEFAULT_GUARDRAILS
+
+    dispatched_before = set(DEFAULT_GUARDRAILS._dispatched)
+    hits_before = list(DEFAULT_GUARDRAILS._hour_hits)
+    first = replace(automatic, incident_id="concurrent-1", state=IncidentState.ALERTED)
+    second = replace(automatic, incident_id="concurrent-2", state=IncidentState.ALERTED)
+    try:
+        await asyncio.gather(
+            srv.hub._maybe_start_voice(first),
+            srv.hub._maybe_start_voice(second),
+        )
+        assert concurrent_voice.starts == 1
+        assert [first.state, second.state].count(IncidentState.DISPATCHED) == 1
+        assert [first.state, second.state].count(IncidentState.ALERTED) == 1
+    finally:
+        DEFAULT_GUARDRAILS._dispatched = dispatched_before
+        DEFAULT_GUARDRAILS._hour_hits = hits_before
+        srv.hub.broadcast = original_broadcast
+        srv.hub._voice = None
 
     server = await asyncio.start_server(srv.handle, srv.host, 0)
     port = server.sockets[0].getsockname()[1]
