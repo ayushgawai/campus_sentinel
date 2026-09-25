@@ -24,7 +24,13 @@ export function startAutoFollow(store, sidebarApi, layoutCtl) {
 
   return store.subscribe((state) => {
     if (!state.demo?.autoFollow) {
-      phase = "";
+      const callInc = findCallIncident(state);
+      if (callInc?.state === "DISPATCHED" && phase !== "call-sidebar") {
+        phase = "call-sidebar";
+        sidebarApi?.open?.("call");
+      } else if (!callInc) {
+        phase = "";
+      }
       severeOpenedAt = null;
       lastRoutePush = "";
       return;

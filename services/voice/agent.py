@@ -184,6 +184,14 @@ class VoiceAgent:
         }
         try:
             await self.publish(
+                CallTranscriptDelta(
+                    incident_id=rec.incident_id,
+                    speaker="sentinel",
+                    text="Simulated 911 demo call to 4083872138 started.",
+                    ts=utcnow(),
+                )
+            )
+            await self.publish(
                 DemoControl(
                     action="scenario",
                     scenario_id=f"security_alert:{rec.camera_id}",

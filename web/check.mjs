@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 
 import { cameraStream } from "./js/transport.js";
 import { createStore } from "./js/store.js";
+import { startAutoFollow } from "./js/ui/autofollow.js";
 
 globalThis.requestAnimationFrame = (fn) => {
   fn();
@@ -12,6 +13,29 @@ globalThis.requestAnimationFrame = (fn) => {
 const store = createStore();
 store.handle({ type: "camera.online", camera_id: "cam-01", online: true });
 assert.equal(store.getState().cameras["cam-01"]?.online, true);
+
+let onState = null;
+const opened = [];
+startAutoFollow(
+  {
+    subscribe(fn) {
+      onState = fn;
+      return () => {};
+    },
+    getActiveSevere() {
+      return null;
+    },
+  },
+  { open: (tab) => opened.push(tab) },
+  null,
+);
+onState({
+  demo: { autoFollow: false },
+  call: { incidentId: "inc-1" },
+  incidents: { "inc-1": { incident_id: "inc-1", state: "DISPATCHED" } },
+  order: ["inc-1"],
+});
+assert.deepEqual(opened, ["call"]);
 
 assert.deepEqual(cameraStream("cam-01", "ws://zgx-b505:8080/ws"), {
   kind: "mjpeg",

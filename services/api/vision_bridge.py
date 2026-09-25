@@ -18,7 +18,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from contracts import BBox, IncidentUpsert, OverlayBoxes
+from contracts import BBox, IncidentClass, IncidentUpsert, OverlayBoxes, Severity
 from services.api import telemetry
 from services.brain.adjudicate import adjudicate
 from services.brain.from_vision import (
@@ -354,4 +354,7 @@ class VisionBridge:
                 f"frames={len(frames)} zrt_ok={zrt.health()}",
                 flush=True,
             )
-        return adjudicate(req, zrt=zrt_use), live_ok
+        result = adjudicate(req, zrt=zrt_use)
+        if result.record.class_token is IncidentClass.WEAPON:
+            result.record.severity = Severity.SEVERE
+        return result, live_ok

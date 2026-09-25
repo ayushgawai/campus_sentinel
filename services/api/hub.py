@@ -112,6 +112,18 @@ class DemoHub:
             return
         DEFAULT_GUARDRAILS.record_dispatch(rec.incident_id)
         brief = assemble_call_brief(rec)
+        now = _utcnow()
+        rec.state = IncidentState.DISPATCHED
+        rec.updated_at = now
+        await self.publish(
+            IncidentStateChange(
+                incident_id=rec.incident_id,
+                state=IncidentState.DISPATCHED,
+                severity=Severity.SEVERE,
+                ts=now,
+                note="Simulated call started",
+            )
+        )
         await self._voice_agent().start_call(rec, brief)
         # Optional real phone — no-op until Naman sets CS_TWILIO_ENABLED + keys.
         try:

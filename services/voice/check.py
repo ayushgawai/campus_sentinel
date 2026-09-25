@@ -62,6 +62,7 @@ async def _main() -> None:
     assert "call.transcript_delta" in types
     assert "tool.call_live" in types
     assert any("simulated" in getattr(e, "text", "") for e in events)
+    assert any("4083872138" in getattr(e, "text", "") for e in events)
     assert any("cam-02" in getattr(e, "text", "") for e in events)
     assert any(
         getattr(e, "scenario_id", "").startswith("security_alert:") for e in events

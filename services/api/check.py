@@ -104,6 +104,22 @@ async def main() -> None:
     _, work = bridge._step(router)
     assert work[0][0] == "reuse"
 
+    from contracts import Severity, utcnow
+    from services.brain.zrt_client import ZRTClient
+
+    result, _ = bridge._classify_one(
+        ZRTClient(forced=True),
+        SimpleNamespace(
+            camera_id="CAM-01",
+            track_id="T-1",
+            ts=utcnow(),
+            fused=0.414,
+            rules=["weapon"],
+        ),
+        [],
+    )
+    assert result.record.severity is Severity.SEVERE
+
     server = await asyncio.start_server(srv.handle, srv.host, 0)
     port = server.sockets[0].getsockname()[1]
 
@@ -145,6 +161,15 @@ async def main() -> None:
     assert "camera.online" in types
     assert "health.strip" in types
     assert "incident.upsert" in types
+
+    followup_types: list[str] = []
+    for _ in range(20):
+        env = await _recv_frame(r)
+        followup_types.append(env["type"])
+        if "incident.state_change" in followup_types and "call.transcript_delta" in followup_types:
+            break
+    assert "incident.state_change" in followup_types
+    assert "call.transcript_delta" in followup_types
 
     # A refreshed/replacement dashboard also needs its own camera snapshot.
     r2, w2 = await asyncio.open_connection("127.0.0.1", port)
