@@ -379,6 +379,69 @@ async def main() -> None:
         srv.hub.broadcast = original_broadcast
         srv.hub._voice = None
 
+    # Real calls only from real vision WEAPON detections; a failed call frees the line.
+    from contracts import IncidentClass
+
+    placed: list[str] = []
+    outcomes: list[object] = []
+
+    def fake_place(incident_id, **_kw):
+        placed.append(incident_id)
+        outcome = outcomes.pop(0)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    saved_sw = (sw.load_config, sw.place_call)
+    sw.load_config = lambda: SimpleNamespace(configured=True)  # provider "enabled"
+    sw.place_call = fake_place
+    dispatched_before = set(DEFAULT_GUARDRAILS._dispatched)
+    hits_before = list(DEFAULT_GUARDRAILS._hour_hits)
+    sent_env.clear()
+    srv.hub.broadcast = capture
+    srv.hub._voice = None
+    try:
+        for unknown in ("full", "quiet", "medical_fall", "nope"):
+            reply = await srv.hub.handle_cmd({"cmd": "runScenario", "scenario_id": unknown})
+            assert reply["ok"] is False and "unknown scenario" in reply["error"]
+        assert not [e for e in sent_env if e["type"] == "incident.upsert"]
+        await srv.hub.run_scenario("armed-intruder")  # scripted WEAPON, SEVERE
+        assert placed == [], "a scripted scenario must never place a call"
+        assert not srv.hub._voice_agent().busy()
+        scripted = next(
+            rec for rec in srv.hub._incidents.values() if "scenario:armed-intruder" in rec.rules_fired
+        )
+        assert scripted.state is IncidentState.ALERTED
+        vision = replace(
+            result.record,
+            incident_id="vision-real-1",
+            class_token=IncidentClass.WEAPON,
+            severity=Severity.SEVERE,
+            state=IncidentState.ALERTED,
+            rules_fired=["weapon"],
+        )
+        outcomes[:] = [{"ok": False, "reason": "http_500"}]
+        await srv.hub._on_incident(vision)
+        assert placed == ["vision-real-1"]
+        assert not srv.hub._voice_agent().busy(), "failed call must not leave voice busy"
+        DEFAULT_GUARDRAILS._dispatched.clear()
+        outcomes[:] = [TimeoutError("signalwire")]
+        await srv.hub._on_incident(replace(vision, incident_id="vision-real-2", state=IncidentState.ALERTED))
+        assert placed[-1] == "vision-real-2" and not srv.hub._voice_agent().busy()
+        DEFAULT_GUARDRAILS._dispatched.clear()
+        outcomes[:] = [{"ok": True, "call_sid": "CA-check"}]
+        await srv.hub._on_incident(replace(vision, incident_id="vision-real-3", state=IncidentState.ALERTED))
+        assert placed[-1] == "vision-real-3" and srv.hub._voice_agent().busy()
+        assert "signalwire_call:CA-check" in [e.get("scenario_id") for e in sent_env]
+        await srv.hub.reset()
+        assert not srv.hub._voice_agent().busy()
+    finally:
+        sw.load_config, sw.place_call = saved_sw
+        DEFAULT_GUARDRAILS._dispatched = dispatched_before
+        DEFAULT_GUARDRAILS._hour_hits = hits_before
+        srv.hub.broadcast = original_broadcast
+        srv.hub._voice = None
+
     server = await asyncio.start_server(srv.handle, srv.host, 0)
     port = server.sockets[0].getsockname()[1]
 

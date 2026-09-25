@@ -72,6 +72,30 @@ WEAPON_SCRIPT: list[CallScriptStep] = [
 ]
 
 
+def handoff_line(camera_id: str, building: str = "") -> str:
+    """Spoken handoff: a place name only, never camera ids or map notes."""
+    place = str(scene_facts(camera_id).get("spoken_location") or "").strip()
+    if not place:
+        place = f"another part of {building}" if building else "another camera view"
+    return (
+        f"Update: the person has moved to {place}. "
+        "Campus security has been re-alerted."
+    )
+
+
+def count_answer(people: int, armed: int) -> str:
+    """Live person count from the tracker overlay, not a static fact."""
+    if people <= 0:
+        return "I don't see anyone on the current camera right now."
+    who = "one person" if people == 1 else f"{people} people"
+    if armed <= 0:
+        return f"The current camera shows {who}."
+    if people == 1:
+        return "The current camera shows one person, and they are armed."
+    which = "one of them is" if armed == 1 else f"{armed} of them are"
+    return f"The current camera shows {who}; {which} armed."
+
+
 class VoiceAgent:
     """Plays officer script; accepts live whereabouts updates when subject hits cam-02/03."""
 
@@ -90,6 +114,8 @@ class VoiceAgent:
         self._last_answer = ""
         self._unknown_answer_index = 0
         self._live_brief: CallBrief | None = None
+        # camera_id -> (people, armed) from the latest overlay.boxes.
+        self._counts: dict[str, tuple[int, int]] = {}
         self._update_q: asyncio.Queue[tuple[str, str]] = asyncio.Queue()
 
     def busy(self) -> bool:
@@ -173,6 +199,9 @@ class VoiceAgent:
             address=self._address,
             person_description=self._person,
         )
+        if self._camera in self._counts:
+            # Live tracker count replaces the static map fact.
+            facts["subject_count"], facts["armed_count"] = self._counts[self._camera]
         q = question.lower()
         if q.strip(" .,!?") in {
             "ok", "okay", "copy", "got it", "understood", "thanks", "thank you"
@@ -199,7 +228,7 @@ class VoiceAgent:
             for word in (
                 "weapon", "gun", "firearm", "direction", "travel", "going",
                 "headed", "describe", "description", "wearing", "clothing",
-                "look like", "how many", "count", "number of",
+                "look like",
             )
         ):
             answer = "They aren't visible, so I can't verify that now."
@@ -212,7 +241,7 @@ class VoiceAgent:
         elif any(word in q for word in ("describe", "description", "wearing", "clothing", "look like")):
             answer = f"The person appears to be {self._person.rstrip('.').lower()}."
         elif any(word in q for word in ("how many", "count", "number of")):
-            answer = f"The cameras currently show {facts.get('subject_count', 1)} person of interest."
+            answer = count_answer(*self._counts.get(self._camera, (0, 0)))
         elif any(word in q for word in ("name", "identity", "who is", "intent", "why")):
             answer = "I can't identify the person or their intent from this footage."
         else:
@@ -251,8 +280,11 @@ class VoiceAgent:
         )
         return answer
 
-    def update_visual(self, camera_id: str, visible: bool) -> None:
+    def update_visual(
+        self, camera_id: str, visible: bool, people: int | None = None, armed: int = 0
+    ) -> None:
         """Keep live answers aligned with the latest overlay without model work."""
+        self._counts[camera_id] = (int(visible) if people is None else people, armed)
         if self._live and camera_id == self._camera:
             self._visible = visible
 
@@ -289,10 +321,7 @@ class VoiceAgent:
             CallTranscriptDelta(
                 incident_id=self._incident_id or "",
                 speaker="sentinel",
-                text=(
-                    f"Update: the person is now on {camera_id}, {address}. "
-                    "Campus security has been re-alerted for this handoff."
-                ),
+                text=handoff_line(camera_id, self._building),
                 ts=utcnow(),
             )
         )

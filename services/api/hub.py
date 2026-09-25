@@ -36,7 +36,7 @@ from services.brain.call_brief import assemble_call_brief, scene_facts
 from services.brain.guardrails import DEFAULT_GUARDRAILS
 from services.brain.zrt_client import ZRTClient
 from services.api import telemetry
-from services.api.vision_bridge import vision_enabled
+from services.api.vision_bridge import ARMED_LABEL, vision_enabled
 from services.voice import VoiceAgent
 
 WALL_CAMS = [f"cam-{i:02d}" for i in range(1, 7)]
@@ -70,6 +70,23 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _scripted(rec: Any) -> bool:
+    """Demo-panel scenarios are scripted, never a real detection."""
+    return any(
+        str(rule).startswith("scenario:") for rule in getattr(rec, "rules_fired", [])
+    )
+
+
+def _real_weapon_detection(rec: Any) -> bool:
+    """Only a vision-detected WEAPON may place a real SignalWire call."""
+    rules = getattr(rec, "rules_fired", [])
+    return (
+        getattr(rec, "class_token", None) is IncidentClass.WEAPON
+        and not _scripted(rec)
+        and "operator_report" not in rules
+    )
+
+
 @dataclass
 class DemoHub:
     broadcast: BroadcastFn
@@ -94,7 +111,12 @@ class DemoHub:
 
     async def publish(self, ev: Any) -> None:
         if isinstance(ev, OverlayBoxes) and self._voice is not None:
-            self._voice.update_visual(ev.camera_id, bool(ev.boxes))
+            self._voice.update_visual(
+                ev.camera_id,
+                bool(ev.boxes),
+                people=len(ev.boxes),
+                armed=sum(1 for box in ev.boxes if box.label == ARMED_LABEL),
+            )
         if isinstance(ev, IncidentUpsert) and ev.incident is not None:
             self._incidents[ev.incident.incident_id] = ev.incident
         elif isinstance(ev, IncidentStateChange):
@@ -169,7 +191,14 @@ class DemoHub:
                     )
                 )
                 return False
+            from services.voice.signalwire_bridge import load_config, place_call
+
+            provider = load_config()
             ok, reason = DEFAULT_GUARDRAILS.can_dispatch(rec.incident_id)
+            if ok and provider and _scripted(rec) and not operator_requested:
+                # With real calling on, a scripted scenario gets no voice at
+                # all: no call, and no simulated line holding voice busy.
+                ok, reason = False, "scripted_scenario"
             if not ok:
                 await self.publish(
                     DemoControl(
@@ -190,9 +219,7 @@ class DemoHub:
             now = _utcnow()
             rec.state = IncidentState.DISPATCHED
             rec.updated_at = now
-            from services.voice.signalwire_bridge import load_config, place_call
-
-            signalwire = load_config()
+            signalwire = provider if _real_weapon_detection(rec) else None
             await self.publish(
                 IncidentStateChange(
                     incident_id=rec.incident_id,
@@ -203,14 +230,15 @@ class DemoHub:
                 )
             )
             await self._publish_brief(brief, "dispatch")
-            if signalwire:
-                await self._voice_agent().start_live_call(rec, brief)
-            else:
+            if not signalwire:
                 await self._voice_agent().start_call(rec, brief)
-            # Optional real phone — no-op until SignalWire is configured.
+                return True
+            await self._voice_agent().start_live_call(rec, brief)
+            placed = False
             try:
                 result = await asyncio.to_thread(place_call, rec.incident_id, config=signalwire)
-                if result.get("ok"):
+                placed = bool(result.get("ok"))
+                if placed:
                     await self.publish(
                         DemoControl(
                             action="scenario",
@@ -234,6 +262,10 @@ class DemoHub:
                         ts=_utcnow(),
                     )
                 )
+            if not placed:
+                # No call exists, so the voice line must not stay busy and
+                # block the next real dispatch.
+                await self._voice_agent().cancel()
             return True
 
     async def answer_dispatcher(self, incident_id: str, question: str) -> str:
@@ -392,7 +424,10 @@ class DemoHub:
         self, scenario_id: str, *, camera_id: str | None = None
     ) -> str:
         key = (scenario_id or "armed-intruder").strip().lower()
-        cls, default_cam = SCENARIOS.get(key, (IncidentClass.WEAPON, "cam-01"))
+        if key not in SCENARIOS:
+            # Never fabricate a WEAPON incident for an id we do not know.
+            raise ValueError(f"unknown scenario: {key}")
+        cls, default_cam = SCENARIOS[key]
         cam = camera_id or default_cam
         result = adjudicate(
             EscalateRequest(
@@ -440,7 +475,10 @@ class DemoHub:
             paused = await self.set_paused(bool(msg.get("paused", True)))
             return {"ok": True, "cmd": "setPaused", "paused": paused}
         if cmd == "runScenario":
-            iid = await self.run_scenario(str(msg.get("scenario_id") or "armed-intruder"))
+            try:
+                iid = await self.run_scenario(str(msg.get("scenario_id") or "armed-intruder"))
+            except ValueError as exc:
+                return {"ok": False, "cmd": "runScenario", "error": str(exc)}
             return {"ok": True, "cmd": "runScenario", "incident_id": iid}
         if cmd == "sendStateChange":
             await self.send_state_change(

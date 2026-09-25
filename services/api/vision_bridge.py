@@ -35,6 +35,8 @@ if TYPE_CHECKING:
 ROOT = Path(__file__).resolve().parents[2]
 FEED = ROOT / "data" / "feeds" / "seville_option1_3cam_locked.json"
 DEMO_PERSON = "Adult in dark clothing carrying a long firearm."
+# overlay.boxes label for a person with a detected weapon; the web draws it red.
+ARMED_LABEL = "weapon"
 
 
 def _cooldown_s() -> float:

@@ -114,7 +114,7 @@ async def _main() -> None:
     assert "tool.call_live" in types
     assert any("simulated" in getattr(e, "text", "") for e in events)
     assert any("demo call" in getattr(e, "text", "") for e in events)
-    assert any("cam-02" in getattr(e, "text", "") for e in events)
+    assert any("the east corridor" in getattr(e, "text", "") for e in events)
     assert any(
         getattr(e, "scenario_id", "").startswith("security_alert:") for e in events
     )
@@ -171,9 +171,29 @@ async def _main() -> None:
     await live.notify_whereabouts("cam-01", assemble_call_brief(rec).address)
     assert len(live_events) == event_count
     await live.notify_whereabouts("cam-02", assemble_call_brief(rec).address)
+    spoken = [getattr(e, "text", "") for e in live_events[event_count:]]
+    # Handoff speaks a place name only: no camera id, no map/curb notes.
+    assert "Update: the person has moved to the east corridor. Campus security has been re-alerted." in spoken
+    assert not any("cam-" in line or "curb" in line or "(" in line for line in spoken)
     assert await live.answer_dispatcher(rec.incident_id, "Where is the person now?") == (
         "The person is in the east corridor."
     )
+    # Person count comes from the live tracker overlay, not scene_facts.
+    live.update_visual("cam-02", True, people=3, armed=1)
+    assert await live.answer_dispatcher(rec.incident_id, "How many people are there?") == (
+        "The current camera shows 3 people; one of them is armed."
+    )
+    live.update_visual("cam-02", True, people=1, armed=1)
+    assert await live.answer_dispatcher(rec.incident_id, "How many people?") == (
+        "The current camera shows one person, and they are armed."
+    )
+    live.update_visual("cam-02", False, people=0, armed=0)
+    assert "don't see anyone" in await live.answer_dispatcher(rec.incident_id, "How many people?")
+    live.update_visual("cam-02", True, people=2, armed=0)
+    assert await live.answer_dispatcher(rec.incident_id, "Number of people?") == (
+        "The current camera shows 2 people."
+    )
+    assert qwen.calls == 0
     live.update_visual("cam-02", False)
     assert "don't see the person" in await live.answer_dispatcher(rec.incident_id, "Where is the person now?")
     assert "aren't visible" in await live.answer_dispatcher(rec.incident_id, "What weapon do you see?")
