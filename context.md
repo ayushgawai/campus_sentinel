@@ -92,6 +92,8 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - web: operator actions (report incident, call for help, broadcast) with local fallback until api routes exist; cleaner incident detail panel (wider, merged details card, aligned action bar); fixed swallowed clicks (fix 5, 5b)
 - web: professional wording, Demo control redesign (collapsible sections, intro section removed), splash reveal in CSS starting on first paint and independent of video loading, js/boot.js for ?nosplash=1, module cache busting with one ?v= tag (bump it on every change), All cameras in camera toolbar (fix 7 to 7d)
 - web: AI models card and System page AI models section (models actually running); System page rebuilt (full height camera status grid, stat cards); one camera status helper for tiles, pins, lists and header (MJPEG online from first frame until error, with 5 s retry; video online from frames; 10 s timeout); removed hard-coded fps (fix 10 to 10h)
+- web: SignalWire voice wiring (`2f5a0d0`) - call label shows SignalWire call / SignalWire call failed / Simulated call from the live provider state (idle label follows `/voice/status` `signalwire.configured`); backend reset clears every open dashboard; `voice_busy` blocked auto-calls show the "Declined by server" note; incident-not-found errors surface. JS only, no styling. (ayush)
+- voice: Twilio removed (`af75737`); SignalWire is the only provider. (ayush)
 - web: real SJSU site map (OpenStreetMap export, attribution and 'Illustrative layout' note), cameras named and placed on the backend camera graph, pursuit along walkways, ?map=plan fallback, ?mapedit=1 placement tool (fix 9b)
 
 ## Pending (owners)
@@ -104,14 +106,18 @@ Design and verified pre-change baseline: `docs/superpowers/specs/2026-09-25-comp
 | **Indraneel** | Officer F1 polish |
 | **Ayush / open** | OSNet weights · temp calibration · MediaMTX optional |
 | **Ayush / api** | CallBrief event (when available) |
-| **Web / Manav** | Replace the fixed simulated-call label with the live provider state when SignalWire is enabled |
+| **Web / Manav** | Browser-test the SignalWire wiring (`2f5a0d0`) against the live API; `node web/check.mjs` was not run (no node on ZGX) |
+| **Web / Manav** | Bump the `?v=` module cache tag for `store.js`, `transport.js`, `actions.js`, `modelStatus.js`, `ui/call.js`, `ui/operator.js` |
+| **Web / Manav** | Uncommitted on ZGX main: `live.js` leader-lines-under-dock order + 150 ms leave (`app.css`); review and commit or drop |
+| **Web / Manav** | Remote reset clears state but does not rewind camera videos on other dashboards |
+| **Web / Manav** | Load `GET /api/site` instead of the duplicated camera map in `site.js` |
 
 ## Decisions made since the playbook
 - UI branded **Sentinel**; cameras only as Camera 1–6; no place names in UI or mock (public video). (manav)
 - Mock-only UI: predicted next camera, clip from local video, confirm/dismiss in mock. (manav)
 - API now emits normalized 0–1 boxes; the UI and API use canonical hyphenated camera IDs.
 - The API exposes `/mjpeg/{cam}` for cam-01..03 and byte-range `/media/{cam}` for ambient cam-04..06.
-- **SIMULATED** on every call and dispatch surface. (manav)
+- Call surfaces show the live provider state (SignalWire call / Simulated call); dispatch stays labelled **SIMULATED**. (ayush)
 - Deployment is Docker Compose only.
 - WS overlays are `overlay.boxes` only.
 
