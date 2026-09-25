@@ -194,6 +194,8 @@
 
   /* ---------- Shell chrome ---------- */
   --sidebar-w: 440px;
+  --incidents-panel-w: 400px;
+  --call-panel-w: 440px;
   --assist-size: 56px;
   --assist-m: 24px;
 

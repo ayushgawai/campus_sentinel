@@ -13,6 +13,10 @@ import {
 import { FOCUS_CAMERA_EVENT } from "./cameras.js";
 import { clear, setText } from "../dom.js";
 import { themeColors } from "../theme.js";
+import { classLabel, formatElapsedPlus } from "../format.js";
+import { now, subscribeTick } from "../clock.js";
+
+const LEVEL_RANK = { none: 0, minor: 1, severe: 2 };
 
 export { FOCUS_CAMERA_EVENT, fromCameraMap, cameraLabel };
 
@@ -193,6 +197,11 @@ export function mountMap(el, store, actions, opts = {}) {
   const drawnSeg = new Set();
   let predictedId = null;
   let pinEls = new Map();
+  let pulseEls = new Map();
+  let labelEls = new Map();
+  let prevLevel = new Map();
+  let levelSeeded = false;
+  let currentVb = vb;
   let focusId = null;
   let hoverId = null;
 
@@ -219,6 +228,10 @@ export function mountMap(el, store, actions, opts = {}) {
     clear(pinsLayer);
     clear(fovsLayer);
     pinEls = new Map();
+    pulseEls = new Map();
+    labelEls = new Map();
+    prevLevel = new Map();
+    levelSeeded = false;
     for (const pin of activePins) {
       const c = themeColors();
       const fov = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -245,6 +258,11 @@ export function mountMap(el, store, actions, opts = {}) {
       body.setAttribute("r", String(PIN_DOT_R));
       body.setAttribute("class", "cmap-pin__dot");
 
+      const pulse = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      pulse.setAttribute("r", String(PIN_DOT_R));
+      pulse.setAttribute("class", "cmap-pin__pulse");
+      pulseEls.set(pin.id, pulse);
+
       const num = document.createElementNS("http://www.w3.org/2000/svg", "text");
       num.setAttribute("class", "cmap-pin__num");
       num.setAttribute("text-anchor", "middle");
@@ -262,6 +280,7 @@ export function mountMap(el, store, actions, opts = {}) {
       num.textContent = String(camN);
 
       g.appendChild(hit);
+      g.appendChild(pulse);
       g.appendChild(body);
       g.appendChild(num);
 
@@ -322,13 +341,6 @@ export function mountMap(el, store, actions, opts = {}) {
     return pinById().get(id) ?? null;
   }
 
-  function formatPlus(sec) {
-    const s = Math.max(0, Math.floor(sec));
-    const mm = Math.floor(s / 60);
-    const ss = s % 60;
-    return `+${mm}:${String(ss).padStart(2, "0")}`;
-  }
-
   function ensureSegment(fromId, toId, elapsedSec) {
     const key = `${fromId}->${toId}`;
     if (drawnSeg.has(key)) return;
@@ -354,7 +366,7 @@ export function mountMap(el, store, actions, opts = {}) {
     const oy = (dx / len) * 20;
     const wp = document.createElementNS("http://www.w3.org/2000/svg", "g");
     wp.setAttribute("transform", `translate(${mx + ox} ${my + oy})`);
-    const label = formatPlus(elapsedSec);
+    const label = formatElapsedPlus(elapsedSec);
     const pw = Math.max(40, label.length * 7.4);
     const pill = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     pill.setAttribute("x", String(-pw / 2));
@@ -382,7 +394,7 @@ export function mountMap(el, store, actions, opts = {}) {
   }
 
   function syncPursuit(state) {
-    const t = state.demo?.t ?? 0;
+    const t = now() / 1000;
     for (const inc of trackingIncidents(state)) {
       const path = state.cameraPath?.[inc.incident_id];
       if (Array.isArray(path) && path.length >= 2) {
@@ -420,6 +432,52 @@ export function mountMap(el, store, actions, opts = {}) {
     }
   }
 
+  function levelOf(hit) {
+    if (hit?.sev === "SEVERE") return "severe";
+    if (hit?.sev === "MINOR") return "minor";
+    return "none";
+  }
+
+  function triggerPulse(cameraId) {
+    const ring = pulseEls.get(cameraId);
+    if (!ring) return;
+    ring.classList.remove("is-pulsing");
+    void ring.getBoundingClientRect(); // restart animation if already running
+    ring.classList.add("is-pulsing");
+  }
+
+  function labelWidth(text) {
+    return Math.max(28, text.length * 6.4);
+  }
+
+  function updateLabel(pin, hit) {
+    const existing = labelEls.get(pin.id);
+    if (!hit) {
+      if (existing) {
+        existing.remove();
+        labelEls.delete(pin.id);
+      }
+      return;
+    }
+    const text = classLabel(hit.inc.class_token);
+    const w = labelWidth(text);
+    const flip = pin.x + PIN_DOT_R + 8 + w > currentVb.x + currentVb.w - 8;
+    const lx = flip ? -(PIN_DOT_R + 8) : PIN_DOT_R + 8;
+    const anchor = flip ? "end" : "start";
+    let node = existing;
+    if (!node) {
+      node = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      node.setAttribute("class", "cmap-pin__label");
+      node.setAttribute("dominant-baseline", "central");
+      pinEls.get(pin.id)?.appendChild(node);
+      labelEls.set(pin.id, node);
+    }
+    node.setAttribute("x", String(lx));
+    node.setAttribute("y", "-18");
+    node.setAttribute("text-anchor", anchor);
+    node.textContent = text;
+  }
+
   function paintPinStates(state) {
     for (const pin of activePins) {
       const g = pinEls.get(pin.id);
@@ -427,11 +485,19 @@ export function mountMap(el, store, actions, opts = {}) {
       const cam = state.cameras[pin.id];
       const online = cam ? Boolean(cam.online) : true;
       const hit = activeSeverityForCamera(state, pin.id);
+      const level = levelOf(hit);
+      const prev = prevLevel.get(pin.id) ?? "none";
+      if (levelSeeded && LEVEL_RANK[level] > LEVEL_RANK[prev]) {
+        triggerPulse(pin.id);
+      }
+      prevLevel.set(pin.id, level);
       g.classList.toggle("is-offline", !online);
-      g.classList.toggle("is-minor", hit?.sev === "MINOR");
-      g.classList.toggle("is-severe", hit?.sev === "SEVERE");
+      g.classList.toggle("is-minor", level === "minor");
+      g.classList.toggle("is-severe", level === "severe");
       g.classList.toggle("is-predicted", predictedId === pin.id);
+      updateLabel(pin, hit);
     }
+    levelSeeded = true;
     applyPinHighlight();
   }
 
@@ -469,6 +535,7 @@ export function mountMap(el, store, actions, opts = {}) {
 
   function refreshViewBox() {
     const next = computeViewBox();
+    currentVb = next;
     const svg = el.querySelector(".cmap__svg");
     if (!svg || !stage) return;
     svg.setAttribute(
@@ -499,6 +566,7 @@ export function mountMap(el, store, actions, opts = {}) {
   renderPinNodes();
   render(store.getState());
   const unsub = store.subscribe(render);
+  const unsubTick = subscribeTick(() => render(store.getState()));
 
   const api = {
     highlightPredicted,
@@ -528,6 +596,7 @@ export function mountMap(el, store, actions, opts = {}) {
 
   return () => {
     unsub();
+    unsubTick();
     if (window.__map === api) delete window.__map;
   };
 }

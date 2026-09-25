@@ -1,15 +1,15 @@
 import { cameraLabel, WALL_CAMERA_IDS } from "./site.js";
+import { mockIso, setMockEpoch } from "./clock.js";
 
 /**
  * Contract-shaped event helpers + deterministic mock timeline player.
  * Event fields mirror contracts/events.py and contracts/incident.py.
+ * Timestamps are ISO-8601 UTC on the runtime mock epoch (clock.js), which
+ * is rebased to the current wall time at player start and on every reset.
  */
 
-/** Demo epoch — all timestamps are ISO-8601 UTC from this base + script `at`. */
-export const DEMO_EPOCH_MS = Date.UTC(2026, 8, 23, 19, 0, 0, 0);
-
 export function atIso(seconds) {
-  return new Date(DEMO_EPOCH_MS + Math.round(seconds * 1000)).toISOString();
+  return mockIso(seconds);
 }
 
 export function mkCameraOnline({ camera_id, online = true, at = 0 }) {
@@ -685,6 +685,7 @@ export function scenarioMarkers(scenarioId = "full") {
  */
 export function createMockPlayer({ onEvent, onTick, scenarioId = "full" }) {
   let scenario = scenarioId;
+  setMockEpoch(Date.now());
   let SCRIPT = buildScript(scenario);
   let speed = 1;
   let running = false;
@@ -706,14 +707,8 @@ export function createMockPlayer({ onEvent, onTick, scenarioId = "full" }) {
     const dt = lastWall ? ((wall - lastWall) / 1000) * speed : 0;
     lastWall = wall;
     t += dt;
-    emitUpTo(t);
+    emitUpTo(t); // no-op once the script is exhausted; time keeps running
     if (onTick) onTick(t);
-    if (idx >= SCRIPT.length) {
-      running = false;
-      if (onTick) onTick(t);
-      raf = 0;
-      return;
-    }
     raf = requestAnimationFrame(frame);
   }
 
@@ -736,6 +731,8 @@ export function createMockPlayer({ onEvent, onTick, scenarioId = "full" }) {
 
   function reset() {
     pause();
+    setMockEpoch(Date.now());
+    SCRIPT = buildScript(scenario);
     t = 0;
     idx = 0;
     if (onTick) onTick(t);
@@ -760,7 +757,6 @@ export function createMockPlayer({ onEvent, onTick, scenarioId = "full" }) {
 
   function loadScenario(id) {
     scenario = id || "full";
-    SCRIPT = buildScript(scenario);
     reset();
   }
 

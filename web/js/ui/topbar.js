@@ -3,15 +3,16 @@
 import { ROUTES, navigate, getRoute, subscribeRoute } from "../router.js";
 import {
   awaiting,
-  formatClock,
+  formatHeaderClock,
   formatInt,
   formatMs,
   formatPct,
 } from "../format.js";
 import { setText } from "../dom.js";
 import { LOGO_MARK } from "../logo.js";
+import { now, subscribeTick } from "../clock.js";
 
-export function mountTopbar(el, store, actions) {
+export function mountTopbar(el, store, actions, layoutCtl) {
   el.innerHTML = `
     <div class="topbar">
       <div class="topbar__brand" aria-label="Sentinel">
@@ -31,6 +32,15 @@ export function mountTopbar(el, store, actions) {
       </div>
 
       <div class="topbar__right">
+        <button type="button" class="topbar__all-cams" data-all-cams hidden aria-label="Show all cameras" title="All cameras">
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+            <rect x="1" y="1" width="5" height="5" rx="1" fill="currentColor"/>
+            <rect x="8" y="1" width="5" height="5" rx="1" fill="currentColor"/>
+            <rect x="1" y="8" width="5" height="5" rx="1" fill="currentColor"/>
+            <rect x="8" y="8" width="5" height="5" rx="1" fill="currentColor"/>
+          </svg>
+          <span>All cameras</span>
+        </button>
         <button type="button" class="topbar__reset" data-reset>Reset demo</button>
         <span class="topbar__reconnect" data-reconnect hidden>Reconnecting</span>
         <time class="topbar__clock metric mono" data-clock></time>
@@ -73,12 +83,23 @@ export function mountTopbar(el, store, actions) {
   const escalatedEl = $("[data-escalated]");
   const reconnectEl = $("[data-reconnect]");
   const clockEl = $("[data-clock]");
+  const allCamsBtn = $("[data-all-cams]");
+
+  allCamsBtn?.addEventListener("click", () => layoutCtl?.showAll?.());
+
+  function paintAllCams(state) {
+    if (!allCamsBtn || !layoutCtl) return;
+    const live = (state.route || getRoute()) === "live";
+    allCamsBtn.hidden = !live;
+    if (!live) return;
+    const mode = layoutCtl.plan(state).mode;
+    allCamsBtn.classList.toggle("is-invisible", mode === "grid");
+  }
 
   let screenedDisplay = 0;
   let screenedTarget = 0;
   let lastEscalated = 0;
   let tweenRaf = 0;
-  let clockTimer = 0;
 
   function tween() {
     tweenRaf = 0;
@@ -101,14 +122,18 @@ export function mountTopbar(el, store, actions) {
     if (!tweenRaf) tweenRaf = requestAnimationFrame(tween);
   }
 
-  function tickClock() {
-    const now = new Date();
-    setText(clockEl, formatClock(now));
-    clockEl.dateTime = now.toISOString();
+  function tickClock(ms = now()) {
+    setText(clockEl, formatHeaderClock(ms));
+    const iso = new Date(ms).toISOString();
+    if (clockEl.dateTime !== iso) clockEl.dateTime = iso;
+    // The wall can return to grid on a timer with no event; keep the
+    // All cameras button in step with it.
+    paintAllCams(store.getState());
   }
 
   function render(state) {
     paintNav(state.route || getRoute());
+    paintAllCams(state);
 
     const h = state.health || {};
     if (h.cameras_online == null) {
@@ -147,15 +172,17 @@ export function mountTopbar(el, store, actions) {
   }
 
   tickClock();
-  clockTimer = window.setInterval(tickClock, 1000);
+  const unsubTick = subscribeTick(tickClock);
   render(store.getState());
   const unsub = store.subscribe(render);
+  const unsubLayout = layoutCtl?.subscribe?.(() => paintAllCams(store.getState()));
 
   return () => {
     unsub();
     unsubRoute();
+    unsubLayout?.();
+    unsubTick();
     if (tweenRaf) cancelAnimationFrame(tweenRaf);
-    if (clockTimer) window.clearInterval(clockTimer);
   };
 }
 

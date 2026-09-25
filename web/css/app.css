@@ -132,12 +132,16 @@ body.has-banner #banner:not([hidden]) {
   position: relative;
   transition: grid-template-columns 220ms var(--ease);
 }
-body.sidebar-open .page--live {
-  grid-template-columns: minmax(0, 1fr) var(--sidebar-w);
+body.sidebar-open:not(.call-open) .page--live {
+  grid-template-columns: minmax(0, 1fr) var(--incidents-panel-w);
 }
-@media (max-width: 1280px) {
-  body.sidebar-open .page--live {
-    grid-template-columns: minmax(0, 1fr) 400px;
+body.sidebar-open.call-open .page--live {
+  grid-template-columns: minmax(0, 1fr) var(--call-panel-w) var(--incidents-panel-w);
+}
+@media (max-width: 1600px) {
+  :root {
+    --incidents-panel-w: 360px;
+    --call-panel-w: 400px;
   }
 }
 
@@ -412,6 +416,50 @@ body.sidebar-open .page--live {
   margin: 0;
   font-size: var(--fs-12);
   color: var(--card-text-2);
+}
+
+/* ---------- Floating call panel ---------- */
+.callpanel__label {
+  font-size: var(--fs-13);
+  font-weight: 600;
+  color: var(--text);
+  margin-right: auto;
+}
+.callpanel__cam {
+  font-size: var(--fs-12);
+  color: var(--card-text-2);
+  white-space: nowrap;
+}
+.callpanel-brief {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px 12px;
+}
+.callpanel-brief__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.callpanel-brief__k {
+  font-size: var(--fs-11);
+  color: var(--card-text-3);
+}
+.callpanel-brief__v {
+  font-size: var(--fs-13);
+  color: var(--card-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.callpanel-ended {
+  margin: 0;
+  color: var(--card-text-2);
+  font-size: var(--fs-13);
+}
+.callpanel-footer {
+  flex-shrink: 0;
+  min-height: var(--h-md);
 }
 
 .chat-card {
@@ -1304,10 +1352,37 @@ body.sidebar-open .page--live {
   font-family: var(--mono);
   font-size: var(--fs-12);
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
   color: var(--header-text);
-  min-width: 9ch;
+  width: 22ch;
   text-align: right;
+  white-space: nowrap;
   letter-spacing: 0.02em;
+}
+.topbar__all-cams {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: var(--h-md);
+  border: 1px solid var(--header-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--header-text);
+  font: inherit;
+  font-size: var(--fs-11);
+  font-weight: 600;
+  padding: 0 10px;
+  cursor: pointer;
+}
+.topbar__all-cams:hover,
+.topbar__all-cams:focus-visible {
+  border-color: var(--header-accent);
+  outline: none;
+}
+.topbar__all-cams.is-invisible {
+  visibility: hidden;
+  pointer-events: none;
 }
 .topbar__reset {
   appearance: none;
@@ -1421,11 +1496,6 @@ body.sidebar-open .page--live {
 }
 .camwall__slot {
   color: var(--text-3);
-}
-.camwall__actions {
-  margin-left: auto;
-  display: flex;
-  gap: var(--sp-2);
 }
 .camwall__stage {
   position: relative;
@@ -2004,8 +2074,8 @@ progress.detail__conf-progress::-moz-progress-bar {
   color: var(--minor);
 }
 .cmap-pin.is-severe .cmap-pin__dot {
-  fill: #b42332;
-  color: #b42332;
+  fill: var(--severe);
+  color: var(--severe);
 }
 .cmap-pin.is-severe .cmap-pin__num {
   fill: var(--map-text, #f2f4f7);
@@ -2014,10 +2084,51 @@ progress.detail__conf-progress::-moz-progress-bar {
   fill: var(--steel-40);
   color: var(--steel-40);
 }
+.cmap-pin__pulse {
+  fill: none;
+  stroke: var(--aqua);
+  stroke-width: 2;
+  opacity: 0;
+  pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.cmap-pin.is-minor .cmap-pin__pulse {
+  stroke: var(--minor);
+}
+.cmap-pin.is-severe .cmap-pin__pulse {
+  stroke: var(--severe);
+}
+.cmap-pin__pulse.is-pulsing {
+  animation: cmap-pin-pulse 0.8s var(--ease) 3;
+}
+@keyframes cmap-pin-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(2.3);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cmap-pin__pulse.is-pulsing {
+    animation: none;
+  }
+}
 .cmap-pin__label {
-  fill: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
   font-family: var(--mono);
+  font-weight: 600;
+  fill: var(--text-muted);
+  pointer-events: none;
+}
+.cmap-pin.is-minor .cmap-pin__label {
+  fill: var(--minor);
+}
+.cmap-pin.is-severe .cmap-pin__label {
+  fill: var(--severe);
 }
 .cmap__pursuit {
   stroke: var(--severe);
@@ -3029,7 +3140,8 @@ body:not(.route-live) #assist-root {
 }
 
 /* ---------- Sidebar ---------- */
-#sidebar {
+#sidebar,
+#call-float {
   min-width: 0;
   min-height: 0;
   border-left: 1px solid var(--border);
@@ -3083,6 +3195,21 @@ body:not(.route-live) #assist-root {
   color: var(--text);
   background: var(--surface-3);
   border-bottom-color: var(--aqua);
+}
+.sidebar__call-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.sidebar__call-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--severe);
+  flex-shrink: 0;
+  animation: rec-blink 1.2s steps(1) infinite;
 }
 .sidebar__body {
   flex: 1;

@@ -1,6 +1,6 @@
 /** Incidents page — list + full detail. Status via type weight, not badges. */
 
-import { DEMO_EPOCH_MS } from "../mock.js";
+import { now, subscribeTick } from "../clock.js";
 import {
   classLabel,
   cameraLabel,
@@ -17,10 +17,6 @@ import {
 } from "../format.js";
 import { clear, el, setText } from "../dom.js";
 import { mountIncidentClip } from "./incidentClip.js";
-
-function demoNowMs(state) {
-  return DEMO_EPOCH_MS + (state.demo?.t ?? 0) * 1000;
-}
 
 export function mountIncidents(listRoot, detailRoot, store, actions) {
   listRoot.innerHTML = `
@@ -219,9 +215,17 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
     }
   }
 
+  /** Row "ago" nodes; the ticker refreshes only these. */
+  let agoNodes = [];
+
+  function paintTimes(nowMs = now()) {
+    if (store.getState().route !== "incidents") return;
+    for (const { node, iso } of agoNodes) setText(node, formatRel(iso, nowMs));
+  }
+
   function render(state) {
     if (state.route !== "incidents") return;
-    const nowMs = demoNowMs(state);
+    agoNodes = [];
     const ids = state.order.filter((id) => {
       const inc = state.incidents[id];
       return inc && matches(inc);
@@ -267,12 +271,9 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
       meta.appendChild(
         el("span", { className: "iq-row__loc", text: cameraLabel(inc.camera_id) }),
       );
-      meta.appendChild(
-        el("span", {
-          className: "mono",
-          text: formatRel(inc.created_at || inc.peak_ts, nowMs),
-        }),
-      );
+      const agoEl = el("span", { className: "mono" });
+      agoNodes.push({ node: agoEl, iso: inc.created_at || inc.peak_ts });
+      meta.appendChild(agoEl);
       meta.appendChild(
         el("span", {
           className: "mono",
@@ -286,6 +287,7 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
       listEl.appendChild(row);
     }
 
+    paintTimes();
     const sel = state.selectedId ? state.incidents[state.selectedId] : null;
     paintDetail(
       sel && matches(sel) ? sel : ids[0] ? state.incidents[ids[0]] : null,
@@ -294,12 +296,10 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
 
   render(store.getState());
   const unsub = store.subscribe(render);
-  const tick = window.setInterval(() => {
-    if (store.getState().route === "incidents") render(store.getState());
-  }, 1000);
+  const unsubTick = subscribeTick(paintTimes);
 
   return () => {
     unsub();
-    window.clearInterval(tick);
+    unsubTick();
   };
 }

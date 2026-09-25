@@ -2,8 +2,12 @@
 
 import { createMockPlayer, atIso, predictedCameraAt } from "./mock.js";
 import { validateEvent } from "./validate.js";
+import { setMode, setMockT, sampleServerTime } from "./clock.js";
 
 const BACKOFFS = [1000, 2000, 5000];
+// Reconnect replays old incidents/transcript with their original ts; only
+// sample the clock offset from events that are always stamped "now".
+const LIVE_TS_TYPES = new Set(["health.strip", "overlay.boxes", "camera.online"]);
 
 function wsUrlFromSearch() {
   if (typeof location === "undefined") return null;
@@ -63,12 +67,14 @@ export function start(handler, hooks = {}) {
   }
 
   if (!wsUrl) {
+    setMode("MOCK");
     if (setConnection) setConnection("MOCK");
     /** @type {ReturnType<typeof createMockPlayer> | null} */
     let player = null;
     player = createMockPlayer({
       onEvent: (ev) => safeHandle(handler, ev),
       onTick: (t) => {
+        setMockT(t);
         if (setDemo && player) {
           setDemo({
             t,
@@ -175,6 +181,7 @@ export function start(handler, hooks = {}) {
     };
   }
 
+  setMode("LIVE");
   let socket = null;
   let closed = false;
   let attempt = 0;
@@ -210,6 +217,7 @@ export function start(handler, hooks = {}) {
     socket.addEventListener("message", (msg) => {
       try {
         const data = JSON.parse(msg.data);
+        if (LIVE_TS_TYPES.has(data?.type)) sampleServerTime(data.ts);
         safeHandle(handler, data);
       } catch (err) {
         console.warn("[transport] bad JSON message", err);

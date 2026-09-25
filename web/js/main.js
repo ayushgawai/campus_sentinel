@@ -11,6 +11,7 @@ import { createCameraLayout } from "./ui/cameraLayout.js";
 import { mountSidebar } from "./ui/sidebar.js";
 import { mountAssist } from "./ui/assist.js";
 import { mountCallPage } from "./ui/callpage.js";
+import { mountCallPanel } from "./ui/call.js";
 import { mountDemo } from "./ui/demo.js";
 import { mountDismiss } from "./ui/dismiss.js";
 import { mountIncidents } from "./ui/incidents.js";
@@ -49,17 +50,22 @@ const actions = createActions({
   transport,
 });
 
-mountTopbar(document.getElementById("topbar"), store, actions);
+mountTopbar(document.getElementById("topbar"), store, actions, layoutCtl);
 mountBanner(document.getElementById("banner"), store, actions, layoutCtl);
 mountCameras(document.getElementById("cameras"), store, actions, layoutCtl);
+
+const callPanelApi = mountCallPanel(document.getElementById("call-float"), store);
 
 const sidebarApi = mountSidebar(
   document.getElementById("sidebar"),
   store,
   actions,
   layoutCtl,
+  { onClose: () => callPanelApi.close() },
 );
 mountAssist(document.getElementById("assist-root"), store, sidebarApi);
+
+document.addEventListener("sentinel:open-call-panel", () => callPanelApi.open());
 
 mountCallPage(document.getElementById("call-page"), store);
 
@@ -94,7 +100,7 @@ mountIncidents(
   actions,
 );
 mountSystem(document.getElementById("system"), store);
-startAutoFollow(store, sidebarApi, layoutCtl);
+startAutoFollow(store, sidebarApi, callPanelApi, layoutCtl);
 
 function applyRoute(route) {
   store.setRoute(route);
@@ -139,8 +145,20 @@ window.addEventListener(
       e.stopPropagation();
       return;
     }
+    if (callPanelApi.isOpen()) {
+      callPanelApi.close();
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     if (sidebarApi.isOpen()) {
       sidebarApi.close();
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    if (store.getState().route === "live" && layoutCtl.plan(store.getState()).mode !== "grid") {
+      layoutCtl.showAll();
       e.preventDefault();
       e.stopPropagation();
       return;
@@ -184,6 +202,7 @@ window.__transport = transport;
 window.__actions = actions;
 window.__navigate = navigate;
 window.__sidebar = sidebarApi;
+window.__callPanel = callPanelApi;
 window.__cameraLayout = layoutCtl;
 window.__replayIntro = replayIntro;
 

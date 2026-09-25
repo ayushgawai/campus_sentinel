@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-25 - live six-camera console + severe weapon call flow
+Last updated: 2026-09-25 06:31 UTC - web fixes 1-4: map highlight, all cameras, live clock, incidents + call panels (manav)
 
 ## HARD RULES
 1. `git pull --rebase origin main` before every push. Work on **main**.
@@ -63,6 +63,10 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - **Reconnect:** every WebSocket client receives camera state plus a bounded replay of incidents, dispatch state, transcript, and tool events.
 - **Reset / looping:** visible topbar Reset rewinds all six feeds, clears incidents/call transcript/overlays/counters, resets tracker state to `Person #1`, and keeps YOLO/VadCLIP/Qwen resident. Natural EOF resets tracker state too.
 - **web:** Sentinel console (plain HTML/JS, no build) - splash, Live Operations camera wall, auto-open call sidebar, Incidents / Call Console / System pages, and Demo controls. Mock remains available without `?ws=`. (manav)
+- web: map pins pulse and label active incidents (fix 1)
+- web: All cameras button, Esc and 5 s auto return to grid (fix 2)
+- web: live clock, one shared ticker, real time in live and mock (fix 3)
+- web: floating incidents panel with a second call panel beside it, autofollow keeps map and call visible during tracking (fix 4)
 
 ## Pending (owners)
 | Who | What |

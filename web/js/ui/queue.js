@@ -1,6 +1,6 @@
 /** Active incidents — expandable rows. Hierarchy via type weight, not badges. */
 
-import { DEMO_EPOCH_MS } from "../mock.js";
+import { now, subscribeTick } from "../clock.js";
 import { WALL_CAMERA_IDS } from "../site.js";
 import {
   classLabel,
@@ -15,10 +15,6 @@ import {
   isDispatchSimState,
 } from "../format.js";
 import { clear, el, setText } from "../dom.js";
-
-function demoNowMs(state) {
-  return DEMO_EPOCH_MS + (state.demo?.t ?? 0) * 1000;
-}
 
 function opsSummary(inc, nowMs) {
   const loc = cameraLabel(inc.camera_id);
@@ -57,9 +53,16 @@ export function mountQueue(root, store, actions) {
   const countEl = root.querySelector("[data-q-count]");
   const emptyEl = root.querySelector("[data-empty]");
   const listEl = root.querySelector("[data-list]");
-  let tick = 0;
+  /** Time-dependent text nodes; the ticker refreshes only these. */
+  let liveNodes = [];
 
-  function renderRow(inc, nowMs, selected) {
+  function live(node, text) {
+    liveNodes.push({ node, text });
+    setText(node, text(now()));
+    return node;
+  }
+
+  function renderRow(inc, selected) {
     const sev = inc.severity || "NONE";
     const open = isOpenIncident(inc);
     const row = el("article", {
@@ -110,10 +113,9 @@ export function mountQueue(root, store, actions) {
     loc.title = cameraShort(inc.camera_id);
     meta.appendChild(loc);
     meta.appendChild(
-      el("span", {
-        className: "mono",
-        text: formatRel(inc.created_at || inc.peak_ts, nowMs),
-      }),
+      live(el("span", { className: "mono" }), (nowMs) =>
+        formatRel(inc.created_at || inc.peak_ts, nowMs),
+      ),
     );
     meta.appendChild(
       el("span", {
@@ -134,10 +136,9 @@ export function mountQueue(root, store, actions) {
     if (selected) {
       const body = el("div", { className: "iq-row__expand" });
       body.appendChild(
-        el("p", {
-          className: "iq-row__desc",
-          text: opsSummary(inc, nowMs),
-        }),
+        live(el("p", { className: "iq-row__desc" }), (nowMs) =>
+          opsSummary(inc, nowMs),
+        ),
       );
       body.appendChild(
         el("p", {
@@ -182,9 +183,9 @@ export function mountQueue(root, store, actions) {
   }
 
   function render(state) {
-    const nowMs = demoNowMs(state);
     const ids = state.order;
     setText(countEl, String(ids.length));
+    liveNodes = [];
 
     if (ids.length === 0) {
       emptyEl.hidden = false;
@@ -200,16 +201,18 @@ export function mountQueue(root, store, actions) {
     for (const id of ids) {
       const inc = state.incidents[id];
       if (!inc) continue;
-      listEl.appendChild(renderRow(inc, nowMs, state.selectedId === id));
+      listEl.appendChild(renderRow(inc, state.selectedId === id));
     }
   }
 
   render(store.getState());
   const unsub = store.subscribe(render);
-  tick = window.setInterval(() => render(store.getState()), 1000);
+  const unsubTick = subscribeTick((nowMs) => {
+    for (const { node, text } of liveNodes) setText(node, text(nowMs));
+  });
 
   return () => {
     unsub();
-    if (tick) window.clearInterval(tick);
+    unsubTick();
   };
 }

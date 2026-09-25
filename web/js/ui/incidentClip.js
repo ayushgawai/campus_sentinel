@@ -3,7 +3,7 @@
  */
 
 import * as cameraSources from "../cameraSources.js";
-import { DEMO_EPOCH_MS } from "../mock.js";
+import { mockSecondsFromIso } from "../clock.js";
 
 /**
  * @param {HTMLElement} host
@@ -22,8 +22,8 @@ export function mountIncidentClip(host, opts) {
 
   let endDemoSec = Number(demoT);
   if (!Number.isFinite(endDemoSec)) {
-    const ms = typeof endTs === "number" ? endTs : Date.parse(String(endTs || ""));
-    endDemoSec = Number.isFinite(ms) ? Math.max(0, (ms - DEMO_EPOCH_MS) / 1000) : 0;
+    const iso = typeof endTs === "number" ? new Date(endTs).toISOString() : String(endTs || "");
+    endDemoSec = mockSecondsFromIso(iso);
   }
 
   const offset = src.offset || 0;

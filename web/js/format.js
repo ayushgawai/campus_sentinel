@@ -1,6 +1,7 @@
 /** Display helpers — never show raw enums, dashes, or nullish junk. */
 
 import { SITE, cameraLabel as siteCameraLabel } from "./site.js";
+import { now } from "./clock.js";
 
 export { cameraLabel } from "./site.js";
 
@@ -21,6 +22,7 @@ export function textOr(value, fallback = notReported()) {
 
 const CLASS_LABELS = {
   FALL: "Fall",
+  WEAPON: "Weapon",
   FIGHT: "Fight",
   THEFT: "Theft",
   RUN: "Run",
@@ -131,47 +133,69 @@ function pad2(n) {
   return String(n).padStart(2, "0");
 }
 
-/** Format a Date in the site timezone as "2:14:07 AM". */
-export function formatClock(d = new Date(), timeZone = SITE.timezone) {
+function clockParts(ms, timeZone, withDate) {
+  const opts = {
+    timeZone: timeZone || SITE.timezone || undefined,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  };
+  if (withDate) {
+    opts.weekday = "short";
+    opts.day = "2-digit";
+    opts.month = "short";
+  }
+  const parts = new Intl.DateTimeFormat("en-GB", opts).formatToParts(new Date(ms));
+  const get = (t) => parts.find((p) => p.type === t)?.value || "";
+  return get;
+}
+
+/** 24 h time only, "23:08:07" — timelines and tool cards. */
+export function formatClock(ms, timeZone) {
   try {
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      hour: "numeric",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true,
-    }).formatToParts(d);
-    const get = (t) => parts.find((p) => p.type === t)?.value || "";
-    return `${get("hour")}:${get("minute")}:${get("second")} ${get("dayPeriod")}`;
+    const get = clockParts(ms, timeZone, false);
+    return `${get("hour")}:${get("minute")}:${get("second")}`;
   } catch {
-    let h = d.getHours();
-    const m = d.getMinutes();
-    const s = d.getSeconds();
-    const ap = h >= 12 ? "PM" : "AM";
-    h = h % 12;
-    if (h === 0) h = 12;
-    return `${h}:${pad2(m)}:${pad2(s)} ${ap}`;
+    const d = new Date(ms);
+    return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
   }
 }
 
-export function formatRel(iso, nowMs = Date.now()) {
+/** Header clock, "Thu 24 Sep · 23:08:07" (24 h, fixed width). */
+export function formatHeaderClock(ms, timeZone) {
+  try {
+    const get = clockParts(ms, timeZone, true);
+    return `${get("weekday")} ${get("day")} ${get("month")} · ${get("hour")}:${get("minute")}:${get("second")}`;
+  } catch {
+    const d = new Date(ms);
+    const wd = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
+    const mo = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getMonth()];
+    return `${wd} ${pad2(d.getDate())} ${mo} · ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+  }
+}
+
+/** Exact "ago": "8 s ago", "1 min 32 s ago", "1 h 04 min ago". Never negative. */
+export function formatRel(iso, nowMs = now()) {
   if (!iso) return awaiting();
   const then = Date.parse(iso);
   if (Number.isNaN(then)) return awaiting();
   const sec = Math.max(0, Math.floor((nowMs - then) / 1000));
-  if (sec < 60) {
-    return sec === 1 ? "1 s ago" : `${sec} s ago`;
-  }
+  if (sec < 60) return `${sec} s ago`;
   const mm = Math.floor(sec / 60);
   const ss = sec % 60;
-  if (mm < 60) {
-    if (ss === 0) return mm === 1 ? "1 min ago" : `${mm} min ago`;
-    return `${mm} min ${ss} s ago`;
-  }
+  if (mm < 60) return ss === 0 ? `${mm} min ago` : `${mm} min ${ss} s ago`;
   const hh = Math.floor(mm / 60);
-  const remMin = mm % 60;
-  if (remMin === 0) return hh === 1 ? "1 h ago" : `${hh} h ago`;
-  return `${hh} h ${remMin} min ago`;
+  return `${hh} h ${pad2(mm % 60)} min ago`;
+}
+
+/** Tracking / pursuit elapsed, "+0:12", "+1:05", "+1:02:05". */
+export function formatElapsedPlus(sec) {
+  const s = Math.max(0, Math.floor(sec));
+  const hh = Math.floor(s / 3600);
+  const mm = Math.floor((s % 3600) / 60);
+  const ss = s % 60;
+  return hh > 0 ? `+${hh}:${pad2(mm)}:${pad2(ss)}` : `+${mm}:${pad2(ss)}`;
 }
 
 /** Human label for a tool id (never show snake_case). */
@@ -194,9 +218,9 @@ export function toolNameLabel(tool) {
 /** Wall time from ISO using site timezone. */
 export function formatTimeLocal(iso) {
   if (!iso) return awaiting();
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return awaiting();
-  return formatClock(d);
+  const ms = Date.parse(iso);
+  if (Number.isNaN(ms)) return awaiting();
+  return formatClock(ms);
 }
 
 export function formatPct(util) {

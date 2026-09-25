@@ -1,11 +1,12 @@
 /** Camera wall — layout modes, VMS OSD, corner brackets. */
 
-import { WALL_CAMERA_IDS, cameraLabel } from "../site.js";
-import { DEMO_EPOCH_MS } from "../mock.js";
+import { WALL_CAMERA_IDS, cameraLabel, SITE } from "../site.js";
+import { now, subscribeTick } from "../clock.js";
 import {
   classLabel,
   formatPct,
   formatRel,
+  formatClock,
   personLabel,
   stateLabel,
   severityLabel,
@@ -70,16 +71,21 @@ function pad2(n) {
   return String(n).padStart(2, "0");
 }
 
+/** Tile OSD, "2026-09-24 23:08:07" (24 h, site timezone). */
 function formatOsdClock(ms) {
-  const d = new Date(ms);
-  return (
-    `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ` +
-    `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`
-  );
-}
-
-function demoNowMs(state) {
-  return DEMO_EPOCH_MS + (state.demo?.t ?? 0) * 1000;
+  let date;
+  try {
+    date = new Intl.DateTimeFormat("en-CA", {
+      timeZone: SITE.timezone || undefined,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date(ms));
+  } catch {
+    const d = new Date(ms);
+    date = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  }
+  return `${date} ${formatClock(ms)}`;
 }
 
 function drawCornerBox(ctx, x, y, bw, bh, color) {
@@ -138,10 +144,6 @@ export function mountCameras(root, store, actions, layout) {
       <div class="camwall__toolbar">
         <span class="camwall__title">Live cameras</span>
         <span class="camwall__slot metric mono" data-cam-count>0 online</span>
-        <div class="camwall__actions">
-          <button type="button" class="btn btn--ghost" data-show-all hidden>Show all cameras</button>
-          <button type="button" class="btn btn--ghost" data-auto-layout hidden>Auto layout</button>
-        </div>
       </div>
       <div class="camwall__stage" data-stage></div>
       <div class="camwall__more" data-more hidden></div>
@@ -150,20 +152,17 @@ export function mountCameras(root, store, actions, layout) {
 
   const stage = root.querySelector("[data-stage]");
   const countEl = root.querySelector("[data-cam-count]");
-  const showAllBtn = root.querySelector("[data-show-all]");
-  const autoBtn = root.querySelector("[data-auto-layout]");
   const moreEl = root.querySelector("[data-more]");
   const tiles = new Map();
   /** @type {Map<string, HTMLVideoElement>} */
   const videos = new Map();
   const streams = new Map();
   const headers = new Map();
+  /** cameraId → live "ago" node in that tile's incident bar */
+  const headerAgo = new Map();
   let raf = 0;
   let lastPlanKey = "";
   let editMode = false;
-
-  showAllBtn.addEventListener("click", () => layoutCtl.showAll());
-  autoBtn.addEventListener("click", () => layoutCtl.forceAuto());
 
   for (const id of WALL_CAMERA_IDS) {
     const wrap = document.createElement("div");
@@ -592,11 +591,12 @@ export function mountCameras(root, store, actions, layout) {
     if (!mainMeta) {
       header.hidden = true;
       clear(header);
+      headerAgo.delete(cameraId);
       return;
     }
     header.hidden = false;
     clear(header);
-    const nowMs = demoNowMs(state);
+    headerAgo.delete(cameraId);
     const inc = mainMeta.incidentId
       ? state.incidents[mainMeta.incidentId]
       : null;
@@ -643,12 +643,11 @@ export function mountCameras(root, store, actions, layout) {
     if (isDispatchSimState(inc.state)) {
       header.appendChild(el("span", { className: "sim-tag", text: "SIMULATED" }));
     }
-    header.appendChild(
-      el("span", {
-        className: "cam-inc-bar__ago mono",
-        text: formatRel(inc.created_at || inc.peak_ts, nowMs),
-      }),
-    );
+    const agoEl = el("span", { className: "cam-inc-bar__ago mono" });
+    const agoIso = inc.created_at || inc.peak_ts;
+    setText(agoEl, formatRel(agoIso, now()));
+    headerAgo.set(cameraId, { node: agoEl, iso: agoIso });
+    header.appendChild(agoEl);
     header.appendChild(
       el("button", {
         type: "button",
@@ -684,8 +683,6 @@ export function mountCameras(root, store, actions, layout) {
     lastPlanKey = key;
 
     root.dataset.layout = plan.mode;
-    showAllBtn.hidden = plan.mode === "grid" && layoutCtl.isAuto();
-    autoBtn.hidden = layoutCtl.isAuto();
 
     const mainByCam = new Map(plan.mains.map((m) => [m.cameraId, m]));
 
@@ -709,8 +706,7 @@ export function mountCameras(root, store, actions, layout) {
       tile.dirty = true;
 
       const leftUntil = plan.leftNotes.get(id);
-      const now = (state.demo?.t ?? 0) * 1000;
-      tile.leftNote.hidden = !(leftUntil && leftUntil > now);
+      tile.leftNote.hidden = !(leftUntil && leftUntil > now());
     }
 
     if (plan.moreCount > 0) {
@@ -736,9 +732,33 @@ export function mountCameras(root, store, actions, layout) {
     scheduleDraw();
   }
 
-  function applyChrome(state) {
-    const nowMs = demoNowMs(state);
+  function paintTimes(nowMs = now()) {
+    const state = store.getState();
     const clock = formatOsdClock(nowMs);
+    for (const id of WALL_CAMERA_IDS) {
+      const online = Boolean(state.cameras[id]?.online);
+      setText(tiles.get(id).clockEl, online ? clock : "NO SIGNAL");
+    }
+    for (const { node, iso } of headerAgo.values()) {
+      setText(node, formatRel(iso, nowMs));
+    }
+    // Holds, the 5 s return to grid and "left view" notes expire with time,
+    // not with events — re-apply the layout only when the plan changes.
+    const plan = layoutCtl.plan(state);
+    const key = [
+      plan.mode,
+      plan.mains.map((m) => `${m.cameraId}:${m.hold || ""}`).join(","),
+      [...plan.leftNotes.keys()].join(","),
+    ].join("|");
+    if (key !== lastTickPlanKey) {
+      lastTickPlanKey = key;
+      applyLayout(state);
+    }
+  }
+  let lastTickPlanKey = "";
+
+  function applyChrome(state) {
+    const clock = formatOsdClock(now());
     let onlineCount = 0;
 
     for (const id of WALL_CAMERA_IDS) {
@@ -823,10 +843,7 @@ export function mountCameras(root, store, actions, layout) {
   applyChrome(store.getState());
   const unsub = store.subscribe(applyChrome);
   const unsubLayout = layoutCtl.subscribe(() => applyChrome(store.getState()));
-  const clockTick = window.setInterval(
-    () => applyChrome(store.getState()),
-    1000,
-  );
+  const unsubTick = subscribeTick(paintTimes);
   const ro = new ResizeObserver(() => {
     lastPlanKey = "";
     applyLayout(store.getState());
@@ -853,7 +870,7 @@ export function mountCameras(root, store, actions, layout) {
       document.removeEventListener(FOCUS_CAMERA_EVENT, onFocusCamera);
       ro.disconnect();
       if (raf) cancelAnimationFrame(raf);
-      window.clearInterval(clockTick);
+      unsubTick();
     },
   };
 }

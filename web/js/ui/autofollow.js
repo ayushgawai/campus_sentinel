@@ -6,12 +6,13 @@ import { findCallIncident } from "./call.js";
 /**
  * When autoFollow is on (Demo control):
  * - Live grid → focus Minor → split when Severe arrives
- * - Open sidebar on Severe for ~6s
- * - Call tab during DISPATCHED
- * - Close sidebar on TRACKING (pursuit visible)
- * - Stay on Live after resolve → grid
+ * - Open the incidents sidebar on Severe for ~6s
+ * - Open the separate call panel beside it on DISPATCHED
+ * - On TRACKING, keep both open but switch incidents to Site plan (pursuit
+ *   path + live call both visible while the main camera follows the person)
+ * - Close both only on RESOLVED/DISMISSED — grid returns 5s later (Fix 2)
  */
-export function startAutoFollow(store, sidebarApi, layoutCtl) {
+export function startAutoFollow(store, sidebarApi, callPanelApi, layoutCtl) {
   let phase = "";
   let severeOpenedAt = null;
   let lastRoutePush = "";
@@ -25,9 +26,10 @@ export function startAutoFollow(store, sidebarApi, layoutCtl) {
   return store.subscribe((state) => {
     if (!state.demo?.autoFollow) {
       const callInc = findCallIncident(state);
-      if (callInc?.state === "DISPATCHED" && phase !== "call-sidebar") {
-        phase = "call-sidebar";
-        sidebarApi?.open?.("call");
+      if (callInc?.state === "DISPATCHED" && phase !== "call-panel") {
+        phase = "call-panel";
+        sidebarApi?.open?.("incidents");
+        callPanelApi?.open?.();
       } else if (!callInc) {
         phase = "";
       }
@@ -65,15 +67,16 @@ export function startAutoFollow(store, sidebarApi, layoutCtl) {
 
     if (st === "DISPATCHED") {
       go("live");
-      phase = "call-tab";
-      sidebarApi?.open?.("call");
+      phase = "call-panel";
+      sidebarApi?.open?.("incidents");
+      callPanelApi?.open?.();
       layoutCtl?.forceAuto?.();
     } else if (st === "TRACKING") {
       go("live");
       phase = "pursuit";
-      sidebarApi?.close?.();
+      sidebarApi?.open?.("map");
       layoutCtl?.forceAuto?.();
-    } else if (!severe && !callInc) {
+    } else if (st === "RESOLVED" || st === "DISMISSED" || (!severe && !callInc)) {
       if (phase && phase !== "done") {
         phase = "done";
         sidebarApi?.close?.();

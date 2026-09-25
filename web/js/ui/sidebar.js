@@ -1,9 +1,10 @@
 /**
- * Live Operations sidebar — Incidents / Site plan / Call.
- * Pushes camera area; never overlays.
+ * Live Operations sidebar — Incidents / Site plan.
+ * Pushes camera area; never overlays. The Call button in its header opens
+ * a separate floating call panel (call.js's mountCallPanel).
  */
 
-import { DEMO_EPOCH_MS } from "../mock.js";
+import { now, subscribeTick } from "../clock.js";
 import {
   classLabel,
   cameraLabel,
@@ -18,12 +19,7 @@ import {
   pctNumber,
   isOpenIncident,
   isDispatchSimState,
-  toolKeyLabel,
-  toolNameLabel,
-  LOCATION_TOOL_KEYS,
-  HIDDEN_TOOL_KEYS,
 } from "../format.js";
-import { redactPlaces } from "../site.js";
 import { mountIncidentClip } from "./incidentClip.js";
 import { clear, el, setText } from "../dom.js";
 import { mountMap } from "./map.js";
@@ -33,15 +29,10 @@ import {
   mountTrackingCard,
   mountSiteOverview,
 } from "./sitePlanExtras.js";
-import { findCallIncident, formatCallTimer, buildThread } from "./call.js";
-import { navigate } from "../router.js";
+import { findCallIncident, formatCallTimer, callElapsedMs } from "./call.js";
 import { FOCUS_CAMERA_EVENT } from "./cameras.js";
 
-function demoNowMs(state) {
-  return DEMO_EPOCH_MS + (state.demo?.t ?? 0) * 1000;
-}
-
-export function mountSidebar(root, store, actions, layoutCtl) {
+export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
   let open = false;
   let tab = "incidents";
   let detailId = null;
@@ -60,14 +51,16 @@ export function mountSidebar(root, store, actions, layoutCtl) {
         <nav class="sidebar__tabs" data-tabs role="tablist">
           <button type="button" role="tab" data-tab="incidents" class="is-active">Incidents</button>
           <button type="button" role="tab" data-tab="map">Site plan</button>
-          <button type="button" role="tab" data-tab="call" hidden>Call <span class="sim-tag">SIMULATED</span></button>
         </nav>
+        <button type="button" class="btn btn--ghost sidebar__call-btn" data-call-btn hidden>
+          <span class="sidebar__call-dot" aria-hidden="true"></span>
+          Call <span class="mono" data-call-timer>00:00</span>
+        </button>
         <button type="button" class="btn btn--ghost" data-close aria-label="Close panel">Close</button>
       </header>
       <div class="sidebar__body">
         <div class="sidebar__panel" data-panel="incidents"></div>
         <div class="sidebar__panel" data-panel="map" hidden></div>
-        <div class="sidebar__panel" data-panel="call" hidden></div>
       </div>
     </div>
   `;
@@ -76,11 +69,14 @@ export function mountSidebar(root, store, actions, layoutCtl) {
   const panels = {
     incidents: root.querySelector('[data-panel="incidents"]'),
     map: root.querySelector('[data-panel="map"]'),
-    call: root.querySelector('[data-panel="call"]'),
   };
-  const callTabBtn = root.querySelector('[data-tab="call"]');
+  const callBtn = root.querySelector("[data-call-btn]");
+  const callTimerEl = root.querySelector("[data-call-timer]");
 
   root.querySelector("[data-close]").addEventListener("click", () => api.close());
+  callBtn.addEventListener("click", () => {
+    document.dispatchEvent(new CustomEvent("sentinel:open-call-panel"));
+  });
 
   for (const btn of tabsEl.querySelectorAll("[data-tab]")) {
     btn.addEventListener("click", () => {
@@ -100,6 +96,7 @@ export function mountSidebar(root, store, actions, layoutCtl) {
       detailId = opts.incidentId;
       tab = "incidents";
     }
+    if (!open) hooks.onClose?.();
     document.dispatchEvent(
       new CustomEvent("sentinel:sidebar", { detail: { open, tab } }),
     );
@@ -120,11 +117,10 @@ export function mountSidebar(root, store, actions, layoutCtl) {
     },
   };
 
+  const ACTIVE_CALL_STATES = new Set(["DISPATCHED", "TRACKING"]);
+
   function paintTabs(state) {
-    const callInc = findCallIncident(state);
-    callTabBtn.hidden = !callInc;
     for (const btn of tabsEl.querySelectorAll("[data-tab]")) {
-      const on = btn.dataset.tab === tab && !btn.hidden;
       btn.classList.toggle("is-active", btn.dataset.tab === tab);
       btn.setAttribute("aria-selected", btn.dataset.tab === tab ? "true" : "false");
     }
@@ -133,10 +129,44 @@ export function mountSidebar(root, store, actions, layoutCtl) {
     }
   }
 
+  function paintCallBtn(state, nowMs = now()) {
+    const inc = findCallIncident(state);
+    const active = inc && ACTIVE_CALL_STATES.has(inc.state);
+    callBtn.hidden = !active;
+    if (!active) return;
+    const ms = callElapsedMs(inc, state, nowMs);
+    setText(callTimerEl, ms == null ? "00:00" : formatCallTimer(ms));
+  }
+
+  /** "Camera N · 8 s ago · 92% confidence" lines, refreshed by the ticker. */
+  let agoLines = [];
+
+  function agoLine(tag, inc, nowMs) {
+    const node = el(tag, { className: "inc-card__row2" });
+    const entry = { node, inc };
+    agoLines.push(entry);
+    paintAgoLine(entry, nowMs);
+    return node;
+  }
+
+  function paintAgoLine({ node, inc }, nowMs) {
+    setText(
+      node,
+      `${cameraLabel(inc.camera_id)} · ${formatRel(inc.created_at || inc.peak_ts, nowMs)} · ${formatPct(inc.fused_prob)} confidence`,
+    );
+  }
+
+  function paintTimes(nowMs = now()) {
+    if (!open) return;
+    paintCallBtn(store.getState(), nowMs);
+    for (const entry of agoLines) paintAgoLine(entry, nowMs);
+  }
+
   function paintIncidents(state) {
     const panel = panels.incidents;
     clear(panel);
-    const nowMs = demoNowMs(state);
+    agoLines = [];
+    const nowMs = now();
 
     if (detailId && state.incidents[detailId]) {
       const inc = state.incidents[detailId];
@@ -182,12 +212,7 @@ export function mountSidebar(root, store, actions, layoutCtl) {
       }
       head.appendChild(chips);
       headCard.appendChild(head);
-      headCard.appendChild(
-        el("p", {
-          className: "inc-card__row2",
-          text: `${cameraLabel(inc.camera_id)} · ${formatRel(inc.created_at || inc.peak_ts, nowMs)} · ${formatPct(inc.fused_prob)} confidence`,
-        }),
-      );
+      headCard.appendChild(agoLine("p", inc, nowMs));
       stack.appendChild(headCard);
 
       const confCard = el("div", { className: "card detail-card" });
@@ -361,12 +386,7 @@ export function mountSidebar(root, store, actions, layoutCtl) {
       }
       top.appendChild(chips);
       row.appendChild(top);
-      row.appendChild(
-        el("div", {
-          className: "inc-card__row2",
-          text: `${cameraLabel(inc.camera_id)} · ${formatRel(inc.created_at || inc.peak_ts, nowMs)} · ${formatPct(inc.fused_prob)} confidence`,
-        }),
-      );
+      row.appendChild(agoLine("div", inc, nowMs));
       row.addEventListener("click", () => {
         detailId = id;
         actions.select(id);
@@ -595,152 +615,19 @@ export function mountSidebar(root, store, actions, layoutCtl) {
     host._close = close;
   }
 
-  function paintCall(state) {
-    const panel = panels.call;
-    clear(panel);
-    const inc = findCallIncident(state);
-    if (!inc) {
-      panel.appendChild(
-        el("p", {
-          className: "iq-empty",
-          text: "No active call.",
-        }),
-      );
-      return;
-    }
-
-    const stack = el("div", { className: "sidebar-stack sidebar-stack--scroll" });
-    const nowMs = demoNowMs(state);
-    const dts = state.call?.dispatchedAt;
-    const started = formatRel(dts || inc.created_at || inc.peak_ts, nowMs);
-
-    const head = el("div", { className: "card call-head-card" });
-    const titleRow = el("div", { className: "call-head-card__title-row" });
-    titleRow.appendChild(
-      el("h2", {
-        className: "call-head-card__title",
-        text: `${classLabel(inc.class_token)} call`,
-      }),
-    );
-    titleRow.appendChild(
-      el("span", { className: "card-chip card-chip--dispatch", text: "SIMULATED" }),
-    );
-    head.appendChild(titleRow);
-    const timer = el("span", { className: "call-head-card__timer mono" });
-    setText(
-      timer,
-      dts ? formatCallTimer(nowMs - Date.parse(dts)) : "00:00",
-    );
-    head.appendChild(timer);
-    head.appendChild(
-      el("p", {
-        className: "call-head-card__meta",
-        text: `${cameraLabel(inc.camera_id)} · started ${started}`,
-      }),
-    );
-    stack.appendChild(head);
-
-    const chatCard = el("div", { className: "card chat-card" });
-    const thread = buildThread(
-      (state.call?.transcript || []).filter(
-        (t) => !state.call.incidentId || t.incident_id === inc.incident_id,
-      ),
-    ).slice(-6);
-    if (!thread.length) {
-      chatCard.appendChild(
-        el("p", {
-          className: "card__meta",
-          text: "Awaiting dispatch conversation.",
-        }),
-      );
-    }
-    for (const u of thread) {
-      const row = el("div", { className: `chat-msg chat-msg--${u.speaker}` });
-      row.appendChild(
-        el("div", {
-          className: "chat-msg__who",
-          text: u.speaker === "dispatcher" ? "Dispatcher" : "Sentinel",
-        }),
-      );
-      row.appendChild(
-        el("div", {
-          className: "chat-msg__bubble",
-          text: redactPlaces(u.text),
-        }),
-      );
-      chatCard.appendChild(row);
-    }
-    stack.appendChild(chatCard);
-
-    const tools = (state.call?.tools || []).filter(
-      (t) => !state.call.incidentId || t.incident_id === inc.incident_id,
-    );
-    const last = tools[tools.length - 1];
-    if (last) {
-      const toolCard = el("div", { className: "card tool-card" });
-      toolCard.appendChild(
-        el("h3", {
-          className: "tool-card__name",
-          text: toolNameLabel(last.tool),
-        }),
-      );
-      if (last.result && typeof last.result === "object") {
-        const dl = el("dl", { className: "call-tool__dl" });
-        for (const [k, v] of Object.entries(last.result).slice(0, 6)) {
-          if (HIDDEN_TOOL_KEYS.has(k)) continue;
-          if (LOCATION_TOOL_KEYS.has(k)) continue;
-          dl.appendChild(el("dt", { text: toolKeyLabel(k) }));
-          dl.appendChild(
-            el("dd", {
-              className: "mono",
-              text:
-                k === "camera_id"
-                  ? cameraLabel(String(v))
-                  : k === "state"
-                    ? stateLabel(String(v))
-                    : typeof v === "string"
-                      ? redactPlaces(v)
-                      : String(v),
-            }),
-          );
-        }
-        toolCard.appendChild(dl);
-      }
-      stack.appendChild(toolCard);
-    }
-
-    const cta = el("div", { className: "sidebar-call__cta" });
-    cta.appendChild(
-      el("button", {
-        type: "button",
-        className: "btn btn--primary",
-        text: "Open call console",
-        onClick: () => navigate("call"),
-      }),
-    );
-    stack.appendChild(cta);
-    panel.appendChild(stack);
-  }
-
   function paint() {
     if (!open) return;
     const state = store.getState();
     paintTabs(state);
+    paintCallBtn(state);
     if (tab === "incidents") paintIncidents(state);
     if (tab === "map") {
       ensureMap(state);
     }
-    if (tab === "call") paintCall(state);
   }
 
   function render(state) {
     if (!open) return;
-    // Keep call tab visibility updated
-    const callInc = findCallIncident(state);
-    callTabBtn.hidden = !callInc;
-    if (tab === "call" && !callInc) {
-      tab = "incidents";
-    }
     paint();
     const expand = document.getElementById("map-expand");
     if (expand && !expand.hidden) {
@@ -748,21 +635,8 @@ export function mountSidebar(root, store, actions, layoutCtl) {
     }
   }
 
-  const unsub = store.subscribe(render);
-
-  window.addEventListener("keydown", (e) => {
-    if (e.key !== "Escape") return;
-    const expand = document.getElementById("map-expand");
-    if (expand && !expand.hidden) {
-      expand._close?.();
-      e.preventDefault();
-      return;
-    }
-    if (open) {
-      api.close();
-      e.preventDefault();
-    }
-  });
+  store.subscribe(render);
+  subscribeTick((nowMs) => paintTimes(nowMs));
 
   window.__sidebar = api;
   return api;

@@ -3,7 +3,7 @@
  * returns when the sidebar is closed.
  */
 
-import { DEMO_EPOCH_MS } from "../mock.js";
+import { now as clockNow } from "../clock.js";
 import { isOpenIncident } from "../format.js";
 import { OPEN_SIDEBAR_EVENT, MORE_INCIDENTS_EVENT } from "./cameras.js";
 import { LOGO_MARK_INVERSE } from "../logo.js";
@@ -101,8 +101,7 @@ export function mountAssist(root, store, sidebarApi) {
     if (severe) {
       const created = Date.parse(severe.created_at || severe.peak_ts || 0);
       if (created && created !== lastSeverePulse) {
-        const now = DEMO_EPOCH_MS + (state.demo?.t ?? 0) * 1000;
-        const age = (now - created) / 1000;
+        const age = (clockNow() - created) / 1000;
         if (age >= 0 && age < 4) {
           lastSeverePulse = created;
           btn.classList.add("assist--pulse");

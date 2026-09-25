@@ -4,19 +4,17 @@
  */
 
 import { WALL_CAMERA_IDS, cameraLabel } from "../site.js";
-import { DEMO_EPOCH_MS, predictedCameraAt } from "../mock.js";
+import { predictedCameraAt } from "../mock.js";
 import {
   classLabel,
   severityLabel,
   formatRel,
+  formatElapsedPlus,
   isOpenIncident,
 } from "../format.js";
 import { clear, el, setText } from "../dom.js";
 import { FOCUS_CAMERA_EVENT } from "./cameras.js";
-
-function demoNowMs(state) {
-  return DEMO_EPOCH_MS + (state.demo?.t ?? 0) * 1000;
-}
+import { now, subscribeTick } from "../clock.js";
 
 function activeHit(state, cameraId) {
   for (const id of state.order) {
@@ -69,25 +67,12 @@ function pursuitRoute(state, inc) {
   return { steps, predicted };
 }
 
-function formatElapsed(sec) {
-  const s = Math.max(0, Math.floor(sec));
-  const mm = Math.floor(s / 60);
-  const ss = s % 60;
-  return `+${mm}:${String(ss).padStart(2, "0")}`;
-}
-
-function stepTimes(steps, state, inc) {
-  const now = state.demo?.t ?? 0;
-  const startIso = inc?.created_at || inc?.peak_ts;
-  let startT = 0;
-  if (startIso) {
-    const ms = Date.parse(startIso);
-    if (Number.isFinite(ms)) startT = Math.max(0, (ms - DEMO_EPOCH_MS) / 1000);
-  }
-  const span = Math.max(0.1, now - startT);
+function stepTimes(steps, inc, nowMs) {
+  const startMs = Date.parse(inc?.created_at || inc?.peak_ts || "");
+  const span = Number.isNaN(startMs) ? 0 : Math.max(0, (nowMs - startMs) / 1000);
   return steps.map((_, i) => {
-    if (steps.length === 1) return formatElapsed(span);
-    return formatElapsed(span * (i / (steps.length - 1)));
+    if (steps.length === 1) return formatElapsedPlus(span);
+    return formatElapsedPlus(span * (i / (steps.length - 1)));
   });
 }
 
@@ -234,9 +219,19 @@ export function mountSiteCamerasList(host, opts) {
  */
 export function mountTrackingCard(host, opts) {
   const { store, vertical = false } = opts;
+  /** Live time nodes of the current card, refreshed by the ticker. */
+  let live = null;
+
+  function paintTimes(nowMs = now()) {
+    if (!live) return;
+    setText(live.agoEl, formatRel(live.inc.created_at || live.inc.peak_ts, nowMs));
+    const times = stepTimes(live.steps, live.inc, nowMs);
+    live.timeEls.forEach((node, i) => setText(node, times[i]));
+  }
 
   function paint(state) {
     clear(host);
+    live = null;
     host.classList.add(
       "site-track",
       ...(vertical ? ["site-track--vertical"] : []),
@@ -277,16 +272,12 @@ export function mountTrackingCard(host, opts) {
     );
     titles.appendChild(typeRow);
     head.appendChild(titles);
-    head.appendChild(
-      el("div", {
-        className: "site-track__ago mono",
-        text: formatRel(inc.created_at || inc.peak_ts, demoNowMs(state)),
-      }),
-    );
+    const agoEl = el("div", { className: "site-track__ago mono" });
+    head.appendChild(agoEl);
     host.appendChild(head);
 
     const { steps, predicted } = pursuitRoute(state, inc);
-    const times = stepTimes(steps, state, inc);
+    const timeEls = [];
     const route = el("div", {
       className: vertical ? "site-track__route site-track__route--v" : "site-track__route",
     });
@@ -311,9 +302,9 @@ export function mountTrackingCard(host, opts) {
       const mark = el("span", { className: "site-track__cam" });
       setText(mark, cameraLabel(camId));
       step.appendChild(mark);
-      step.appendChild(
-        el("span", { className: "site-track__time mono", text: times[i] }),
-      );
+      const timeEl = el("span", { className: "site-track__time mono" });
+      timeEls.push(timeEl);
+      step.appendChild(timeEl);
       route.appendChild(step);
     });
 
@@ -342,10 +333,20 @@ export function mountTrackingCard(host, opts) {
     }
 
     host.appendChild(route);
+    live = { inc, steps, agoEl, timeEls };
+    paintTimes();
   }
 
   paint(store.getState());
-  return { paint, destroy: store.subscribe(paint) };
+  const unsub = store.subscribe(paint);
+  const unsubTick = subscribeTick(paintTimes);
+  return {
+    paint,
+    destroy() {
+      unsub();
+      unsubTick();
+    },
+  };
 }
 
 /**
@@ -392,7 +393,7 @@ export function mountSiteOverview(host, opts) {
       [
         "Last escalation",
         lastEsc
-          ? formatRel(lastEsc, demoNowMs(state))
+          ? formatRel(lastEsc, now())
           : "None",
       ],
     ];

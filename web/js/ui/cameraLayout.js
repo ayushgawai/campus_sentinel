@@ -5,8 +5,9 @@
 
 import { WALL_CAMERA_IDS } from "../site.js";
 import { isOpenIncident } from "../format.js";
+import { now as clockNow } from "../clock.js";
 
-const HOLD_MS = 4000;
+const HOLD_MS = 5000;
 const LEFT_VIEW_MS = 5000;
 const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 const DURATION_MS = 250;
@@ -27,7 +28,7 @@ export function createCameraLayout() {
   let mode = "auto";
   /** @type {string[]} manual main camera ids (1 or 2) */
   let manualMains = [];
-  /** Hold resolved/dismissed camera as main until deadline (demo ms) */
+  /** Hold resolved/dismissed camera as main until deadline (app ms, clock.js now()) */
   /** @type {Map<string, { until: number, kind: string, incidentId: string }>} */
   const holds = new Map();
   /** Subject left view notes: cameraId → untilMs */
@@ -36,6 +37,11 @@ export function createCameraLayout() {
   /** @type {Map<string, string>} */
   const lastCamByInc = new Map();
   let listeners = new Set();
+  /** Manual override entered with zero active incidents — stays until explicit exit */
+  let manualQuiet = false;
+  /** app-ms deadline to auto-release a non-quiet manual override once incidents clear */
+  let manualReleaseAt = null;
+  let wasManualOverride = false;
 
   function notify() {
     for (const fn of listeners) fn();
@@ -44,13 +50,6 @@ export function createCameraLayout() {
   function subscribe(fn) {
     listeners.add(fn);
     return () => listeners.delete(fn);
-  }
-
-  function demoNowMs(state) {
-    // wall clock for holds when not in demo — use performance
-    const t = state.demo?.t;
-    if (t != null) return t * 1000;
-    return performance.now();
   }
 
   function activeIncidents(state) {
@@ -74,7 +73,7 @@ export function createCameraLayout() {
   }
 
   function trackPursuit(state) {
-    const now = demoNowMs(state);
+    const now = clockNow();
     for (const inc of activeIncidents(state)) {
       const cam = inc.camera_id;
       if (!cam) continue;
@@ -91,7 +90,7 @@ export function createCameraLayout() {
   }
 
   function updateHolds(state) {
-    const now = demoNowMs(state);
+    const now = clockNow();
     for (const [id, inc] of Object.entries(state.incidents)) {
       if (!inc?.camera_id) continue;
       if (inc.state !== "RESOLVED" && inc.state !== "DISMISSED") {
@@ -115,14 +114,13 @@ export function createCameraLayout() {
   function forceAuto() {
     mode = "auto";
     manualMains = [];
+    manualQuiet = false;
+    manualReleaseAt = null;
     notify();
   }
 
-  function showAll() {
-    mode = "manual";
-    manualMains = [];
-    notify();
-  }
+  /** Single header/Esc exit: back to auto grid selection. */
+  const showAll = forceAuto;
 
   function setManualMains(ids) {
     mode = "manual";
@@ -162,6 +160,7 @@ export function createCameraLayout() {
       // New severe always takes main
       if (!manualMains.includes(severe.camera_id)) {
         manualMains = [severe.camera_id, ...manualMains.filter((c) => c !== severe.camera_id)].slice(0, 2);
+        manualQuiet = false;
         notify();
       }
     }
@@ -176,7 +175,33 @@ export function createCameraLayout() {
     maybeSevereOverride(state);
 
     const actives = activeIncidents(state);
-    const now = demoNowMs(state);
+    const now = clockNow();
+
+    const inManualOverride = mode === "manual" && manualMains.length > 0;
+    if (inManualOverride && !wasManualOverride) {
+      // Just entered a manual override. If nothing was active, this was a
+      // quiet-state enlarge — stays until the officer explicitly exits.
+      manualQuiet = actives.length === 0;
+      manualReleaseAt = null;
+    }
+    if (inManualOverride && !manualQuiet) {
+      if (actives.length === 0) {
+        if (manualReleaseAt == null) manualReleaseAt = now + HOLD_MS;
+        else if (now >= manualReleaseAt) {
+          mode = "auto";
+          manualMains = [];
+          manualReleaseAt = null;
+        }
+      } else {
+        // A new incident in the release window cancels the return.
+        manualReleaseAt = null;
+      }
+    }
+    if (!(mode === "manual" && manualMains.length > 0)) {
+      manualQuiet = false;
+      manualReleaseAt = null;
+    }
+    wasManualOverride = mode === "manual" && manualMains.length > 0;
 
     /** Active hold entries still valid */
     const activeHolds = [...holds.values()].filter((h) => h.until > now);
@@ -373,6 +398,9 @@ export function createCameraLayout() {
   function resetMemory() {
     mode = "auto";
     manualMains = [];
+    manualQuiet = false;
+    manualReleaseAt = null;
+    wasManualOverride = false;
     holds.clear();
     leftNotes.clear();
     lastCamByInc.clear();
