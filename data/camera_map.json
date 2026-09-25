@@ -1,18 +1,32 @@
 {
+  "site": {
+    "name": "San Jose State University",
+    "type": "University campus",
+    "address": "One Washington Square, San Jose, CA 95192",
+    "timezone": "America/Los_Angeles"
+  },
   "cameras": [
     {
       "camera_id": "cam-01",
       "legacy_id": "CAM-01",
       "seville_label": "CAM5",
-      "name": "North Library / Lobby",
-      "location": "Lobby entrance",
-      "address": "North Library entrance, campus core",
-      "building": "North Library",
-      "floor": "1",
-      "coordinates": [37.3352, -121.8811],
-      "entrances": ["Lobby revolving door", "East stairwell"],
-      "cross_streets": ["San Fernando St", "4th St"],
-      "vehicle_access": "Drop-off curb on San Fernando; no garage under lobby",
+      "name": "MacQuarrie Hall / Ground-floor lobby",
+      "location": "Ground-floor lobby entrance",
+      "address": "MacQuarrie Hall, One Washington Square, San Jose, CA 95192",
+      "building": "MacQuarrie Hall",
+      "floor": "ground",
+      "coordinates": [37.333553, -121.881899],
+      "entrances": ["Ground-floor lobby entrance"],
+      "cross_streets": [],
+      "vehicle_access": "Use the nearest MacQuarrie Hall entrance; exact curb access is not confirmed",
+      "scene_facts": {
+        "subject_count": 1,
+        "person_description": "Adult in dark clothing carrying a visible long firearm",
+        "visible_weapon": "long firearm",
+        "current_observation": "Person 1 is entering the ground-floor lobby with a visible long firearm",
+        "direction": "moving from the lobby toward the east corridor",
+        "unknowns": ["identity", "intent", "injuries", "exact firearm type"]
+      },
       "neighbors": [
         {"camera_id": "cam-02", "bearing": "ESE"},
         {"camera_id": "cam-03", "bearing": "WSW"}
@@ -27,15 +41,23 @@
       "camera_id": "cam-02",
       "legacy_id": "CAM-02",
       "seville_label": "CAM1",
-      "name": "Academic Walk East",
-      "location": "Yellow hallway east",
-      "address": "Academic Walk east corridor",
-      "building": "Academic Walk",
-      "floor": "1",
-      "coordinates": [37.3355, -121.8805],
-      "entrances": ["Hall east double doors"],
-      "cross_streets": ["4th St"],
-      "vehicle_access": "Service alley east of Academic Walk",
+      "name": "MacQuarrie Hall / East corridor",
+      "location": "Ground-floor east corridor",
+      "address": "MacQuarrie Hall, One Washington Square, San Jose, CA 95192",
+      "building": "MacQuarrie Hall",
+      "floor": "ground",
+      "coordinates": [37.33358, -121.88182],
+      "entrances": ["East corridor doors"],
+      "cross_streets": [],
+      "vehicle_access": "Use the nearest MacQuarrie Hall entrance; exact curb access is not confirmed",
+      "scene_facts": {
+        "subject_count": 1,
+        "person_description": "Adult in dark clothing carrying a visible long firearm",
+        "visible_weapon": "long firearm",
+        "current_observation": "Person 1 is moving through the east corridor with a visible long firearm",
+        "direction": "moving toward the west corridor",
+        "unknowns": ["identity", "intent", "injuries", "exact firearm type"]
+      },
       "neighbors": [
         {"camera_id": "cam-01", "bearing": "WNW"},
         {"camera_id": "cam-03", "bearing": "W"}
@@ -50,15 +72,23 @@
       "camera_id": "cam-03",
       "legacy_id": "CAM-03",
       "seville_label": "CAM7",
-      "name": "Academic Walk West",
-      "location": "Yellow hallway west",
-      "address": "Academic Walk west corridor",
-      "building": "Academic Walk",
-      "floor": "1",
-      "coordinates": [37.3356, -121.8815],
-      "entrances": ["Hall west exit to quad"],
-      "cross_streets": ["San Fernando St"],
-      "vehicle_access": "Quad path only — no vehicle",
+      "name": "MacQuarrie Hall / West corridor",
+      "location": "Ground-floor west corridor and stairwell",
+      "address": "MacQuarrie Hall, One Washington Square, San Jose, CA 95192",
+      "building": "MacQuarrie Hall",
+      "floor": "ground",
+      "coordinates": [37.33352, -121.88197],
+      "entrances": ["West stairwell exit"],
+      "cross_streets": [],
+      "vehicle_access": "Use the nearest MacQuarrie Hall entrance; exact curb access is not confirmed",
+      "scene_facts": {
+        "subject_count": 1,
+        "person_description": "Adult in dark clothing carrying a visible long firearm",
+        "visible_weapon": "long firearm",
+        "current_observation": "Person 1 is moving through the west corridor near the stairwell with a visible long firearm",
+        "direction": "current direction is not confirmed",
+        "unknowns": ["identity", "intent", "injuries", "exact firearm type"]
+      },
       "neighbors": [
         {"camera_id": "cam-01", "bearing": "ENE"},
         {"camera_id": "cam-02", "bearing": "E"}
@@ -133,5 +163,5 @@
       "placeholder": false
     }
   ],
-  "_note": "Hand-authored location facts. cam-01..03 Seville WEAPON chase; cam-04..06 Naman ambient (VLM-assigned, see naman_ambient_assign.json)."
+  "_note": "Hand-authored demo facts. cam-01..03 follow one subject through MacQuarrie Hall; cam-04..06 are ambient streams only."
 }

@@ -88,7 +88,7 @@ Open asks for `services/api`:
 
 - **SIMULATED** on every call and dispatch surface
 - No emergency number is ever dialed from the UI
-- Cameras shown only as Camera 1 to 6; no place names in UI or mock copy
+- Cameras remain numbered 1 to 6 and show canonical MacQuarrie/site locations
 - Event text rendered with `textContent`, never as HTML
 - Strict Content Security Policy (no inline script or style)
 

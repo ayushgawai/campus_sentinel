@@ -13,7 +13,7 @@ if str(ROOT) not in sys.path:
 from contracts import IncidentClass, IncidentState, Severity  # noqa: E402
 from services.brain.adjudicate import EscalateRequest, adjudicate  # noqa: E402
 from services.brain.audit import AuditLog  # noqa: E402
-from services.brain.call_brief import assemble_call_brief
+from services.brain.call_brief import assemble_call_brief, scene_facts, site_config
 from services.brain.from_vision import (  # noqa: E402
     escalate_request_from_vision,
     normalize_camera_id,
@@ -209,6 +209,14 @@ def main() -> None:
     brief = assemble_call_brief(via.record)
     assert brief.incident_id == via.record.incident_id
     assert brief.camera_id == "cam-01"
+    assert site_config()["name"] == "San Jose State University"
+    assert "MacQuarrie Hall" in brief.address
+    assert brief.coordinates == (37.333553, -121.881899)
+    assert brief.entrances == ["Ground-floor lobby entrance"]
+    assert "ground-floor lobby" in scene_facts("cam-01")["current_observation"]
+    assert "east corridor" in scene_facts("cam-02")["current_observation"]
+    assert "west corridor" in scene_facts("cam-03")["current_observation"]
+    assert "cam-02" not in str(scene_facts("cam-01"))
 
     print("brain self-check OK")
 

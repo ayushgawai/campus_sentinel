@@ -1,11 +1,12 @@
 /**
- * Site configuration — single source of truth for cameras and place redaction.
+ * Site configuration — browser copy of data/camera_map.json.
  * Swap this file (or its exports) for a different deployment.
  */
 
 export const SITE = {
-  name: "Primary site",
-  type: "Facility",
+  name: "San Jose State University",
+  type: "University campus",
+  address: "One Washington Square, San Jose, CA 95192",
   timezone: "America/Los_Angeles",
   /**
    * Site map. "image": the OpenStreetMap export below with cameras at
@@ -29,12 +30,12 @@ export const SITE = {
  * Fine tune with ?mapedit=1.
  */
 export const CAMERAS = [
-  { id: "cam-01", n: 1, name: "Spartan Complex · South entrance", x: 468, y: 393, heading: 150, plan: { x: 220, y: 170, heading: 135 } },
-  { id: "cam-02", n: 2, name: "Spartan Complex · East corridor", x: 495, y: 368, heading: 245, plan: { x: 500, y: 150, heading: 180 } },
-  { id: "cam-03", n: 3, name: "Spartan Complex · West corridor", x: 420, y: 385, heading: 65, plan: { x: 780, y: 170, heading: 225 } },
-  { id: "cam-04", n: 4, name: "South campus parking", x: 548, y: 482, heading: 135, plan: { x: 220, y: 420, heading: 90 } },
-  { id: "cam-05", n: 5, name: "Paseo de San Carlos walkway", x: 505, y: 384, heading: 240, plan: { x: 500, y: 440, heading: 0 } },
-  { id: "cam-06", n: 6, name: "4th Street entrance", x: 312, y: 492, heading: 60, plan: { x: 780, y: 420, heading: 270 } },
+  { id: "cam-01", n: 1, name: "MacQuarrie Hall · Ground-floor lobby", x: 468, y: 393, heading: 150, plan: { x: 220, y: 170, heading: 135 } },
+  { id: "cam-02", n: 2, name: "MacQuarrie Hall · East corridor", x: 495, y: 368, heading: 245, plan: { x: 500, y: 150, heading: 180 } },
+  { id: "cam-03", n: 3, name: "MacQuarrie Hall · West corridor", x: 420, y: 385, heading: 65, plan: { x: 780, y: 170, heading: 225 } },
+  { id: "cam-04", n: 4, name: "Parking East lot", x: 548, y: 482, heading: 135, plan: { x: 220, y: 420, heading: 90 } },
+  { id: "cam-05", n: 5, name: "Campus lobby entrance", x: 505, y: 384, heading: 240, plan: { x: 500, y: 440, heading: 0 } },
+  { id: "cam-06", n: 6, name: "Lot walkway", x: 312, y: 492, heading: 60, plan: { x: 780, y: 420, heading: 270 } },
 ];
 
 /**
@@ -74,53 +75,10 @@ export function cameraTitle(cameraId) {
 export const WALL_CAMERA_IDS = CAMERAS.map((c) => c.id);
 
 /**
- * Old place names from earlier UI versions — redaction safety net for free
- * text from the backend. The only place names shown on purpose are the
- * camera names and map in this file (SITE.map, CAMERAS).
+ * Kept as a compatibility export. Canonical location facts are intentionally
+ * shown; only raw camera IDs are normalised by redactPlaces().
  */
-export const DENYLIST = [
-  "Library Plaza",
-  "Library",
-  "North Entrance",
-  "Main Quad",
-  "West Courtyard",
-  "Parking Structure 3",
-  "Loading Dock",
-  "Residence Lane",
-  "Event Hall",
-  "Athletics Wing",
-  "North Lot",
-  "Arts Court",
-  "Fountain Circle",
-  "Garage 3",
-  "Garage",
-  "Parking",
-  "Courtyard",
-  "Residence",
-  "Athletics",
-  "Arts",
-  "Entrance",
-  "Quad",
-  "Dock",
-  "Plaza",
-  "Hall",
-  "Building",
-  "Street",
-  "North",
-  "South",
-  "East",
-  "West",
-  "Campus",
-  "SJSU",
-  "Union",
-  "Engineering",
-  "south entrance plaza",
-  "east exit lane",
-  "north approach",
-  "east walk",
-  "main quad walkway",
-  "south garage entrance",
-];
+export const DENYLIST = [];
 
 const byId = new Map(CAMERAS.map((c) => [c.id, c]));
 const warnedUnknown = new Set();

@@ -35,6 +35,29 @@ def _norm_cam(cid: str) -> str:
     return s
 
 
+def site_config(camera_map: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return canonical site facts used by both the API and voice agent."""
+    cmap = camera_map if camera_map is not None else _load_camera_map()
+    site = cmap.get("site")
+    return dict(site) if isinstance(site, dict) else {}
+
+
+def scene_facts(
+    camera_id: str, camera_map: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Return only the current camera's pre-described demo facts."""
+    cmap = camera_map if camera_map is not None else _load_camera_map()
+    want = _norm_cam(camera_id)
+    for camera in cmap.get("cameras") or []:
+        if isinstance(camera, dict) and want in {
+            _norm_cam(str(camera.get("camera_id") or "")),
+            _norm_cam(str(camera.get("legacy_id") or "")),
+        }:
+            facts = camera.get("scene_facts")
+            return dict(facts) if isinstance(facts, dict) else {}
+    return {}
+
+
 def assemble_call_brief(
     rec: IncidentRecord,
     *,

@@ -53,6 +53,10 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - Stub docstrings say Parakeet/Kokoro land with **Naman**, ownership table says **Pratham** owns `voice/` — Naman is doing it now, table should be updated.
 - The WEAPON demo promotes to SEVERE, transitions to DISPATCHED, starts the scripted transcript, and places a SignalWire call when enabled. Qwen adjudicates the visual event; live dispatcher answers remain scripted until a grounded conversational loop is explicitly added.
 
+## Canonical demo site
+- `data/camera_map.json` is the source for San Jose State University / MacQuarrie Hall response facts. Cameras 1-3 represent the ground-floor lobby, east corridor, and west corridor/stairwell; each exposes only its current scene facts to voice logic.
+- The verified mailing address used for the demo is One Washington Square, San Jose, CA 95192. Per-camera coordinates are demo map anchors, not surveyed emergency-response coordinates.
+
 ## Done
 - Live C→D→E + Completion B + guardrails + AUDIT.md
 - Officer 911 script + cross-cam whereabouts + security re-alerts
