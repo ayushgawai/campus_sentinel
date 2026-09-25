@@ -9,6 +9,7 @@ import json
 import os
 import struct
 import sys
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -196,6 +197,30 @@ async def main() -> None:
     pending = bridge._drain_pending_reuse()
     assert [record.camera_id for record in pending] == ["cam-02"]
     assert bridge._last_camera == "cam-02"
+
+    class _ActiveVoice:
+        updates: list[str] = []
+
+        def active_incident_id(self):
+            return result.record.incident_id
+
+        def busy(self):
+            return True
+
+        async def notify_whereabouts(self, camera_id, _address):
+            self.updates.append(camera_id)
+
+    active_voice = _ActiveVoice()
+    srv.hub._voice = active_voice  # type: ignore[assignment]
+    foreign = replace(
+        result.record,
+        incident_id="foreign-incident",
+        camera_id="cam-02",
+        rules_fired=["operator_report"],
+    )
+    await srv.hub._on_incident(foreign)
+    assert active_voice.updates == []
+    srv.hub._voice = None
 
     server = await asyncio.start_server(srv.handle, srv.host, 0)
     port = server.sockets[0].getsockname()[1]

@@ -170,6 +170,10 @@ class VoiceAgent:
             person_description=self._person,
         )
         q = question.lower()
+        if q.strip(" .,!?") in {
+            "ok", "okay", "copy", "got it", "understood", "thanks", "thank you"
+        }:
+            return ""
         if "repeat" in q or "say that again" in q:
             if "address" in q:
                 answer = f"{self._site_address}."
@@ -208,6 +212,14 @@ class VoiceAgent:
         elif any(word in q for word in ("name", "identity", "who is", "intent", "why")):
             answer = "I cannot confirm the person's identity or intent from the cameras."
         else:
+            if not q.rstrip().endswith("?") and not q.lstrip().startswith(
+                (
+                    "what", "where", "when", "who", "how", "is ", "are ",
+                    "can ", "could ", "do ", "does ", "did ", "has ", "have ",
+                    "please ", "tell me",
+                )
+            ):
+                return ""
             try:
                 answer = await asyncio.to_thread(self._zrt.answer_dispatcher, facts, question)
             except Exception:
@@ -231,6 +243,8 @@ class VoiceAgent:
     async def notify_whereabouts(self, camera_id: str, address: str) -> None:
         """Vision escalated the chase on another camera — update the live call."""
         if not self.busy() or not self._incident_id:
+            return
+        if camera_id == self._camera:
             return
         if self._live:
             await self._publish_update(camera_id, address)

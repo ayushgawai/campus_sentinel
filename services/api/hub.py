@@ -125,7 +125,12 @@ class DemoHub:
         # Cross-cam handoff while a call is live → whereabouts + security re-alert.
         voice = self._voice_agent()
         active = voice.active_incident_id()
-        if active and voice.busy() and rec.camera_id in {"cam-02", "cam-03", "cam-01"}:
+        if (
+            active
+            and rec.incident_id == active
+            and voice.busy()
+            and rec.camera_id in {"cam-02", "cam-03", "cam-01"}
+        ):
             brief = assemble_call_brief(rec)
             await voice.notify_whereabouts(rec.camera_id, brief.address)
             return

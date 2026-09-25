@@ -31,6 +31,7 @@ import base64
 import json
 import math
 import struct
+import time
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable
 
@@ -132,6 +133,8 @@ class MediaStreamBridge:
     _heard_speech: bool = field(default=False, repr=False)
     _silence_bytes: int = field(default=0, repr=False)
     _discarding_turn: bool = field(default=False, repr=False)
+    _speaking: bool = field(default=False, repr=False)
+    _ignore_inbound_until: float = field(default=0.0, repr=False)
     # Test/inspection hook: every decoded inbound PCM16 chunk, in order.
     inbound_pcm16: list[bytes] = field(default_factory=list, repr=False)
 
@@ -202,6 +205,8 @@ class MediaStreamBridge:
             self._buffer_inbound(pcm16)
 
     def _buffer_inbound(self, pcm16: bytes) -> None:
+        if self._speaking or time.monotonic() < self._ignore_inbound_until:
+            return
         speaking = audioop is None or audioop.rms(pcm16, 2) >= _SPEECH_RMS
         if self._discarding_turn:
             self._silence_bytes = 0 if speaking else self._silence_bytes + len(pcm16)
@@ -284,13 +289,18 @@ class MediaStreamBridge:
         await self._speak(text)
 
     async def _speak(self, text: str) -> None:
-        pcm16 = await asyncio.to_thread(self._tts.synthesize, text)
-        audio = (
-            _pcm16_to_mulaw(pcm16, 16000)
-            if pcm16
-            else tone_mulaw(min(0.6, max(0.25, len(text) / 40)))
-        )
-        await self._send_media(audio)
+        self._speaking = True
+        try:
+            pcm16 = await asyncio.to_thread(self._tts.synthesize, text)
+            audio = (
+                _pcm16_to_mulaw(pcm16, 16000)
+                if pcm16
+                else tone_mulaw(min(0.6, max(0.25, len(text) / 40)))
+            )
+            await self._send_media(audio)
+        finally:
+            self._speaking = False
+            self._ignore_inbound_until = time.monotonic() + 0.5
 
     async def _send_media(self, mulaw_bytes: bytes) -> None:
         if not mulaw_bytes or not self._stream_sid:

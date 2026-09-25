@@ -155,6 +155,9 @@ async def _main() -> None:
     ) == "The person is in the ground-floor lobby."
     assert "toward the east corridor" in await live.answer_dispatcher(rec.incident_id, "Direction of travel?")
     assert qwen.calls == 0
+    event_count = len(live_events)
+    await live.notify_whereabouts("cam-01", assemble_call_brief(rec).address)
+    assert len(live_events) == event_count
     await live.notify_whereabouts("cam-02", assemble_call_brief(rec).address)
     assert await live.answer_dispatcher(rec.incident_id, "Where is the person now?") == (
         "The person is in the east corridor."
@@ -169,6 +172,13 @@ async def _main() -> None:
         "The cameras do not confirm that detail."
     )
     assert qwen.calls == 1
+    event_count = len(live_events)
+    assert await live.answer_dispatcher(rec.incident_id, "Okay.") == ""
+    assert len(live_events) == event_count and qwen.calls == 1
+    assert await live.answer_dispatcher(
+        rec.incident_id, "really go and all the pressure clear."
+    ) == ""
+    assert len(live_events) == event_count and qwen.calls == 1
 
     from services.voice.media_bridge import MediaStreamBridge
 
@@ -234,6 +244,13 @@ async def _main() -> None:
     bridge._asr = type("_Asr", (), {"transcribe": lambda _self, _pcm: "Is anyone hurt?"})()
     speech = (1000).to_bytes(2, "little", signed=True) * 320
     silence = b"\0" * 640
+    bridge._speaking = True
+    bridge._buffer_inbound(speech)
+    bridge._speaking = False
+    bridge._ignore_inbound_until = time.monotonic() + 1
+    bridge._buffer_inbound(speech)
+    assert not bridge._inbound_buf
+    bridge._ignore_inbound_until = 0
     for _ in range(300):
         bridge._buffer_inbound(silence)
     assert not bridge._inbound_buf
