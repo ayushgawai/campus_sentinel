@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import { cameraStream } from "./js/transport.js";
 
@@ -10,5 +11,8 @@ assert.deepEqual(cameraStream("cam-04", "wss://demo.example/ws"), {
   kind: "video",
   url: "https://demo.example/media/cam-04",
 });
+const html = readFileSync(new URL("./index.html", import.meta.url), "utf8");
+assert.match(html, /img-src[^;]*http:/);
+assert.match(html, /media-src[^;]*http:/);
 
 console.log("web self-check OK");
