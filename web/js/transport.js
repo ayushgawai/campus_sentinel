@@ -6,9 +6,25 @@ import { validateEvent } from "./validate.js";
 const BACKOFFS = [1000, 2000, 5000];
 
 function wsUrlFromSearch() {
+  if (typeof location === "undefined") return null;
   const raw = new URLSearchParams(location.search).get("ws");
   if (!raw) return null;
   return raw;
+}
+
+export function cameraStream(cameraId, wsUrl = wsUrlFromSearch()) {
+  if (!wsUrl) return null;
+  try {
+    const base = new URL(wsUrl);
+    base.protocol = base.protocol === "wss:" ? "https:" : "http:";
+    const video = ["cam-04", "cam-05", "cam-06"].includes(cameraId);
+    return {
+      kind: video ? "video" : "mjpeg",
+      url: `${base.origin}/${video ? "media" : "mjpeg"}/${encodeURIComponent(cameraId)}`,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function safeHandle(handler, raw) {

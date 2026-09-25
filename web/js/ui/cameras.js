@@ -16,6 +16,7 @@ import { clear, el, setText } from "../dom.js";
 import { createCameraLayout } from "./cameraLayout.js";
 import { themeColors } from "../theme.js";
 import * as cameraSources from "../cameraSources.js";
+import { cameraStream } from "../transport.js";
 
 export const FOCUS_CAMERA_EVENT = "sentinel:focus-camera";
 export const OPEN_SIDEBAR_EVENT = "sentinel:open-sidebar";
@@ -101,12 +102,10 @@ function drawCornerBox(ctx, x, y, bw, bh, color) {
   ctx.stroke();
 }
 
-function mjpegUrlFor(cameraId, state) {
+function streamFor(cameraId, state) {
   const cam = state?.cameras?.[cameraId];
-  if (!cam) return null;
-  if (typeof cam.mjpeg_url === "string" && cam.mjpeg_url) return cam.mjpeg_url;
-  if (typeof cam.stream_url === "string" && cam.stream_url) return cam.stream_url;
-  return null;
+  const url = cam?.mjpeg_url || cam?.stream_url;
+  return url ? { kind: "mjpeg", url } : cameraStream(cameraId);
 }
 
 function uploadIconSvg() {
@@ -366,31 +365,34 @@ export function mountCameras(root, store, actions, layout) {
   window.__cameraVideos = videos;
 
   function syncVideoSources() {
-    const running = Boolean(store.getState().demo?.running);
-    const speed = store.getState().demo?.speed ?? 1;
+    const state = store.getState();
+    const running = Boolean(state.demo?.running);
+    const speed = state.demo?.speed ?? 1;
     for (const id of WALL_CAMERA_IDS) {
       const tile = tiles.get(id);
       const src = cameraSources.get(id);
       const video = tile.video;
       const ready = src && src.status === "ready" && src.url;
+      const remote = !ready ? streamFor(id, state) : null;
+      const videoUrl = ready ? src.url : remote?.kind === "video" ? remote.url : null;
       tile.hasLocalVideo = Boolean(ready);
-      if (ready) {
-        if (video.src !== src.url) {
-          video.src = src.url;
+      if (videoUrl) {
+        if (video.src !== videoUrl) {
+          video.src = videoUrl;
           try {
-            video.currentTime = src.offset || 0;
+            video.currentTime = ready ? src.offset || 0 : 0;
           } catch {
             /* ignore */
           }
         }
         try {
-          video.playbackRate = speed;
+          video.playbackRate = ready ? speed : 1;
         } catch {
           /* ignore */
         }
         video.hidden = false;
         tile.noise.hidden = true;
-        if (running) {
+        if (!ready || running) {
           const p = video.play();
           if (p && typeof p.catch === "function") p.catch(() => {});
         } else {
@@ -744,9 +746,10 @@ export function mountCameras(root, store, actions, layout) {
 
       const local = cameraSources.get(id);
       const hasLocal = local && local.status === "ready" && local.url;
-      const mjpeg = !hasLocal ? mjpegUrlFor(id, state) : null;
+      const stream = !hasLocal ? streamFor(id, state) : null;
+      const mjpeg = stream?.kind === "mjpeg" ? stream.url : null;
       tile.hasLocalVideo = Boolean(hasLocal);
-      tile.hasStream = Boolean(mjpeg);
+      tile.hasStream = Boolean(stream);
       if (mjpeg) {
         if (tile.streamImg.getAttribute("src") !== mjpeg) {
           tile.streamImg.setAttribute("src", mjpeg);
