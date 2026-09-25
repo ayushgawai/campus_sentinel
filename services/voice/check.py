@@ -132,7 +132,7 @@ async def _main() -> None:
 
     qwen = _Qwen()
     live = VoiceAgent(live_pub, zrt=qwen)  # type: ignore[arg-type]
-    await live.start_live_call(rec, brief)
+    await live.start_live_call(rec, assemble_call_brief(rec))
     opener = getattr(live_events[-2], "text", "")
     assert opener.startswith("Hi, I am Campus Sentinel AI from San Jose State University.")
     assert "MacQuarrie Hall" in opener and "visible long firearm" in opener
@@ -143,8 +143,32 @@ async def _main() -> None:
     assert qwen.calls == 0
     await live.notify_whereabouts("cam-02", assemble_call_brief(rec).address)
     assert "east corridor" in await live.answer_dispatcher(rec.incident_id, "Where is the person now?")
+    live.update_visual("cam-02", False)
+    assert "not currently visible" in await live.answer_dispatcher(rec.incident_id, "Where is the person now?")
+    live.update_visual("cam-02", True)
     assert await live.answer_dispatcher(rec.incident_id, "Is the door locked?") == "The cameras do not confirm that detail."
     assert qwen.calls == 1
+
+    from services.voice.media_bridge import MediaStreamBridge
+
+    asked: list[tuple[str, str]] = []
+
+    async def answer(incident_id: str, question: str) -> str:
+        asked.append((incident_id, question))
+        return "answered"
+
+    bridge = MediaStreamBridge(
+        incident_id=rec.incident_id,
+        send=lambda _text: asyncio.sleep(0),
+        recv=lambda: asyncio.sleep(0, result=None),
+        subscribe=lambda _id: asyncio.Queue(),
+        unsubscribe=lambda _id, _q: None,
+        publish=live_pub,
+        answer=answer,
+    )
+    bridge._asr = type("_Asr", (), {"transcribe": lambda _self, _pcm: "What is the location?"})()
+    await bridge._transcribe_and_publish(b"pcm")
+    assert asked == [(rec.incident_id, "What is the location?")]
     print("voice self-check OK")
 
 

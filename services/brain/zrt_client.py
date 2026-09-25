@@ -138,6 +138,41 @@ class ZRTClient:
             class_token=class_token,
         )
 
+    def answer_dispatcher(self, facts: dict[str, Any], question: str) -> str:
+        """Answer an unmatched dispatcher question from supplied facts only."""
+        if self.forced:
+            return "The cameras do not confirm that detail."
+        payload = {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are Campus Sentinel AI speaking to an emergency dispatcher. "
+                        "Answer in one short sentence using only the supplied facts. "
+                        "Never guess identity, intent, injuries, or unseen details. "
+                        "If the facts do not answer the question, say: "
+                        "The cameras do not confirm that detail."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": json.dumps(
+                        {"current_camera_facts": facts, "dispatcher_question": question},
+                        separators=(",", ":"),
+                    ),
+                },
+            ],
+            "max_tokens": 80,
+            "temperature": 0.0,
+        }
+        raw = self._post_json("/v1/chat/completions", payload)
+        text = str(
+            (((raw.get("choices") or [{}])[0].get("message") or {}).get("content"))
+            or ""
+        ).strip()
+        return text[:400] or "The cameras do not confirm that detail."
+
     def _describe_live(
         self,
         *,

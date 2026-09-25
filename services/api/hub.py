@@ -87,6 +87,8 @@ class DemoHub:
     camera_ready: Callable[[str], bool] | None = field(default=None, repr=False)
 
     async def publish(self, ev: Any) -> None:
+        if isinstance(ev, OverlayBoxes) and self._voice is not None:
+            self._voice.update_visual(ev.camera_id, bool(ev.boxes))
         if isinstance(ev, IncidentUpsert) and ev.incident is not None:
             self._incidents[ev.incident.incident_id] = ev.incident
         elif isinstance(ev, IncidentStateChange):
@@ -126,6 +128,7 @@ class DemoHub:
         if active and voice.busy() and rec.camera_id in {"cam-02", "cam-03", "cam-01"}:
             brief = assemble_call_brief(rec)
             await voice.notify_whereabouts(rec.camera_id, brief.address)
+            return
         if "operator_report" not in getattr(rec, "rules_fired", []):
             await self._maybe_start_voice(rec)
 
@@ -151,21 +154,25 @@ class DemoHub:
         now = _utcnow()
         rec.state = IncidentState.DISPATCHED
         rec.updated_at = now
+        from services.voice.signalwire_bridge import load_config, place_call
+
+        signalwire = load_config()
         await self.publish(
             IncidentStateChange(
                 incident_id=rec.incident_id,
                 state=IncidentState.DISPATCHED,
                 severity=Severity.SEVERE,
                 ts=now,
-                note="Simulated call started",
+                note="SignalWire call started" if signalwire else "Simulated call started",
             )
         )
-        await self._voice_agent().start_call(rec, brief)
+        if signalwire:
+            await self._voice_agent().start_live_call(rec, brief)
+        else:
+            await self._voice_agent().start_call(rec, brief)
         # Optional real phone — no-op until SignalWire is configured.
         try:
-            from services.voice.signalwire_bridge import place_call
-
-            result = await asyncio.to_thread(place_call, rec.incident_id)
+            result = await asyncio.to_thread(place_call, rec.incident_id, config=signalwire)
             if result.get("ok"):
                 await self.publish(
                     DemoControl(
@@ -190,6 +197,9 @@ class DemoHub:
                     ts=_utcnow(),
                 )
             )
+
+    async def answer_dispatcher(self, incident_id: str, question: str) -> str:
+        return await self._voice_agent().answer_dispatcher(incident_id, question)
 
     async def seed(self, *, force: bool = False, run_scenario: bool = True) -> None:
         if self._seeded and not force:

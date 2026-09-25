@@ -445,6 +445,7 @@ class ApiServer:
             unsubscribe=self._voice_unsubscribe,
             replay=self.hub.replay_events,
             publish=self.hub.publish,
+            answer=self.hub.answer_dispatcher,
         )
         try:
             await bridge.run()

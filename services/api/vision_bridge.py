@@ -179,8 +179,8 @@ class VisionBridge:
         self._upsert_times = [t for t in self._upsert_times if now - t < 60.0]
         if len(self._upsert_times) >= _max_upserts_per_min():
             return False
-        prev = self._last_fire.get(key, 0.0)
-        if now - prev < _cooldown_s():
+        prev = self._last_fire.get(key)
+        if prev is not None and now - prev < _cooldown_s():
             return False
         self._last_fire[key] = now
         self._upsert_times.append(now)

@@ -51,7 +51,8 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - Kokoro/Parakeet endpoints are configured for ports 8092/8093, but neither speech process is currently listening. Start them in tmux before the real audio test; their isolated `services/voice/.venv` does not touch the live vision environment.
 - Local round-trip tested: Kokoro → mulaw compatibility stream → Parakeet → near-exact transcript. Provider transport is pending the first SignalWire call.
 - Stub docstrings say Parakeet/Kokoro land with **Naman**, ownership table says **Pratham** owns `voice/` — Naman is doing it now, table should be updated.
-- The WEAPON demo promotes to SEVERE, transitions to DISPATCHED, starts the scripted transcript, and places a SignalWire call when enabled. Qwen adjudicates the visual event; live dispatcher answers remain scripted until a grounded conversational loop is explicitly added.
+- The WEAPON demo promotes to SEVERE and uses the scripted transcript only while SignalWire is disabled. When enabled, the live call opens with the SJSU/MacQuarrie report, Parakeet questions are published to the dashboard, common answers come from current-camera facts, unmatched questions use bounded text-only Qwen, and Kokoro voices the same Sentinel transcript.
+- Live call facts advance only on observed Camera 1 to 2 to 3 handoffs. Overlay presence also updates whether the person is currently visible, so the agent does not claim a subject remains on screen after the box clears.
 
 ## Canonical demo site
 - `data/camera_map.json` is the source for San Jose State University / MacQuarrie Hall response facts. Cameras 1-3 represent the ground-floor lobby, east corridor, and west corridor/stairwell; each exposes only its current scene facts to voice logic.
@@ -64,6 +65,9 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 ## Live readiness
 - Camera heartbeats are limited to the six configured wall feeds and report file-backed availability. `/voice/status` now probes the ASR and TTS `/health` endpoints with a short timeout; configured URLs alone are not reported Ready.
 - The frontend CSP permits HTTP(S) API probes while retaining the existing strict script/style policy.
+
+## Frontend redesign handoff
+- `docs/FRONTEND_REDESIGN_PROMPT.md` is the clean-sheet Claude brief. It inventories the verified product and API behavior without anchoring the redesign to the current layout or source structure; the existing frontend must remain untouched as backup.
 
 ## Done
 - Live C→D→E + Completion B + guardrails + AUDIT.md

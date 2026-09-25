@@ -52,6 +52,7 @@ SubscribeFn = Callable[[str], "asyncio.Queue[dict[str, Any]]"]
 UnsubscribeFn = Callable[[str, "asyncio.Queue[dict[str, Any]]"], None]
 ReplayFn = Callable[[], "list[dict[str, Any]]"]
 PublishFn = Callable[[Any], Awaitable[None]]
+AnswerFn = Callable[[str, str], Awaitable[str]]
 
 # Compatibility stream cadence: 20ms frames of 8kHz mono mulaw = 160 bytes.
 _FRAME_BYTES = 160
@@ -117,6 +118,7 @@ class MediaStreamBridge:
     # onto the hub once Parakeet transcribes real caller audio. None (the
     # default) keeps this bridge usable in tests with no hub at all.
     publish: PublishFn | None = None
+    answer: AnswerFn | None = None
 
     _stream_sid: str = ""
     _queue: "asyncio.Queue[dict[str, Any]] | None" = field(default=None, repr=False)
@@ -223,6 +225,8 @@ class MediaStreamBridge:
                 ts=utcnow(),
             )
         )
+        if self.answer is not None:
+            await self.answer(self.incident_id, text)
 
     async def _speak_loop(self) -> None:
         assert self._queue is not None

@@ -20,6 +20,8 @@ from contracts import (
     call_brief_to_dict,
     utcnow,
 )
+from services.brain.call_brief import scene_facts, site_config
+from services.brain.zrt_client import ZRTClient
 
 from .tools import TOOL_HANDLERS, ToolName
 
@@ -72,18 +74,21 @@ WEAPON_SCRIPT: list[CallScriptStep] = [
 class VoiceAgent:
     """Plays officer script; accepts live whereabouts updates when subject hits cam-02/03."""
 
-    def __init__(self, publish: PublishFn) -> None:
+    def __init__(self, publish: PublishFn, *, zrt: ZRTClient | None = None) -> None:
         self.publish = publish
+        self._zrt = zrt or ZRTClient()
         self._task: asyncio.Task[None] | None = None
+        self._live = False
         self._incident_id: str | None = None
         self._camera = ""
         self._address = ""
         self._person = ""
+        self._visible = True
         self._live_brief: CallBrief | None = None
         self._update_q: asyncio.Queue[tuple[str, str]] = asyncio.Queue()
 
     def busy(self) -> bool:
-        return self._task is not None and not self._task.done()
+        return self._live or (self._task is not None and not self._task.done())
 
     def active_incident_id(self) -> str | None:
         return self._incident_id if self.busy() else None
@@ -103,27 +108,141 @@ class VoiceAgent:
         self._address = brief.address
         self._person = brief.person_description
         self._live_brief = brief
+        self._visible = True
         self._task = asyncio.create_task(
             self._run(rec, brief, script or WEAPON_SCRIPT),
             name=f"call-{rec.incident_id}",
         )
 
+    async def start_live_call(self, rec: IncidentRecord, brief: CallBrief) -> None:
+        if self.busy():
+            return
+        self._live = True
+        self._incident_id = rec.incident_id
+        self._camera = rec.camera_id
+        self._address = brief.address
+        self._person = brief.person_description
+        self._live_brief = brief
+        self._visible = True
+        facts = scene_facts(rec.camera_id)
+        site = site_config()
+        text = (
+            f"Hi, I am Campus Sentinel AI from {site.get('name', 'San Jose State University')}. "
+            f"I want to report an armed person with a visible "
+            f"{facts.get('visible_weapon', 'weapon')} at "
+            f"{brief.building or 'MacQuarrie Hall'}, {site.get('address', brief.address)}. "
+            f"Current camera observation: {facts.get('current_observation', rec.description)}."
+        )
+        await self.publish(
+            CallTranscriptDelta(
+                incident_id=rec.incident_id,
+                speaker="sentinel",
+                text=text,
+                ts=utcnow(),
+            )
+        )
+        await self.publish(
+            DemoControl(
+                action="scenario",
+                scenario_id=f"security_alert:{rec.camera_id}",
+                ts=utcnow(),
+            )
+        )
+
+    async def answer_dispatcher(self, incident_id: str, question: str) -> str:
+        if not self._live or incident_id != self._incident_id:
+            return "There is no active Campus Sentinel call for that incident."
+        facts = scene_facts(self._camera)
+        facts.update(
+            camera_id=self._camera,
+            address=self._address,
+            person_description=self._person,
+        )
+        q = question.lower()
+        if any(word in q for word in ("where", "location", "address")):
+            observation = (
+                facts.get("current_observation", "")
+                if self._visible
+                else "The person is not currently visible; this is the last confirmed camera."
+            )
+            answer = f"The person is at {self._address}. {observation}".strip()
+        elif any(word in q for word in ("weapon", "gun", "firearm")):
+            answer = f"The cameras show a visible {facts.get('visible_weapon', 'weapon')}."
+        elif any(word in q for word in ("hurt", "injur", "medical", "conscious", "breath", "pulse")):
+            answer = "I cannot confirm any injuries or medical condition from the cameras."
+        elif any(word in q for word in ("direction", "travel", "going", "headed")):
+            answer = f"The person is {facts.get('direction', 'moving in an unconfirmed direction')}."
+        elif any(word in q for word in ("describe", "description", "wearing", "clothing", "look like")):
+            answer = f"The person appears to be {self._person.rstrip('.').lower()}."
+        elif any(word in q for word in ("how many", "count", "number of")):
+            answer = f"The cameras currently show {facts.get('subject_count', 1)} person of interest."
+        elif any(word in q for word in ("name", "identity", "who is", "intent", "why")):
+            answer = "I cannot confirm the person's identity or intent from the cameras."
+        else:
+            try:
+                answer = await asyncio.to_thread(self._zrt.answer_dispatcher, facts, question)
+            except Exception:
+                answer = "The cameras do not confirm that detail."
+        await self.publish(
+            CallTranscriptDelta(
+                incident_id=incident_id,
+                speaker="sentinel",
+                text=answer,
+                ts=utcnow(),
+            )
+        )
+        return answer
+
+    def update_visual(self, camera_id: str, visible: bool) -> None:
+        """Keep live answers aligned with the latest overlay without model work."""
+        if self._live and camera_id == self._camera:
+            self._visible = visible
+
     async def notify_whereabouts(self, camera_id: str, address: str) -> None:
         """Vision escalated the chase on another camera — update the live call."""
         if not self.busy() or not self._incident_id:
             return
-        await self._update_q.put((camera_id, address))
+        if self._live:
+            await self._publish_update(camera_id, address)
+        else:
+            await self._update_q.put((camera_id, address))
 
     async def cancel(self) -> None:
-        if self._task is None:
-            return
-        self._task.cancel()
-        try:
-            await self._task
-        except asyncio.CancelledError:
-            pass
+        self._live = False
+        if self._task is not None:
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
         self._task = None
         self._incident_id = None
+
+    async def _publish_update(self, camera_id: str, address: str) -> None:
+        self._camera = camera_id
+        self._address = address
+        self._visible = True
+        if self._live_brief is not None:
+            self._live_brief.camera_id = camera_id
+            self._live_brief.address = address
+        await self.publish(
+            CallTranscriptDelta(
+                incident_id=self._incident_id or "",
+                speaker="sentinel",
+                text=(
+                    f"Update: the person is now on {camera_id}, {address}. "
+                    "Campus security has been re-alerted for this handoff."
+                ),
+                ts=utcnow(),
+            )
+        )
+        await self.publish(
+            DemoControl(
+                action="scenario",
+                scenario_id=f"security_alert:{camera_id}",
+                ts=utcnow(),
+            )
+        )
 
     async def _drain_updates(self, rec: IncidentRecord) -> None:
         while True:
@@ -131,31 +250,7 @@ class VoiceAgent:
                 cam, address = self._update_q.get_nowait()
             except asyncio.QueueEmpty:
                 return
-            self._camera = cam
-            self._address = address
-            # Keep CallBrief in sync so tool lookups speak the new room.
-            brief = getattr(self, "_live_brief", None)
-            if brief is not None:
-                brief.camera_id = cam
-                brief.address = address
-            await self.publish(
-                CallTranscriptDelta(
-                    incident_id=rec.incident_id,
-                    speaker="sentinel",
-                    text=(
-                        f"Update: subject now on camera {cam}. Location on file: {address}. "
-                        "Security alert re-sent for this handoff."
-                    ),
-                    ts=utcnow(),
-                )
-            )
-            await self.publish(
-                DemoControl(
-                    action="scenario",
-                    scenario_id=f"security_alert:{cam}",
-                    ts=utcnow(),
-                )
-            )
+            await self._publish_update(cam, address)
             await self.publish(
                 ToolCallLive(
                     incident_id=rec.incident_id,
