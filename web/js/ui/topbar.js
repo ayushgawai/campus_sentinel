@@ -1,152 +1,161 @@
-/* Top bar: brand, live indicator, UTC clock, simulation tag, notifications. */
+/** Header: mark + SENTINEL | nav | health | clock · reconnecting only */
 
-import { h, mount, fmtUtcDateTime, fmtUtcTime, clear } from './dom.js';
-import { icons } from './icons.js';
-import { Change } from '../store.js';
+import { ROUTES, navigate, getRoute, subscribeRoute } from "../router.js";
+import {
+  awaiting,
+  formatClock,
+  formatInt,
+  formatMs,
+  formatPct,
+} from "../format.js";
+import { setText } from "../dom.js";
+import { LOGO_MARK } from "../logo.js";
 
-export function createTopbar(root, store, { onSelectIncident }) {
-  let clockEl;
-  let badgeEl;
-  let panelEl;
-  let listEl;
-  let bellBtn;
-  let open = false;
+export function mountTopbar(el, store) {
+  el.innerHTML = `
+    <div class="topbar">
+      <div class="topbar__brand" aria-label="Sentinel">
+        ${LOGO_MARK}
+        <div class="topbar__wordmark">SENTINEL</div>
+      </div>
 
-  function renderShell() {
-    clockEl = h('span', { class: 'clock mono' });
+      <nav class="topbar__nav" aria-label="Primary" data-nav></nav>
 
-    badgeEl = h('span', {
-      class: 'badge-count mono',
-      'aria-hidden': 'true',
-      hidden: true,
-    });
+      <div class="topbar__health" role="group" aria-label="Health">
+        <div class="hm"><span class="hm__label">Cameras</span><span class="hm__value"><span class="dot" data-cam-dot></span><span class="metric mono" data-cams></span></span></div>
+        <div class="hm"><span class="hm__label">Models</span><span class="hm__value"><span class="dot" data-model-dot></span><span class="metric" data-models></span></span></div>
+        <div class="hm"><span class="hm__label">GPU</span><span class="hm__value"><span class="metric mono" data-gpu></span></span></div>
+        <div class="hm"><span class="hm__label">p95</span><span class="hm__value"><span class="metric mono" data-p95></span></span></div>
+        <div class="hm"><span class="hm__label">Screened</span><span class="hm__value"><span class="metric mono" data-screened>0</span></span></div>
+        <div class="hm"><span class="hm__label">Escalated</span><span class="hm__value"><span class="metric mono" data-escalated>0</span></span></div>
+      </div>
 
-    bellBtn = h('button', {
-      class: 'iconbtn',
-      type: 'button',
-      'aria-haspopup': 'true',
-      'aria-expanded': 'false',
-      'aria-label': 'Recent alerts',
-      onClick: toggle,
-    }, [h('span', { html: icons.bell, style: 'width:15px;height:15px;display:block' }), badgeEl]);
+      <div class="topbar__right">
+        <span class="topbar__reconnect" data-reconnect hidden>Reconnecting</span>
+        <time class="topbar__clock metric mono" data-clock></time>
+      </div>
+    </div>
+  `;
 
-    listEl = h('ul', { class: 'notif__list' });
-
-    panelEl = h('div', { class: 'notif__panel', hidden: true, role: 'dialog', 'aria-label': 'Recent alerts' }, [
-      h('div', { class: 'notif__head' }, [
-        h('span', { class: 'eyebrow eyebrow--muted', text: 'Recent alerts' }),
-      ]),
-      listEl,
-    ]);
-
-    mount(root,
-      h('div', { class: 'topbar__brand' }, [
-        h('span', { class: 'brand__mark', html: icons.shield }),
-        h('div', {}, [
-          h('div', { class: 'brand__name', text: 'CAMPUS SENTINEL' }),
-          h('div', { class: 'brand__sub', text: 'Security Operations · North Campus' }),
-        ]),
-      ]),
-
-      h('div', { class: 'topbar__center' }, [
-        h('span', { class: 'livetag' }, [
-          h('span', { class: 'livedot', 'aria-hidden': 'true' }),
-          'System Live',
-        ]),
-        clockEl,
-      ]),
-
-      h('div', { class: 'topbar__right' }, [
-        h('span', {
-          class: 'simtag',
-          text: 'Simulation',
-          title: 'No real emergency number is ever dialled. Every dispatch in this system is simulated.',
-        }),
-        h('div', { class: 'notif' }, [bellBtn, panelEl]),
-        h('span', { class: 'avatar mono', text: 'OP', 'aria-label': 'Operator' }),
-      ]),
-    );
+  const nav = el.querySelector("[data-nav]");
+  for (const route of ROUTES) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "nav__tab";
+    btn.dataset.route = route.id;
+    btn.textContent = route.label;
+    btn.addEventListener("click", () => navigate(route.id));
+    nav.appendChild(btn);
   }
 
-  function toggle() {
-    open = !open;
-    panelEl.hidden = !open;
-    bellBtn.setAttribute('aria-expanded', String(open));
-    if (open) {
-      store.clearUnseen();
-      renderList();
+  function paintNav(route) {
+    for (const btn of nav.querySelectorAll(".nav__tab")) {
+      const on = btn.dataset.route === route;
+      btn.classList.toggle("is-active", on);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+    }
+  }
+  paintNav(getRoute());
+  const unsubRoute = subscribeRoute(paintNav);
+
+  const $ = (sel) => el.querySelector(sel);
+  const camsEl = $("[data-cams]");
+  const camDot = $("[data-cam-dot]");
+  const modelsEl = $("[data-models]");
+  const modelDot = $("[data-model-dot]");
+  const gpuEl = $("[data-gpu]");
+  const p95El = $("[data-p95]");
+  const screenedEl = $("[data-screened]");
+  const escalatedEl = $("[data-escalated]");
+  const reconnectEl = $("[data-reconnect]");
+  const clockEl = $("[data-clock]");
+
+  let screenedDisplay = 0;
+  let screenedTarget = 0;
+  let lastEscalated = 0;
+  let tweenRaf = 0;
+  let clockTimer = 0;
+
+  function tween() {
+    tweenRaf = 0;
+    if (screenedDisplay < screenedTarget) {
+      const delta = screenedTarget - screenedDisplay;
+      screenedDisplay = Math.min(
+        screenedTarget,
+        screenedDisplay + Math.max(delta * 0.18, Math.min(delta, 12)),
+      );
+      setText(screenedEl, formatInt(Math.floor(screenedDisplay)));
+      if (screenedDisplay < screenedTarget) tweenRaf = requestAnimationFrame(tween);
     }
   }
 
-  function close() {
-    if (!open) return;
-    open = false;
-    panelEl.hidden = true;
-    bellBtn.setAttribute('aria-expanded', 'false');
-  }
-
-  function renderList() {
-    const { notifications } = store.getState();
-    clear(listEl);
-
-    if (!notifications.length) {
-      listEl.append(h('li', { class: 'notif__empty', text: 'No alerts yet.' }));
-      return;
-    }
-
-    for (const n of notifications) {
-      listEl.append(h('li', {}, [
-        h('button', {
-          class: 'notif__item',
-          type: 'button',
-          onClick: () => {
-            onSelectIncident(n.incidentId);
-            close();
-          },
-        }, [
-          h('div', { style: 'display:flex;justify-content:space-between;gap:8px;align-items:baseline' }, [
-            h('span', { style: 'font-weight:600', text: n.title }),
-            h('span', { class: 'mono', style: 'font-size:9.5px;color:var(--muted)', text: fmtUtcTime(n.ts) }),
-          ]),
-          h('div', { style: 'font-size:11px;color:var(--muted);margin-top:1px', text: n.locationText }),
-        ]),
-      ]));
-    }
-  }
-
-  function renderBadge() {
-    const { unseen } = store.getState();
-    badgeEl.textContent = String(unseen);
-    badgeEl.hidden = unseen === 0;
-    bellBtn.setAttribute(
-      'aria-label',
-      unseen ? `Recent alerts, ${unseen} unread` : 'Recent alerts'
-    );
+  function bumpScreened(target) {
+    if (target == null || Number.isNaN(target)) return;
+    const next = Math.max(0, Math.floor(target));
+    if (next < screenedTarget) return;
+    screenedTarget = next;
+    if (!tweenRaf) tweenRaf = requestAnimationFrame(tween);
   }
 
   function tickClock() {
     const now = new Date();
-    clockEl.textContent = fmtUtcDateTime(now);
-    clockEl.append(h('span', { class: 'clock__zone', text: 'UTC' }));
+    setText(clockEl, formatClock(now));
+    clockEl.dateTime = now.toISOString();
   }
 
-  renderShell();
-  tickClock();
-  setInterval(tickClock, 1000);
-  renderBadge();
+  function render(state) {
+    paintNav(state.route || getRoute());
 
-  document.addEventListener('click', (ev) => {
-    if (open && !panelEl.contains(ev.target) && !bellBtn.contains(ev.target)) close();
-  });
-
-  document.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Escape') close();
-  });
-
-  store.subscribe((_state, kind) => {
-    if (kind === Change.NOTIFICATIONS) {
-      renderBadge();
-      if (open) renderList();
+    const h = state.health || {};
+    if (h.cameras_online == null) {
+      setText(camsEl, awaiting());
+      camDot.className = "dot dot--off";
+    } else {
+      setText(camsEl, `${h.cameras_online}/${h.cameras_total}`);
+      camDot.className =
+        h.cameras_total > 0 && h.cameras_online >= h.cameras_total
+          ? "dot dot--ok"
+          : "dot dot--warn";
     }
-  });
+
+    if (h.models_resident) {
+      setText(modelsEl, "Resident");
+      modelDot.className = "dot dot--ok";
+    } else {
+      setText(modelsEl, "Loading");
+      modelDot.className = "dot dot--warn";
+    }
+
+    setText(gpuEl, formatPct(h.gpu_util));
+    setText(p95El, formatMs(h.p95_ms));
+    bumpScreened(h.frames_screened);
+
+    const esc = h.frames_escalated;
+    if (esc == null || Number.isNaN(esc)) setText(escalatedEl, awaiting());
+    else {
+      setText(escalatedEl, formatInt(esc));
+      lastEscalated = esc;
+    }
+
+    const status = state.connection?.status ?? "MOCK";
+    const showReconnect = status === "RECONNECTING";
+    reconnectEl.hidden = !showReconnect;
+  }
+
+  tickClock();
+  clockTimer = window.setInterval(tickClock, 1000);
+  render(store.getState());
+  const unsub = store.subscribe(render);
+
+  return () => {
+    unsub();
+    unsubRoute();
+    if (tweenRaf) cancelAnimationFrame(tweenRaf);
+    if (clockTimer) window.clearInterval(clockTimer);
+  };
+}
+
+/** Nav is embedded in topbar; keep stub for compatibility. */
+export function mountNav() {
+  return () => {};
 }
