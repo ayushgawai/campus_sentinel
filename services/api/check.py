@@ -174,8 +174,11 @@ async def main() -> None:
     # A refreshed/replacement dashboard also needs its own camera snapshot.
     r2, w2 = await asyncio.open_connection("127.0.0.1", port)
     await _ws_handshake(r2, w2)
-    second_types = [(await _recv_frame(r2))["type"] for _ in range(10)]
+    second_types = [(await _recv_frame(r2))["type"] for _ in range(12)]
     assert "camera.online" in second_types
+    assert "incident.upsert" in second_types
+    assert "incident.state_change" in second_types
+    assert "call.transcript_delta" in second_types
     w2.close()
 
     await _send_text(w, {"cmd": "start"})  # idempotent — must not double-seed WEAPON

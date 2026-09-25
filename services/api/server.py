@@ -267,6 +267,8 @@ class ApiServer:
                 await client.send_text(
                     dumps(event_to_dict(CameraOnline(camera_id=camera_id, online=True, ts=now)))
                 )
+            for envelope in self.hub.replay_events():
+                await client.send_text(dumps(envelope))
             if first:
                 await self.hub.seed()
                 await self.hub.start_loops()

@@ -53,6 +53,12 @@ SCENARIOS: dict[str, tuple[IncidentClass, str]] = {
 }
 
 BroadcastFn = Callable[[dict[str, Any]], Awaitable[None]]
+_REPLAY_TYPES = {
+    "incident.upsert",
+    "incident.state_change",
+    "call.transcript_delta",
+    "tool.call_live",
+}
 
 
 def _utcnow() -> datetime:
@@ -72,12 +78,20 @@ class DemoHub:
     _rng: random.Random = field(default_factory=lambda: random.Random(20260923))
     _seeded: bool = False
     _voice: VoiceAgent | None = field(default=None, repr=False)
+    _replay: list[dict[str, Any]] = field(default_factory=list, repr=False)
 
     async def publish(self, ev: Any) -> None:
-        await self.broadcast(event_to_dict(ev))
+        envelope = event_to_dict(ev)
+        if envelope.get("type") in _REPLAY_TYPES:
+            # ponytail: in-memory demo replay; persist if sessions grow beyond one run.
+            self._replay = [*self._replay, envelope][-200:]
+        await self.broadcast(envelope)
         # Live Seville path publishes IncidentUpsert here — start 911 loop on SEVERE.
         if isinstance(ev, IncidentUpsert) and ev.incident is not None:
             await self._on_incident(ev.incident)
+
+    def replay_events(self) -> list[dict[str, Any]]:
+        return list(self._replay)
 
     def _voice_agent(self) -> VoiceAgent:
         if self._voice is None:
@@ -201,6 +215,7 @@ class DemoHub:
     async def reset(self) -> None:
         if self._voice is not None:
             await self._voice.cancel()
+        self._replay.clear()
         await self.publish(
             DemoControl(action="reset", scenario_id=None, ts=_utcnow())
         )
