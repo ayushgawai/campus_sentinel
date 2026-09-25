@@ -198,7 +198,6 @@ class VisionBridge:
                     self._pause_t = None
                 if self._need_align:
                     print("[vision-bridge] align FileSource to ffmpeg -re t=0", flush=True)
-                    self._reset_demo()
                     src.rewind()
                     router.source = src
                     self._src = src

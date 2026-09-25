@@ -96,6 +96,8 @@ async def main() -> None:
     ]
     _, work = bridge._step(router)
     assert work[0][0] == "classify"
+    bridge.align_to_wall()
+    assert bridge._qwen_started, "camera-wall reconnect must not re-run Qwen"
     router.last_escalations = [
         SimpleNamespace(camera_id="CAM-02", track_id="T-9", ts=None)
     ]
