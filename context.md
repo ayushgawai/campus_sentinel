@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-25 - SignalWire outbound-call wiring and model test path
+Last updated: 2026-09-25 - complete live-wiring baseline and design
 
 ## HARD RULES
 1. `git pull --rebase origin main` before every push. Work on **main**.
@@ -72,6 +72,8 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - web: real SJSU site map (OpenStreetMap export, attribution and 'Illustrative layout' note), cameras named and placed on the backend camera graph, pursuit along walkways, ?map=plan fallback, ?mapedit=1 placement tool (fix 9b)
 
 ## Pending (owners)
+Design and verified pre-change baseline: `docs/superpowers/specs/2026-09-25-complete-live-wiring-design.md`.
+
 | Who | What |
 |-----|------|
 | **Naman** | Ambient clips done. Optional more later |
