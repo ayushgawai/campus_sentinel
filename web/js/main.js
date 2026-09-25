@@ -49,7 +49,7 @@ const actions = createActions({
   transport,
 });
 
-mountTopbar(document.getElementById("topbar"), store);
+mountTopbar(document.getElementById("topbar"), store, actions);
 mountBanner(document.getElementById("banner"), store, actions, layoutCtl);
 mountCameras(document.getElementById("cameras"), store, actions, layoutCtl);
 

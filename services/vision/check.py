@@ -114,6 +114,13 @@ def main() -> None:
     assert len(routed.images) == 16
     assert routed.camera_id == "cam-1"
 
+    # A demo/video reset must restart person IDs without reloading YOLO.
+    detector = router.detector
+    router.reset_tracking()
+    reset_overlay = router.step()[0]
+    assert reset_overlay.boxes[0].track_id == "t-1"
+    assert router.detector is detector
+
     # Fall sequence on rolling state (not fire — no FIRE class)
     mem = TrackMemory()
     t0 = utcnow()

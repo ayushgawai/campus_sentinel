@@ -421,9 +421,9 @@ export function restartAll(videoEls) {
   for (const id of WALL_CAMERA_IDS) {
     const src = sources.get(id);
     const video = map.get(id);
-    if (!src || src.status !== "ready" || !video) continue;
+    if (!video) continue;
     try {
-      const off = src.offset || 0;
+      const off = src?.status === "ready" ? src.offset || 0 : 0;
       const apply = () => {
         try {
           video.currentTime = off;
@@ -438,6 +438,14 @@ export function restartAll(videoEls) {
     } catch {
       /* ignore */
     }
+  }
+  const streams = window.__cameraStreams;
+  if (!streams || typeof streams.values !== "function") return;
+  for (const img of streams.values()) {
+    const src = img.getAttribute?.("src") || img.src;
+    if (!src) continue;
+    img.removeAttribute("src");
+    img.setAttribute("src", src);
   }
 }
 

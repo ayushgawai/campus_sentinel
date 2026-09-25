@@ -11,7 +11,7 @@ import {
 import { setText } from "../dom.js";
 import { LOGO_MARK } from "../logo.js";
 
-export function mountTopbar(el, store) {
+export function mountTopbar(el, store, actions) {
   el.innerHTML = `
     <div class="topbar">
       <div class="topbar__brand" aria-label="Sentinel">
@@ -31,6 +31,7 @@ export function mountTopbar(el, store) {
       </div>
 
       <div class="topbar__right">
+        <button type="button" class="topbar__reset" data-reset>Reset demo</button>
         <span class="topbar__reconnect" data-reconnect hidden>Reconnecting</span>
         <time class="topbar__clock metric mono" data-clock></time>
       </div>
@@ -38,6 +39,9 @@ export function mountTopbar(el, store) {
   `;
 
   const nav = el.querySelector("[data-nav]");
+  el
+    .querySelector("[data-reset]")
+    .addEventListener("click", () => actions.demoReset());
   for (const route of ROUTES) {
     const btn = document.createElement("button");
     btn.type = "button";

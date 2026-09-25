@@ -79,6 +79,7 @@ class DemoHub:
     _seeded: bool = False
     _voice: VoiceAgent | None = field(default=None, repr=False)
     _replay: list[dict[str, Any]] = field(default_factory=list, repr=False)
+    on_reset: Callable[[], None] | None = field(default=None, repr=False)
 
     async def publish(self, ev: Any) -> None:
         envelope = event_to_dict(ev)
@@ -215,6 +216,8 @@ class DemoHub:
     async def reset(self) -> None:
         if self._voice is not None:
             await self._voice.cancel()
+        if self.on_reset is not None:
+            self.on_reset()
         self._replay.clear()
         await self.publish(
             DemoControl(action="reset", scenario_id=None, ts=_utcnow())

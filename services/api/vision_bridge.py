@@ -88,6 +88,32 @@ def _norm_boxes(boxes: list[Any], width: float, height: float) -> list[BBox]:
     return out
 
 
+def _display_overlays(
+    camera_ids: list[str], overlays: list[Any], width: float, height: float
+) -> list[OverlayBoxes]:
+    """Show one known demo subject and explicitly clear every inactive camera."""
+    by_camera = {ov.camera_id: ov for ov in overlays}
+    ts = overlays[0].ts
+    shown: list[OverlayBoxes] = []
+    for camera_id in camera_ids:
+        ov = by_camera.get(camera_id)
+        boxes = list(ov.boxes) if ov is not None else []
+        if boxes:
+            strongest = max(boxes, key=lambda box: float(box.score or 0.0))
+            normalized = _norm_boxes([strongest], width, height)
+            normalized[0] = replace(normalized[0], track_id="t-1")
+        else:
+            normalized = []
+        shown.append(
+            OverlayBoxes(
+                camera_id=normalize_camera_id(camera_id),
+                ts=ov.ts if ov is not None else ts,
+                boxes=normalized,
+            )
+        )
+    return shown
+
+
 class VisionBridge:
     def __init__(self, hub: DemoHub) -> None:
         self.hub = hub
@@ -103,6 +129,7 @@ class VisionBridge:
         self._qwen_started = False
         self._cached_record: Any = None
         self._last_camera: str | None = None
+        hub.on_reset = self.reset_demo
 
     def start(self) -> None:
         if self._task is not None:
@@ -115,6 +142,10 @@ class VisionBridge:
         if now - self._last_align_req < 2.0:
             return
         self._last_align_req = now
+        self._need_align = True
+
+    def reset_demo(self) -> None:
+        self._reset_demo()
         self._need_align = True
 
     def _reset_demo(self) -> None:
@@ -199,6 +230,7 @@ class VisionBridge:
                 if self._need_align:
                     print("[vision-bridge] align FileSource to ffmpeg -re t=0", flush=True)
                     src.rewind()
+                    router.reset_tracking()
                     router.source = src
                     self._src = src
                     self._need_align = False
@@ -215,6 +247,7 @@ class VisionBridge:
                         flush=True,
                     )
                     self._reset_demo()
+                    router.reset_tracking()
                     src.close()
                     src = FileSource(paths, realtime=True, active_windows=windows)
                     router.source = src
@@ -224,12 +257,9 @@ class VisionBridge:
                     await asyncio.sleep(1.0)
                     continue
                 telemetry.ROUTER_LATENCY.record(step_ms)
-                for ov in ovs:
-                    remapped = OverlayBoxes(
-                        camera_id=normalize_camera_id(ov.camera_id),
-                        ts=ov.ts,
-                        boxes=_norm_boxes(list(ov.boxes), width, height),
-                    )
+                for remapped in _display_overlays(
+                    list(paths), ovs, width, height
+                ):
                     await self.hub.publish(remapped)
                 for mode, esc, frames in packed:
                     if mode == "reuse":

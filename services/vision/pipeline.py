@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -65,17 +66,27 @@ class VisionRouter:
             camera_ids, fps=fps
         )
         camera_ids = list(getattr(self.source, "camera_ids", camera_ids))
+        self.camera_ids = camera_ids
         src_fps = getattr(self.source, "fps", fps)
-        self.ring = RingBuffer(window_s=8.0)
-        self.detector = PoseDetector(forced=forced)
+        self.detector = PoseDetector(
+            forced=forced,
+            conf=float(os.environ.get("CS_VISION_CONF", "0.50")),
+        )
         self.vadclip = VadClip(forced=forced, forced_label=forced_vadclip)
         self.fps = float(src_fps)
         self.forced_rule = forced_rule
+        self.reset_tracking()
+
+    def reset_tracking(self) -> None:
+        """Reset per-run state while keeping YOLO and VadCLIP resident."""
+        self.ring = RingBuffer(window_s=8.0)
         self._trackers: dict[str, ByteTracker] = {
-            cid: ByteTracker() for cid in camera_ids
+            cid: ByteTracker() for cid in self.camera_ids
         }
         self._mem: dict[tuple[str, str], TrackMemory] = {}
-        self._last_tracks: dict[str, list[Track]] = {cid: [] for cid in camera_ids}
+        self._last_tracks: dict[str, list[Track]] = {
+            cid: [] for cid in self.camera_ids
+        }
         self._last_rules: dict[tuple[str, str], list[str]] = {}
         self._peak: dict[str, Escalation] = {}
         self.last_escalations: list[Escalation] = []

@@ -156,6 +156,7 @@ export function mountCameras(root, store, actions, layout) {
   const tiles = new Map();
   /** @type {Map<string, HTMLVideoElement>} */
   const videos = new Map();
+  const streams = new Map();
   const headers = new Map();
   let raf = 0;
   let lastPlanKey = "";
@@ -202,6 +203,7 @@ export function mountCameras(root, store, actions, layout) {
     streamImg.alt = "";
     streamImg.decoding = "async";
     streamImg.hidden = true;
+    streams.set(id, streamImg);
 
     const canvas = document.createElement("canvas");
     canvas.className = "cam-tile__canvas";
@@ -363,6 +365,7 @@ export function mountCameras(root, store, actions, layout) {
   }
 
   window.__cameraVideos = videos;
+  window.__cameraStreams = streams;
 
   function syncVideoSources() {
     const state = store.getState();

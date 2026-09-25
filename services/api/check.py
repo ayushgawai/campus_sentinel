@@ -69,7 +69,8 @@ async def main() -> None:
 
     # The known demo subject reaches three cameras, but only the first may use Qwen.
     from types import SimpleNamespace
-    from services.api.vision_bridge import VisionBridge
+    from services.api.vision_bridge import VisionBridge, _display_overlays
+    from contracts import BBox, OverlayBoxes, utcnow
 
     class _VisionHub:
         paused = False
@@ -90,6 +91,30 @@ async def main() -> None:
             return SimpleNamespace(images=[object()])
 
     bridge = VisionBridge(_VisionHub())  # type: ignore[arg-type]
+    bridge._qwen_started = True
+    bridge.hub.on_reset()
+    assert bridge._need_align is True
+    assert bridge._qwen_started is False
+
+    shown = _display_overlays(
+        ["CAM-01", "CAM-02", "CAM-03"],
+        [
+            OverlayBoxes(
+                camera_id="CAM-01",
+                ts=utcnow(),
+                boxes=[
+                    BBox(x=1, y=2, w=3, h=4, track_id="t-8", score=0.6),
+                    BBox(x=5, y=6, w=7, h=8, track_id="t-9", score=0.9),
+                ],
+            )
+        ],
+        100,
+        100,
+    )
+    assert [ev.camera_id for ev in shown] == ["cam-01", "cam-02", "cam-03"]
+    assert [len(ev.boxes) for ev in shown] == [1, 0, 0]
+    assert shown[0].boxes[0].track_id == "t-1"
+    assert shown[0].boxes[0].score == 0.9
     router = _Router()
     router.last_escalations = [
         SimpleNamespace(camera_id="CAM-01", track_id="T-1", ts=None)
@@ -104,7 +129,7 @@ async def main() -> None:
     _, work = bridge._step(router)
     assert work[0][0] == "reuse"
 
-    from contracts import Severity, utcnow
+    from contracts import Severity
     from services.brain.zrt_client import ZRTClient
 
     result, _ = bridge._classify_one(
