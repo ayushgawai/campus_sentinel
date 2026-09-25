@@ -4,13 +4,14 @@
  * is already in the live main view (or full grid).
  */
 
+import { cameraTitle } from "../site.js?v=fix9b";
 import {
   classLabel,
   cameraLabel,
   severityLabel,
   stateLabel,
-} from "../format.js?v=fix10h";
-import { clear, el } from "../dom.js?v=fix10h";
+} from "../format.js?v=fix9b";
+import { clear, el } from "../dom.js?v=fix9b";
 
 /**
  * @param {HTMLElement} root
@@ -61,7 +62,7 @@ export function mountBanner(root, store, actions, layoutCtl) {
     body.appendChild(
       el("span", {
         className: "banner__meta",
-        text: `${cameraLabel(inc.camera_id)} · ${stateLabel(inc.state)}`,
+        text: `${cameraTitle(inc.camera_id)} · ${stateLabel(inc.state)}`,
       }),
     );
     root.appendChild(body);

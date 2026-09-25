@@ -4884,3 +4884,103 @@ progress.detail__conf-progress.inc-dl__bar {
 .mtable--page .mtable__model {
   width: 40%;
 }
+
+/* ---------- Site map image (Fix 9b) ---------- */
+/* Darken the OpenStreetMap export slightly so pins and paths stand out. */
+.cmap__shade {
+  fill: rgba(20, 20, 24, 0.34);
+  pointer-events: none;
+}
+.cmap__img {
+  pointer-events: none;
+}
+.cmap__walks--image {
+  stroke: var(--aqua);
+  stroke-width: 3;
+  stroke-opacity: 0.55;
+}
+.cmap__chrome--image {
+  fill: var(--map-text, #f2f4f7);
+  stroke: var(--map-text, #f2f4f7);
+  opacity: 0.85;
+}
+.cmap__walks--image ~ .cmap__paths .cmap__pursuit {
+  stroke-width: 3.5;
+}
+.cmap-pin__dot {
+  stroke: rgba(20, 20, 24, 0.85);
+  stroke-width: 1.5;
+}
+/* Note bottom left, attribution bottom right: small but legible. */
+.cmap__note,
+.cmap__attr {
+  position: absolute;
+  bottom: 6px;
+  max-width: 48%;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(20, 20, 24, 0.72);
+  color: var(--map-text, #f2f4f7);
+  font-size: 10px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+.cmap__note {
+  left: 6px;
+}
+.cmap__attr {
+  right: 6px;
+}
+
+/* ?mapedit=1 */
+.is-map-edit .cmap-pin {
+  cursor: grab;
+}
+.cmap-edit__bend {
+  fill: var(--minor);
+  stroke: rgba(20, 20, 24, 0.9);
+  stroke-width: 1.5;
+  cursor: grab;
+}
+.cmap-edit {
+  margin-top: var(--sp-2);
+  padding: var(--sp-2);
+  border: 1px dashed var(--line-strong);
+  border-radius: 6px;
+  font-size: var(--fs-11);
+  color: var(--text-2);
+}
+.cmap-edit__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-1);
+}
+.cmap-edit__out {
+  margin: 0;
+  max-height: 180px;
+  overflow: auto;
+  font-size: var(--fs-11);
+  white-space: pre;
+  user-select: text;
+}
+/* Camera names ("Camera N · place") in tight spots truncate cleanly. */
+.cam-tile__live-label,
+.iq-row__loc {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sys-cam__place {
+  margin-top: -6px;
+  font-size: var(--fs-12);
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

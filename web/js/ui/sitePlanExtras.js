@@ -3,19 +3,19 @@
  * Shared by sidebar Site plan tab and the expand modal.
  */
 
-import { WALL_CAMERA_IDS, cameraLabel } from "../site.js?v=fix10h";
-import { predictedCameraAt } from "../mock.js?v=fix10h";
+import { WALL_CAMERA_IDS, cameraLabel, cameraTitle } from "../site.js?v=fix9b";
+import { predictedCameraAt } from "../mock.js?v=fix9b";
 import {
   classLabel,
   severityLabel,
   formatRel,
   formatElapsedPlus,
   isOpenIncident,
-} from "../format.js?v=fix10h";
-import { clear, el, setText } from "../dom.js?v=fix10h";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix10h";
-import { now, subscribeTick } from "../clock.js?v=fix10h";
-import { activeIncidentForCamera, cameraStatus, onlineCount } from "../cameraStatus.js?v=fix10h";
+} from "../format.js?v=fix9b";
+import { clear, el, setText } from "../dom.js?v=fix9b";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix9b";
+import { now, subscribeTick } from "../clock.js?v=fix9b";
+import { activeIncidentForCamera, cameraStatus, onlineCount } from "../cameraStatus.js?v=fix9b";
 
 function activeHit(state, cameraId) {
   const inc = activeIncidentForCamera(state, cameraId);
@@ -105,7 +105,7 @@ export function mountSiteCamerasList(host, opts) {
       className: "site-cam-row",
     });
     row.dataset.cameraId = id;
-    row.setAttribute("aria-label", cameraLabel(id));
+    row.setAttribute("aria-label", cameraTitle(id));
 
     const mark = el("span", { className: "site-cam-row__mark mono" });
     const n = Number(String(id).replace(/\D/g, "")) || "?";
@@ -113,7 +113,7 @@ export function mountSiteCamerasList(host, opts) {
 
     const body = el("div", { className: "site-cam-row__body" });
     body.appendChild(
-      el("div", { className: "site-cam-row__name", text: cameraLabel(id) }),
+      el("div", { className: "site-cam-row__name", text: cameraTitle(id) }),
     );
     const status = el("div", { className: "site-cam-row__status" });
     status.appendChild(el("span", { className: "dot site-cam-row__dot" }));

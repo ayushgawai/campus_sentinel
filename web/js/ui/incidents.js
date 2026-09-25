@@ -1,6 +1,7 @@
 /** Incidents page — list + full detail. Status via type weight, not badges. */
 
-import { now, subscribeTick } from "../clock.js?v=fix10h";
+import { cameraTitle } from "../site.js?v=fix9b";
+import { now, subscribeTick } from "../clock.js?v=fix9b";
 import {
   classLabel,
   cameraLabel,
@@ -13,16 +14,16 @@ import {
   formatTimeLocal,
   pctNumber,
   isOpenIncident,
-} from "../format.js?v=fix10h";
-import { clear, el, setText } from "../dom.js?v=fix10h";
-import { OP_STATUS_EVENT, actionBar, confidenceShort } from "./operator.js?v=fix10h";
+} from "../format.js?v=fix9b";
+import { clear, el, setText } from "../dom.js?v=fix9b";
+import { OP_STATUS_EVENT, actionBar, confidenceShort } from "./operator.js?v=fix9b";
 import {
   detailHeaderCard,
   detailsCard,
   clipCard,
   timelineCard,
   emptyState,
-} from "./incidentDetail.js?v=fix10h";
+} from "./incidentDetail.js?v=fix9b";
 
 /** Same entries by identity (store replaces an incident object when it changes). */
 function sameSig(a, b) {
@@ -173,7 +174,7 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
       top.appendChild(stateWrap);
       const meta = el("div", { className: "iq-row__meta" });
       meta.appendChild(
-        el("span", { className: "iq-row__loc", text: cameraLabel(inc.camera_id) }),
+        el("span", { className: "iq-row__loc", text: cameraTitle(inc.camera_id) }),
       );
       const agoEl = el("span", { className: "mono" });
       agoNodes.push({ node: agoEl, iso: inc.created_at || inc.peak_ts });

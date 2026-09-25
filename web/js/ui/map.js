@@ -5,17 +5,20 @@
 
 import {
   CAMERAS,
-  ADJACENCY,
+  EDGES,
+  SITE,
   cameraLabel,
+  cameraTitle,
   fromCameraMap,
   getCamera,
-} from "../site.js?v=fix10h";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix10h";
-import { clear, setText } from "../dom.js?v=fix10h";
-import { themeColors } from "../theme.js?v=fix10h";
-import { classLabel, formatElapsedPlus } from "../format.js?v=fix10h";
-import { now, subscribeTick } from "../clock.js?v=fix10h";
-import { cameraStatus } from "../cameraStatus.js?v=fix10h";
+  mapMode,
+} from "../site.js?v=fix9b";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix9b";
+import { clear, setText } from "../dom.js?v=fix9b";
+import { themeColors } from "../theme.js?v=fix9b";
+import { classLabel, formatElapsedPlus } from "../format.js?v=fix9b";
+import { now, subscribeTick } from "../clock.js?v=fix9b";
+import { cameraStatus } from "../cameraStatus.js?v=fix9b";
 
 const LEVEL_RANK = { none: 0, minor: 1, severe: 2 };
 
@@ -28,10 +31,130 @@ const PIN_HIT_R = 16; // 32px tap target
 const PIN_DOT_R = 12; // 24px pin
 const PIN_NUM_FS = 12;
 
-let activePins = CAMERAS.slice();
+const MODE = mapMode();
+const IMAGE = MODE === "image" ? SITE.map : null;
+/** Image mode: the view is cropped to the cameras and paths plus this. */
+const IMAGE_MARGIN = 56;
+
+/** Pins for this mode: image pixels, or the schematic plan position. */
+function pinsForMode() {
+  return CAMERAS.map((c) => {
+    const at = IMAGE ? c : c.plan || c;
+    return { id: c.id, n: c.n, x: at.x, y: at.y, heading: at.heading };
+  });
+}
+
+let activePins = pinsForMode();
+/** Working copy of the walkway bends (?mapedit=1 moves them). */
+const activeEdges = EDGES.map((e) => ({ a: e.a, b: e.b, via: e.via.map((p) => p.slice()) }));
 const pinById = () => new Map(activePins.map((p) => [p.id, p]));
 
+/** Full polyline for an edge, pin to pin (plan mode: straight). */
+function edgePoints(edge, by = pinById()) {
+  const pa = by.get(edge.a);
+  const pb = by.get(edge.b);
+  if (!pa || !pb) return null;
+  const via = IMAGE ? edge.via : [];
+  return [[pa.x, pa.y], ...via, [pb.x, pb.y]];
+}
+
+/**
+ * Walkway route between two cameras: the edge polyline (reversed when
+ * needed), else chained edges via a shortest hop path, else a straight line.
+ */
+function routeBetween(fromId, toId) {
+  const by = pinById();
+  const adj = new Map();
+  for (const e of activeEdges) {
+    if (!adj.has(e.a)) adj.set(e.a, []);
+    if (!adj.has(e.b)) adj.set(e.b, []);
+    adj.get(e.a).push(e.b);
+    adj.get(e.b).push(e.a);
+  }
+  const prev = new Map([[fromId, null]]);
+  const queue = [fromId];
+  while (queue.length && !prev.has(toId)) {
+    const cur = queue.shift();
+    for (const nb of adj.get(cur) || []) {
+      if (prev.has(nb)) continue;
+      prev.set(nb, cur);
+      queue.push(nb);
+    }
+  }
+  if (!prev.has(toId)) {
+    const a = by.get(fromId);
+    const b = by.get(toId);
+    return a && b ? [[a.x, a.y], [b.x, b.y]] : null;
+  }
+  const hops = [];
+  for (let at = toId; at != null; at = prev.get(at)) hops.unshift(at);
+  const pts = [];
+  for (let i = 1; i < hops.length; i++) {
+    const e = activeEdges.find(
+      (x) => (x.a === hops[i - 1] && x.b === hops[i]) || (x.b === hops[i - 1] && x.a === hops[i]),
+    );
+    let seg = e ? edgePoints(e, by) : null;
+    if (!seg) continue;
+    if (e.a !== hops[i - 1]) seg = seg.slice().reverse();
+    pts.push(...(pts.length ? seg.slice(1) : seg));
+  }
+  return pts.length >= 2 ? pts : null;
+}
+
+function pointsToD(pts) {
+  return pts.map((p, i) => `${i ? "L" : "M"}${p[0]} ${p[1]}`).join(" ");
+}
+
+/** Point halfway along a polyline, and the direction there. */
+function polylineMid(pts) {
+  let total = 0;
+  for (let i = 1; i < pts.length; i++) {
+    total += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
+  }
+  let left = total / 2;
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1];
+    const [x1, y1] = pts[i];
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    if (len >= left && len > 0) {
+      const t = left / len;
+      return { x: x0 + (x1 - x0) * t, y: y0 + (y1 - y0) * t, dx: x1 - x0, dy: y1 - y0 };
+    }
+    left -= len;
+  }
+  const a = pts[0];
+  const b = pts[pts.length - 1];
+  return { x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2, dx: b[0] - a[0], dy: b[1] - a[1] };
+}
+
 function computeViewBox() {
+  if (IMAGE) return imageViewBox();
+  return planViewBox();
+}
+
+/** Crop to cameras + walkway bends + margin, inside the image. */
+function imageViewBox() {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  const add = (x, y) => {
+    minX = Math.min(minX, x);
+    maxX = Math.max(maxX, x);
+    minY = Math.min(minY, y);
+    maxY = Math.max(maxY, y);
+  };
+  for (const p of activePins) add(p.x, p.y);
+  for (const e of activeEdges) for (const [x, y] of e.via) add(x, y);
+  if (!Number.isFinite(minX)) return { x: 0, y: 0, w: IMAGE.width, h: IMAGE.height };
+  const x = Math.max(0, minX - IMAGE_MARGIN);
+  const y = Math.max(0, minY - IMAGE_MARGIN);
+  const w = Math.min(IMAGE.width, maxX + IMAGE_MARGIN) - x;
+  const h = Math.min(IMAGE.height, maxY + IMAGE_MARGIN) - y;
+  return { x, y, w, h };
+}
+
+function planViewBox() {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -83,6 +206,7 @@ function fovWedge(cx, cy, headingDeg, range = 40, spread = 48) {
 }
 
 function zoneRects() {
+  if (IMAGE) return "";
   return activePins
     .map((p) => {
       const x = p.x - ZONE_W / 2;
@@ -94,20 +218,42 @@ function zoneRects() {
 
 function walkPaths() {
   const by = pinById();
-  return ADJACENCY.map(([a, b]) => {
-    const pa = by.get(a);
-    const pb = by.get(b);
-    if (!pa || !pb) return "";
-    return `<path d="M${pa.x} ${pa.y} L${pb.x} ${pb.y}"/>`;
-  }).join("");
+  return activeEdges
+    .map((e) => {
+      const pts = edgePoints(e, by);
+      return pts ? `<path d="${pointsToD(pts)}"/>` : "";
+    })
+    .join("");
+}
+
+/** Image mode: the map image plus a shade so pins and paths stand out. */
+function imageMarkup() {
+  if (!IMAGE) return "";
+  const w = Number(IMAGE.width);
+  const h = Number(IMAGE.height);
+  return `<image class="cmap__img" href="${IMAGE.src}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="none"/>
+            <rect class="cmap__shade" x="0" y="0" width="${w}" height="${h}"/>`;
 }
 
 function chromeMarkup(vb) {
   const nx = vb.x + 28;
   const ny = vb.y + 28;
+  const chrome = "var(--map-chrome, rgba(149,163,179,0.8))";
+  // Image mode: the export is north-up but its scale is not known here,
+  // so show the north arrow only.
+  if (IMAGE) {
+    return `
+  <g class="cmap__chrome cmap__chrome--image" stroke-width="1.5">
+    <g transform="translate(${nx} ${ny})">
+      <line x1="0" y1="22" x2="0" y2="0"/>
+      <polygon points="0,-2 -5,10 5,10" stroke="none"/>
+      <text x="0" y="36" text-anchor="middle" font-size="11" font-family="ui-monospace,monospace" stroke="none">N</text>
+    </g>
+  </g>
+`;
+  }
   const sx = vb.x + vb.w - 128;
   const sy = vb.y + vb.h - 36;
-  const chrome = "var(--map-chrome, rgba(149,163,179,0.8))";
   return `
   <g class="cmap__chrome" fill="${chrome}" stroke="${chrome}" stroke-width="1.5">
     <g transform="translate(${nx} ${ny})">
@@ -157,11 +303,12 @@ export function mountMap(el, store, actions, opts = {}) {
       <div class="panel__body cmap__body">
         <div class="cmap__stage" data-stage>
           <svg class="cmap__svg" viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" preserveAspectRatio="${par}" role="img" aria-label="Site camera plan">
-            <rect x="${vb.x}" y="${vb.y}" width="${vb.w}" height="${vb.h}" fill="var(--feed-well)"/>
+            <rect class="cmap__bg" x="${vb.x}" y="${vb.y}" width="${vb.w}" height="${vb.h}" fill="var(--feed-well)"/>
+            ${imageMarkup()}
             <g class="cmap__zones" fill="var(--steel-20)" fill-opacity="0.35" stroke="rgba(149,163,179,0.35)" stroke-width="1.5">
               ${zoneRects()}
             </g>
-            <g class="cmap__walks" fill="none" stroke="rgba(149,163,179,0.3)" stroke-width="1.5" stroke-linecap="round">
+            <g class="cmap__walks${IMAGE ? " cmap__walks--image" : ""}" fill="none" stroke="rgba(149,163,179,0.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               ${walkPaths()}
             </g>
             ${chromeMarkup(vb)}
@@ -170,7 +317,13 @@ export function mountMap(el, store, actions, opts = {}) {
             <g class="cmap__predicted" data-predicted></g>
             <g class="cmap__waypoints" data-waypoints></g>
             <g class="cmap__pins" data-pins></g>
+            <g class="cmap__edit" data-edit-handles></g>
           </svg>
+          ${
+            IMAGE
+              ? `<span class="cmap__note" data-map-note></span><span class="cmap__attr" data-map-attr></span>`
+              : ""
+          }
         </div>
         ${showTip ? `<div class="cmap__tip mono" data-tip>Select a camera</div>` : `<div class="cmap__tip mono" data-tip hidden></div>`}
       </div>
@@ -186,6 +339,10 @@ export function mountMap(el, store, actions, opts = {}) {
   const countEl = el.querySelector("[data-pin-count]");
   const stage = el.querySelector("[data-stage]");
   if (stage) stage.style.setProperty("--cmap-ar", `${vb.w} / ${vb.h}`);
+  if (IMAGE) {
+    setText(el.querySelector("[data-map-note]"), IMAGE.note || "");
+    setText(el.querySelector("[data-map-attr]"), IMAGE.attribution || "");
+  }
 
   const pursuitSeq = new Map();
   const pursuitLast = new Map();
@@ -243,7 +400,7 @@ export function mountMap(el, store, actions, opts = {}) {
       g.setAttribute("transform", `translate(${pin.x} ${pin.y})`);
       g.setAttribute("tabindex", "0");
       g.setAttribute("role", "button");
-      g.setAttribute("aria-label", cameraLabel(pin.id));
+      g.setAttribute("aria-label", cameraTitle(pin.id));
 
       const hit = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       hit.setAttribute("r", String(PIN_HIT_R));
@@ -309,7 +466,7 @@ export function mountMap(el, store, actions, opts = {}) {
         if (tip && !tip.hidden) {
           setText(
             tip,
-            `${cameraLabel(pin.id)} · ${status} · ${people} people tracked`,
+            `${cameraTitle(pin.id)} · ${status} · ${people} people tracked`,
           );
         }
       });
@@ -332,22 +489,22 @@ export function mountMap(el, store, actions, opts = {}) {
   function ensureSegment(fromId, toId, elapsedSec) {
     const key = `${fromId}->${toId}`;
     if (drawnSeg.has(key)) return;
-    const a = pinPoint(fromId);
-    const b = pinPoint(toId);
-    if (!a || !b) return;
+    const route = routeBetween(fromId, toId);
+    if (!route) return;
     drawnSeg.add(key);
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
     path.classList.add("cmap__pursuit", "is-draw");
-    path.setAttribute("d", `M${a.x} ${a.y} L${b.x} ${b.y}`);
+    path.setAttribute("d", pointsToD(route));
     path.setAttribute("fill", "none");
     path.setAttribute("pathLength", "1");
     pathsLayer.appendChild(path);
 
     const c = themeColors();
-    const mx = (a.x + b.x) / 2;
-    const my = (a.y + b.y) / 2;
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
+    const mid = polylineMid(route);
+    const mx = mid.x;
+    const my = mid.y;
+    const dx = mid.dx;
+    const dy = mid.dy;
     const len = Math.hypot(dx, dy) || 1;
     // Perpendicular offset so the pill clears pin and path
     const ox = (-dy / len) * 20;
@@ -536,7 +693,7 @@ export function mountMap(el, store, actions, opts = {}) {
       wrap.innerHTML = chromeMarkup(next);
       chrome.replaceWith(wrap.firstElementChild);
     }
-    const bg = svg.querySelector("rect");
+    const bg = svg.querySelector(".cmap__bg");
     if (bg) {
       bg.setAttribute("x", String(next.x));
       bg.setAttribute("y", String(next.y));
@@ -552,6 +709,7 @@ export function mountMap(el, store, actions, opts = {}) {
 
   renderPinNodes();
   render(store.getState());
+  const stopEdit = IMAGE && editRequested() ? startMapEdit() : () => {};
   const unsub = store.subscribe(render);
   const unsubTick = subscribeTick(() => render(store.getState()));
 
@@ -581,9 +739,207 @@ export function mountMap(el, store, actions, opts = {}) {
   };
   window.__map = api;
 
+  /**
+   * ?mapedit=1 (image mode): drag pins and walkway bends, rotate a focused
+   * pin's view with the arrow keys (Shift for 15°), double-click a walkway
+   * to add a bend and a bend to remove it. The panel shows the values to
+   * paste into web/js/site.js.
+   */
+  function startMapEdit() {
+    const svg = el.querySelector(".cmap__svg");
+    const handles = el.querySelector("[data-edit-handles]");
+    const walks = el.querySelector(".cmap__walks");
+    const body = el.querySelector(".cmap__body");
+    if (!svg || !handles || !walks || !body) return () => {};
+    el.classList.add("is-map-edit");
+
+    const panel = document.createElement("div");
+    panel.className = "cmap-edit";
+    const head = document.createElement("div");
+    head.className = "cmap-edit__head";
+    const title = document.createElement("span");
+    title.textContent = "Map edit · drag pins and bends · arrows rotate · double-click adds or removes a bend";
+    const copyBtn = document.createElement("button");
+    copyBtn.type = "button";
+    copyBtn.className = "btn btn--secondary btn--sm";
+    copyBtn.textContent = "Copy";
+    head.appendChild(title);
+    head.appendChild(copyBtn);
+    const out = document.createElement("pre");
+    out.className = "cmap-edit__out mono";
+    panel.appendChild(head);
+    panel.appendChild(out);
+    body.appendChild(panel);
+
+    const round = (v) => Math.round(v);
+    function snippet() {
+      const cams = activePins
+        .map((p) => `  ${p.id}: x ${round(p.x)}, y ${round(p.y)}, heading ${round(p.heading)}`)
+        .join("\n");
+      const edges = activeEdges
+        .map((e) => `  { a: "${e.a}", b: "${e.b}", via: [${e.via.map((v) => `[${round(v[0])}, ${round(v[1])}]`).join(", ")}] },`)
+        .join("\n");
+      return `CAMERAS (image x, y, heading)\n${cams}\n\nEDGES\n${edges}`;
+    }
+
+    function toSvg(e) {
+      const pt = svg.createSVGPoint();
+      pt.x = e.clientX;
+      pt.y = e.clientY;
+      const m = svg.getScreenCTM();
+      return m ? pt.matrixTransform(m.inverse()) : { x: 0, y: 0 };
+    }
+
+    function redraw() {
+      walks.innerHTML = walkPaths();
+      const by = pinById();
+      for (const [id, g] of pinEls) {
+        const p = by.get(id);
+        if (p) g.setAttribute("transform", `translate(${p.x} ${p.y})`);
+      }
+      const fovs = fovsLayer.querySelectorAll("path");
+      activePins.forEach((p, i) => fovs[i]?.setAttribute("d", fovWedge(p.x, p.y, headingOf(p))));
+      while (handles.firstChild) handles.removeChild(handles.firstChild);
+      activeEdges.forEach((edge, ei) => {
+        edge.via.forEach((v, vi) => {
+          const h = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          h.setAttribute("class", "cmap-edit__bend");
+          h.setAttribute("cx", String(v[0]));
+          h.setAttribute("cy", String(v[1]));
+          h.setAttribute("r", "5");
+          h.dataset.edge = String(ei);
+          h.dataset.via = String(vi);
+          handles.appendChild(h);
+        });
+      });
+      out.textContent = snippet();
+    }
+
+    /** Drag target: { kind: "pin", pin } | { kind: "bend", v } */
+    let drag = null;
+    let moved = false;
+    function onDown(e) {
+      const bend = e.target.closest?.(".cmap-edit__bend");
+      const pinG = e.target.closest?.(".cmap-pin");
+      if (bend) {
+        drag = { kind: "bend", v: activeEdges[Number(bend.dataset.edge)].via[Number(bend.dataset.via)] };
+      } else if (pinG) {
+        drag = { kind: "pin", pin: pinById().get(pinG.dataset.cameraId) };
+      } else {
+        return;
+      }
+      moved = false;
+      svg.setPointerCapture?.(e.pointerId);
+      e.preventDefault();
+    }
+    function onMove(e) {
+      if (!drag) return;
+      const p = toSvg(e);
+      moved = true;
+      if (drag.kind === "pin" && drag.pin) {
+        drag.pin.x = p.x;
+        drag.pin.y = p.y;
+      } else if (drag.kind === "bend") {
+        drag.v[0] = p.x;
+        drag.v[1] = p.y;
+      }
+      redraw();
+    }
+    function onUp(e) {
+      if (!drag) return;
+      drag = null;
+      svg.releasePointerCapture?.(e.pointerId);
+    }
+    // A drag must not also select the camera.
+    function onClickCapture(e) {
+      if (moved) {
+        e.stopPropagation();
+        e.preventDefault();
+        moved = false;
+      }
+    }
+    function onDbl(e) {
+      const bend = e.target.closest?.(".cmap-edit__bend");
+      if (bend) {
+        activeEdges[Number(bend.dataset.edge)].via.splice(Number(bend.dataset.via), 1);
+        redraw();
+        return;
+      }
+      // Add a bend on the nearest walkway segment.
+      const p = toSvg(e);
+      let best = null;
+      activeEdges.forEach((edge, ei) => {
+        const pts = edgePoints(edge);
+        if (!pts) return;
+        for (let i = 1; i < pts.length; i++) {
+          const [x0, y0] = pts[i - 1];
+          const [x1, y1] = pts[i];
+          const dx = x1 - x0;
+          const dy = y1 - y0;
+          const t = Math.max(0, Math.min(1, ((p.x - x0) * dx + (p.y - y0) * dy) / (dx * dx + dy * dy || 1)));
+          const d = Math.hypot(p.x - (x0 + dx * t), p.y - (y0 + dy * t));
+          if (!best || d < best.d) best = { d, ei, at: i - 1 };
+        }
+      });
+      if (best && best.d < 12) {
+        activeEdges[best.ei].via.splice(best.at, 0, [p.x, p.y]);
+        redraw();
+      }
+    }
+    function onKey(e) {
+      const pinG = e.target.closest?.(".cmap-pin");
+      if (!pinG || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+      const pin = pinById().get(pinG.dataset.cameraId);
+      if (!pin) return;
+      const step = (e.shiftKey ? 15 : 5) * (e.key === "ArrowLeft" ? -1 : 1);
+      pin.heading = (((pin.heading ?? 0) + step) % 360 + 360) % 360;
+      e.preventDefault();
+      e.stopPropagation();
+      redraw();
+    }
+    copyBtn.addEventListener("click", () => {
+      const text = out.textContent || "";
+      navigator.clipboard?.writeText(text).then(
+        () => setText(copyBtn, "Copied"),
+        () => setText(copyBtn, "Select and copy"),
+      );
+      window.setTimeout(() => setText(copyBtn, "Copy"), 1500);
+    });
+
+    svg.addEventListener("pointerdown", onDown);
+    svg.addEventListener("pointermove", onMove);
+    svg.addEventListener("pointerup", onUp);
+    svg.addEventListener("pointercancel", onUp);
+    svg.addEventListener("click", onClickCapture, true);
+    svg.addEventListener("dblclick", onDbl);
+    svg.addEventListener("keydown", onKey, true);
+    redraw();
+
+    return () => {
+      svg.removeEventListener("pointerdown", onDown);
+      svg.removeEventListener("pointermove", onMove);
+      svg.removeEventListener("pointerup", onUp);
+      svg.removeEventListener("pointercancel", onUp);
+      svg.removeEventListener("click", onClickCapture, true);
+      svg.removeEventListener("dblclick", onDbl);
+      svg.removeEventListener("keydown", onKey, true);
+      panel.remove();
+      el.classList.remove("is-map-edit");
+    };
+  }
+
   return () => {
     unsub();
     unsubTick();
+    stopEdit();
     if (window.__map === api) delete window.__map;
   };
+}
+
+function editRequested() {
+  try {
+    return new URLSearchParams(location.search).get("mapedit") === "1";
+  } catch {
+    return false;
+  }
 }

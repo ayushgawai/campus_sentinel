@@ -7,37 +7,76 @@ export const SITE = {
   name: "Primary site",
   type: "Facility",
   timezone: "America/Los_Angeles",
+  /**
+   * Site map. "image": the OpenStreetMap export below with cameras at
+   * their image pixel positions. "plan": the schematic 3x2 plan.
+   * ?map=plan or ?map=image overrides it for one load.
+   */
+  map: {
+    type: "image",
+    src: "./assets/site-map.png",
+    width: 780,
+    height: 553,
+    attribution: "© OpenStreetMap contributors",
+    note: "Illustrative layout · not an actual deployment",
+  },
 };
 
 /**
- * Exactly six cameras in a 3×2 layout (viewBox 1000×620).
- * Ids and coordinates only — no place fields.
+ * Exactly six cameras. Numbers and links follow data/camera_map.json.
+ * `x`, `y`, `heading` are pixels / degrees (0 = up) on SITE.map's image;
+ * `plan` holds the schematic plan position (viewBox 1000x620).
+ * Fine tune with ?mapedit=1.
  */
 export const CAMERAS = [
-  { id: "cam-01", n: 1, x: 220, y: 170, heading: 135 },
-  { id: "cam-02", n: 2, x: 500, y: 150, heading: 180 },
-  { id: "cam-03", n: 3, x: 780, y: 170, heading: 225 },
-  { id: "cam-04", n: 4, x: 220, y: 420, heading: 90 },
-  { id: "cam-05", n: 5, x: 500, y: 440, heading: 0 },
-  { id: "cam-06", n: 6, x: 780, y: 420, heading: 270 },
+  { id: "cam-01", n: 1, name: "Spartan Complex · South entrance", x: 468, y: 393, heading: 150, plan: { x: 220, y: 170, heading: 135 } },
+  { id: "cam-02", n: 2, name: "Spartan Complex · East corridor", x: 495, y: 368, heading: 245, plan: { x: 500, y: 150, heading: 180 } },
+  { id: "cam-03", n: 3, name: "Spartan Complex · West corridor", x: 420, y: 385, heading: 65, plan: { x: 780, y: 170, heading: 225 } },
+  { id: "cam-04", n: 4, name: "South campus parking", x: 548, y: 482, heading: 135, plan: { x: 220, y: 420, heading: 90 } },
+  { id: "cam-05", n: 5, name: "Paseo de San Carlos walkway", x: 505, y: 384, heading: 240, plan: { x: 500, y: 440, heading: 0 } },
+  { id: "cam-06", n: 6, name: "4th Street entrance", x: 312, y: 492, heading: 60, plan: { x: 780, y: 420, heading: 270 } },
+];
+
+/**
+ * Walkways between cameras (the backend graph in data/camera_map.json).
+ * `via` are the bends between the two pins, in image pixels, following
+ * the paseos and footpaths; buildings are entered only through doors.
+ */
+export const EDGES = [
+  { a: "cam-01", b: "cam-02", via: [[480, 382]] },
+  { a: "cam-02", b: "cam-03", via: [[455, 377]] },
+  { a: "cam-01", b: "cam-03", via: [[444, 394]] },
+  { a: "cam-01", b: "cam-04", via: [[475, 402], [542, 365], [542, 440]] },
+  { a: "cam-05", b: "cam-06", via: [] },
 ];
 
 /** Undirected walk links for site-plan paths and mock pursuit. */
-export const ADJACENCY = [
-  ["cam-01", "cam-02"],
-  ["cam-02", "cam-03"],
-  ["cam-01", "cam-04"],
-  ["cam-02", "cam-05"],
-  ["cam-03", "cam-06"],
-  ["cam-04", "cam-05"],
-  ["cam-05", "cam-06"],
-];
+export const ADJACENCY = EDGES.map((e) => [e.a, e.b]);
+
+/** Map mode for this load: SITE.map.type, or ?map=plan|image. */
+export function mapMode() {
+  let q = null;
+  try {
+    q = new URLSearchParams(location.search).get("map");
+  } catch {
+    q = null;
+  }
+  if (q === "plan" || q === "image") return q;
+  return SITE.map?.type === "image" ? "image" : "plan";
+}
+
+/** "Camera 1 · Spartan Complex · South entrance"; "Camera 1" if unnamed. */
+export function cameraTitle(cameraId) {
+  const known = byId.get(String(cameraId));
+  return known?.name ? `${cameraLabel(cameraId)} · ${known.name}` : cameraLabel(cameraId);
+}
 
 export const WALL_CAMERA_IDS = CAMERAS.map((c) => c.id);
 
 /**
- * Old place names from earlier UI versions — redaction safety net only.
- * Grep denylist lives here; nowhere else in web/ should contain these words.
+ * Old place names from earlier UI versions — redaction safety net for free
+ * text from the backend. The only place names shown on purpose are the
+ * camera names and map in this file (SITE.map, CAMERAS).
  */
 export const DENYLIST = [
   "Library Plaza",

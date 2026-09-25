@@ -1,6 +1,6 @@
 /** Inline 16px stroke icons, same drawing style as the camera upload icon. */
 
-import { svgEl } from "./dom.js?v=fix10h";
+import { svgEl } from "./dom.js?v=fix9b";
 
 const PATHS = {
   flag: "M4 14V2.5M4 3h7.5l-1.6 2.7L11.5 8.5H4",

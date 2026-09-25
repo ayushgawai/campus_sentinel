@@ -1,6 +1,6 @@
 /** System page — site info, health stats, AI models, camera status grid. */
 
-import { SITE, WALL_CAMERA_IDS } from "../site.js?v=fix10h";
+import { SITE, WALL_CAMERA_IDS, cameraTitle, getCamera } from "../site.js?v=fix9b";
 import {
   cameraLabel,
   classLabel,
@@ -9,16 +9,16 @@ import {
   formatMs,
   formatPct,
   stateLabel,
-} from "../format.js?v=fix10h";
-import { el, setText } from "../dom.js?v=fix10h";
-import { icon } from "../icons.js?v=fix10h";
-import { navigate } from "../router.js?v=fix10h";
-import { now, subscribeTick } from "../clock.js?v=fix10h";
-import { cameraStatus, onlineCount } from "../cameraStatus.js?v=fix10h";
-import { MODELS_SUBTITLE } from "../models.js?v=fix10h";
-import { STATUS_DOT, STATUS_LABEL, subscribeModelStatus } from "../modelStatus.js?v=fix10h";
-import { createModelsTable } from "./modelsTable.js?v=fix10h";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix10h";
+} from "../format.js?v=fix9b";
+import { el, setText } from "../dom.js?v=fix9b";
+import { icon } from "../icons.js?v=fix9b";
+import { navigate } from "../router.js?v=fix9b";
+import { now, subscribeTick } from "../clock.js?v=fix9b";
+import { cameraStatus, onlineCount } from "../cameraStatus.js?v=fix9b";
+import { MODELS_SUBTITLE } from "../models.js?v=fix9b";
+import { STATUS_DOT, STATUS_LABEL, subscribeModelStatus } from "../modelStatus.js?v=fix9b";
+import { createModelsTable } from "./modelsTable.js?v=fix9b";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix9b";
 
 const STATUS_DOT_CLASS = {
   online: "dot--ok",
@@ -138,6 +138,8 @@ export function mountSystem(root, store) {
     status.appendChild(statusText);
     top.appendChild(status);
     card.appendChild(top);
+    const place = getCamera(id)?.name;
+    if (place) card.appendChild(el("span", { className: "sys-cam__place", text: place }));
 
     const preview = el("span", { className: "sys-cam__preview" });
     const canvas = document.createElement("canvas");
@@ -251,7 +253,7 @@ export function mountSystem(root, store) {
       if (st.online) online += 1;
 
       c.card.dataset.status = st.key;
-      const aria = `${cameraLabel(id)}, ${st.label}. Open in Live Operations`;
+      const aria = `${cameraTitle(id)}, ${st.label}. Open in Live Operations`;
       if (c.card.getAttribute("aria-label") !== aria) c.card.setAttribute("aria-label", aria);
       c.statusDot.className = `dot ${STATUS_DOT_CLASS[st.key]}`;
       setText(c.statusText, st.label);

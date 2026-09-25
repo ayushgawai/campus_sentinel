@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-25 09:07 UTC - web fix 10 to 10h: models card, system page camera grid, unified camera status (manav)
+Last updated: 2026-09-25 10:08 UTC - web fix 9b: real SJSU site map with camera placement (manav)
 
 ## HARD RULES
 1. `git pull --rebase origin main` before every push. Work on **main**.
@@ -71,6 +71,7 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - web: operator actions (report incident, call for help, broadcast) with local fallback until api routes exist; cleaner incident detail panel (wider, merged details card, aligned action bar); fixed swallowed clicks (fix 5, 5b)
 - web: professional wording, Demo control redesign (collapsible sections, intro section removed), splash reveal in CSS starting on first paint and independent of video loading, js/boot.js for ?nosplash=1, module cache busting with one ?v= tag (bump it on every change), All cameras in camera toolbar (fix 7 to 7d)
 - web: AI models card and System page AI models section (models actually running); System page rebuilt (full height camera status grid, stat cards); one camera status helper for tiles, pins, lists and header (MJPEG online from first frame until error, with 5 s retry; video online from frames; 10 s timeout); removed hard-coded fps (fix 10 to 10h)
+- web: real SJSU site map (OpenStreetMap export, attribution and 'Illustrative layout' note), cameras named and placed on the backend camera graph, pursuit along walkways, ?map=plan fallback, ?mapedit=1 placement tool (fix 9b)
 
 ## Pending (owners)
 | Who | What |

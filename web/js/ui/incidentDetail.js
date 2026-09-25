@@ -4,6 +4,7 @@
  * when there is something to play), timeline card. All text via textContent.
  */
 
+import { cameraTitle } from "../site.js?v=fix9b";
 import {
   classLabel,
   cameraLabel,
@@ -14,12 +15,12 @@ import {
   ruleLabel,
   severityLabel,
   stateLabel,
-} from "../format.js?v=fix10h";
-import { el, setText } from "../dom.js?v=fix10h";
-import { now, subscribeTick } from "../clock.js?v=fix10h";
-import { isOperatorReported } from "../actions.js?v=fix10h";
-import * as cameraSources from "../cameraSources.js?v=fix10h";
-import { mountIncidentClip } from "./incidentClip.js?v=fix10h";
+} from "../format.js?v=fix9b";
+import { el, setText } from "../dom.js?v=fix9b";
+import { now, subscribeTick } from "../clock.js?v=fix9b";
+import { isOperatorReported } from "../actions.js?v=fix9b";
+import * as cameraSources from "../cameraSources.js?v=fix9b";
+import { mountIncidentClip } from "./incidentClip.js?v=fix9b";
 
 /** Timeline notes the UI wrote while the server had not confirmed an action. */
 const UNCONFIRMED_RE = /\s*·\s*(pending server confirmation|not confirmed by server)\s*$/i;
@@ -73,7 +74,7 @@ export function detailHeaderCard(inc, { onBack = null } = {}) {
   card.appendChild(row);
 
   const meta = el("p", { className: "inc-head__meta" });
-  meta.appendChild(document.createTextNode(`${cameraLabel(inc.camera_id)} · `));
+  meta.appendChild(document.createTextNode(`${cameraTitle(inc.camera_id)} · `));
   const iso = inc.created_at || inc.peak_ts || "";
   const ago = el("span", { dataset: { agoIso: iso } });
   setText(ago, formatRel(iso, now()));

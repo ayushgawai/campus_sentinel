@@ -14,13 +14,13 @@ import {
   audienceText,
   isDispatchedOrLater,
   isOperatorReported,
-} from "../actions.js?v=fix10h";
-import { WALL_CAMERA_IDS, cameraLabel } from "../site.js?v=fix10h";
-import { classLabel, formatPct } from "../format.js?v=fix10h";
-import { clear, el, setText } from "../dom.js?v=fix10h";
-import { icon } from "../icons.js?v=fix10h";
-import { subscribeTick } from "../clock.js?v=fix10h";
-import { callElapsedMs, formatCallTimer } from "./call.js?v=fix10h";
+} from "../actions.js?v=fix9b";
+import { WALL_CAMERA_IDS, cameraLabel, cameraTitle } from "../site.js?v=fix9b";
+import { classLabel, formatPct } from "../format.js?v=fix9b";
+import { clear, el, setText } from "../dom.js?v=fix9b";
+import { icon } from "../icons.js?v=fix9b";
+import { subscribeTick } from "../clock.js?v=fix9b";
+import { callElapsedMs, formatCallTimer } from "./call.js?v=fix9b";
 
 export const OP_REPORT_EVENT = "sentinel:op-report";
 export const OP_CALL_EVENT = "sentinel:op-call";
@@ -342,7 +342,7 @@ export function mountOperator(root, store, actions) {
         attrs: { "aria-label": "Camera" },
       });
       for (const id of WALL_CAMERA_IDS) {
-        const opt = el("option", { text: cameraLabel(id) });
+        const opt = el("option", { text: cameraTitle(id) });
         opt.value = id;
         if (id === cam) opt.selected = true;
         select.appendChild(opt);

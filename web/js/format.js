@@ -1,9 +1,9 @@
 /** Display helpers — never show raw enums, dashes, or nullish junk. */
 
-import { SITE, cameraLabel as siteCameraLabel } from "./site.js?v=fix10h";
-import { now } from "./clock.js?v=fix10h";
+import { SITE, cameraLabel as siteCameraLabel } from "./site.js?v=fix9b";
+import { now } from "./clock.js?v=fix9b";
 
-export { cameraLabel } from "./site.js?v=fix10h";
+export { cameraLabel } from "./site.js?v=fix9b";
 
 /** The one fallback for a value that has not arrived yet (never a dash). */
 export const PENDING = "Pending";

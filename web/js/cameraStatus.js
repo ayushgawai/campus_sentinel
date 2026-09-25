@@ -14,7 +14,7 @@
  * An offline or connecting camera shows no incident level.
  */
 
-import { isOpenIncident } from "./format.js?v=fix10h";
+import { isOpenIncident } from "./format.js?v=fix9b";
 
 const FRESH_MS = 10000;
 

@@ -1,5 +1,5 @@
-import { cameraLabel, WALL_CAMERA_IDS } from "./site.js?v=fix10h";
-import { mockIso, setMockEpoch } from "./clock.js?v=fix10h";
+import { cameraLabel, WALL_CAMERA_IDS } from "./site.js?v=fix9b";
+import { mockIso, setMockEpoch } from "./clock.js?v=fix9b";
 
 /**
  * Contract-shaped event helpers + deterministic mock timeline player.
@@ -210,9 +210,10 @@ const SEVERE_ID = "inc-severe-fall-001";
 /** Which camera currently hosts the severe track at demo time t (or null). */
 function severeCameraAt(t) {
   if (t < 28) return null;
-  if (t < 40) return "cam-05";
-  if (t < 52) return "cam-06";
-  if (t < 70) return "cam-03";
+  if (t < 40) return "cam-03";
+  if (t < 52) return "cam-02";
+  if (t < 64) return "cam-01";
+  if (t < 76) return "cam-04";
   return null;
 }
 
@@ -234,7 +235,7 @@ function withSevereBox(boxes, cameraId, t) {
 }
 
 function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
-  // --- MINOR RUN on Camera 3 @ ~15s ---
+  // --- MINOR RUN on Camera 6 @ ~15s ---
   if (includeMinor) {
     const minorAt = 15;
     script.push({
@@ -243,7 +244,7 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
         {
           incident_id: MINOR_ID,
           track_id: "t-0312",
-          camera_id: "cam-03",
+          camera_id: "cam-06",
           peak_ts: atIso(minorAt),
           class_token: "RUN",
           class_logprob_calibrated: -0.18,
@@ -252,11 +253,11 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
           severity: "MINOR",
           description:
             "Person accelerating to a sustained run across an open walkway.",
-          location_text: cameraLabel("cam-03"),
+          location_text: cameraLabel("cam-06"),
           person_description:
             "Adult in dark jacket and light pants, moving quickly",
           state: "NEW",
-          clip_uri: "file://clips/minor_run_cam03.mp4",
+          clip_uri: "file://clips/minor_run_cam06.mp4",
           created_at: atIso(minorAt),
           updated_at: atIso(minorAt),
           rules_fired: ["sudden_acceleration", "running"],
@@ -293,8 +294,9 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
 
   if (!includeSevere) return;
 
-  // --- SEVERE FALL on Camera 5 @ ~28s ---
-  // Pursuit along ADJACENCY: Camera 5 → Camera 6 → Camera 3
+  // --- SEVERE FALL on Camera 3 @ ~28s ---
+  // Pursuit along the walkway graph (site.js EDGES): Camera 3 → Camera 2 →
+  // Camera 1 (out the south entrance) → Camera 4 (parking).
   const severeAt = 28;
   const fallBase = {
     incident_id: SEVERE_ID,
@@ -306,9 +308,9 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
     severity: "SEVERE",
     description:
       "Person falls suddenly and remains on the ground, not moving.",
-    location_text: cameraLabel("cam-05"),
+    location_text: cameraLabel("cam-03"),
     person_description: "Adult, grey hoodie, dark backpack, short dark hair.",
-    clip_uri: "file://clips/severe_fall_cam05.mp4",
+    clip_uri: "file://clips/severe_fall_cam03.mp4",
     rules_fired: ["fast_descent", "orientation_flip", "stays_low"],
     dismissed_reason: null,
     schema_version: "1.0",
@@ -319,7 +321,7 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
     event: mkUpsert(
       {
         ...fallBase,
-        camera_id: "cam-05",
+        camera_id: "cam-03",
         peak_ts: atIso(severeAt),
         created_at: atIso(severeAt),
         updated_at: atIso(severeAt),
@@ -352,8 +354,9 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
   }
 
   const handoffs = [
-    { at: 40, camera_id: "cam-06", note: "Handoff to Camera 6" },
-    { at: 52, camera_id: "cam-03", note: "Handoff to Camera 3" },
+    { at: 40, camera_id: "cam-02", note: "Handoff to Camera 2" },
+    { at: 52, camera_id: "cam-01", note: "Handoff to Camera 1" },
+    { at: 64, camera_id: "cam-04", note: "Handoff to Camera 4" },
   ];
   for (const h of handoffs) {
     script.push({
@@ -434,13 +437,13 @@ function pushCallExchange(script, severeAt) {
   const dispatchedAt = severeAt + 3.5; // 31.5
 
   const locResult = {
-    camera_id: "cam-05",
+    camera_id: "cam-03",
   };
   const personResult = {
     person_description: "Adult, grey hoodie, dark backpack, short dark hair.",
   };
   const statusResult = {
-    camera_id: "cam-06",
+    camera_id: "cam-02",
     in_view: true,
     state: "TRACKING",
   };
@@ -470,7 +473,7 @@ function pushCallExchange(script, severeAt) {
     incident_id: id,
     speaker: "sentinel",
     at: dispatchedAt + 1.6,
-    text: "The incident started on Camera 5, 42 seconds ago.",
+    text: "The incident started on Camera 3, 42 seconds ago.",
   });
 
   script.push({
@@ -529,7 +532,7 @@ function pushCallExchange(script, severeAt) {
     text: "The incident started 13 seconds ago.",
   });
 
-  // After Camera 6 handoff @ 40
+  // After Camera 2 handoff @ 40
   script.push({
     at: 40.6,
     event: mkTranscript({
@@ -555,7 +558,7 @@ function pushCallExchange(script, severeAt) {
     incident_id: id,
     speaker: "sentinel",
     at: 41.4,
-    text: "The person is now on Camera 6, moving toward Camera 3. The incident started 1 minute 28 seconds ago.",
+    text: "The person is now on Camera 2, moving toward Camera 1. The incident started 1 minute 28 seconds ago.",
   });
 
   script.push({
@@ -574,7 +577,7 @@ function pushCallExchange(script, severeAt) {
       incident_id: id,
       tool: "repeat_last",
       args: { field: "camera_id" },
-      result: { camera_id: "cam-03", in_view: true },
+      result: { camera_id: "cam-01", in_view: true },
       at: 52.5,
     }),
   });
@@ -583,7 +586,7 @@ function pushCallExchange(script, severeAt) {
     incident_id: id,
     speaker: "sentinel",
     at: 52.9,
-    text: "Current camera is Camera 3.",
+    text: "Current camera is Camera 1.",
   });
 }
 
@@ -670,8 +673,9 @@ export function operatorCallRows({ id, cameraId, person, peakAt, at }) {
  * highlight from (at - lead) until at, then clear on arrival.
  */
 export const MOCK_PREDICTED = [
-  { at: 40, camera_id: "cam-06", lead: 3 },
-  { at: 52, camera_id: "cam-03", lead: 3 },
+  { at: 40, camera_id: "cam-02", lead: 3 },
+  { at: 52, camera_id: "cam-01", lead: 3 },
+  { at: 64, camera_id: "cam-04", lead: 3 },
 ];
 
 export function predictedCameraAt(t) {

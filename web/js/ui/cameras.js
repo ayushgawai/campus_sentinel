@@ -1,7 +1,7 @@
 /** Camera wall — layout modes, VMS OSD, corner brackets. */
 
-import { WALL_CAMERA_IDS, cameraLabel, SITE } from "../site.js?v=fix10h";
-import { now, subscribeTick } from "../clock.js?v=fix10h";
+import { WALL_CAMERA_IDS, cameraLabel, SITE, cameraTitle } from "../site.js?v=fix9b";
+import { now, subscribeTick } from "../clock.js?v=fix9b";
 import {
   classLabel,
   formatPct,
@@ -10,21 +10,21 @@ import {
   personLabel,
   stateLabel,
   severityLabel,
-} from "../format.js?v=fix10h";
+} from "../format.js?v=fix9b";
 import {
   activeIncidentForCamera,
   cameraStatus,
   noteFrame,
   noteStream,
   onlineCount,
-} from "../cameraStatus.js?v=fix10h";
-import { clear, el, setText } from "../dom.js?v=fix10h";
-import { createCameraLayout } from "./cameraLayout.js?v=fix10h";
-import { themeColors } from "../theme.js?v=fix10h";
-import * as cameraSources from "../cameraSources.js?v=fix10h";
-import { cameraStream } from "../transport.js?v=fix10h";
-import { icon } from "../icons.js?v=fix10h";
-import { OP_REPORT_EVENT, confidenceShort } from "./operator.js?v=fix10h";
+} from "../cameraStatus.js?v=fix9b";
+import { clear, el, setText } from "../dom.js?v=fix9b";
+import { createCameraLayout } from "./cameraLayout.js?v=fix9b";
+import { themeColors } from "../theme.js?v=fix9b";
+import * as cameraSources from "../cameraSources.js?v=fix9b";
+import { cameraStream } from "../transport.js?v=fix9b";
+import { icon } from "../icons.js?v=fix9b";
+import { OP_REPORT_EVENT, confidenceShort } from "./operator.js?v=fix9b";
 
 export const FOCUS_CAMERA_EVENT = "sentinel:focus-camera";
 export const OPEN_SIDEBAR_EVENT = "sentinel:open-sidebar";
@@ -210,8 +210,8 @@ export function mountCameras(root, store, actions, layout) {
     tile.type = "button";
     tile.className = "cam-tile";
     tile.dataset.cameraId = id;
-    tile.setAttribute("aria-label", cameraLabel(id));
-    tile.title = cameraLabel(id);
+    tile.setAttribute("aria-label", cameraTitle(id));
+    tile.title = cameraTitle(id);
 
     const media = document.createElement("div");
     media.className = "cam-tile__media";
@@ -276,7 +276,7 @@ export function mountCameras(root, store, actions, layout) {
     liveDot.setAttribute("aria-hidden", "true");
     const liveLbl = document.createElement("span");
     liveLbl.className = "cam-tile__live-label";
-    liveLbl.textContent = cameraLabel(id);
+    liveLbl.textContent = cameraTitle(id);
     liveRow.appendChild(liveDot);
     liveRow.appendChild(liveLbl);
 

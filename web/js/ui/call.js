@@ -1,6 +1,6 @@
 /** Call Console — single chat thread + tool cards. No floating overlay. */
 
-import { now, subscribeTick } from "../clock.js?v=fix10h";
+import { now, subscribeTick } from "../clock.js?v=fix9b";
 import {
   awaiting,
   classLabel,
@@ -17,11 +17,11 @@ import {
   HIDDEN_TOOL_KEYS,
   isOpenIncident,
   severityLabel,
-} from "../format.js?v=fix10h";
-import { redactPlaces } from "../site.js?v=fix10h";
-import { clear, el, setText } from "../dom.js?v=fix10h";
-import { OP_STATUS_EVENT, operatorActions, actionBar } from "./operator.js?v=fix10h";
-import { isDispatchedOrLater } from "../actions.js?v=fix10h";
+} from "../format.js?v=fix9b";
+import { redactPlaces, cameraTitle } from "../site.js?v=fix9b";
+import { clear, el, setText } from "../dom.js?v=fix9b";
+import { OP_STATUS_EVENT, operatorActions, actionBar } from "./operator.js?v=fix9b";
+import { isDispatchedOrLater } from "../actions.js?v=fix9b";
 
 const STREAM_MERGE_MS = 700;
 const CALL_STATES = new Set([
@@ -341,7 +341,7 @@ export function mountCallHost(host, store, actions) {
       dispatchedTs(inc, state) || inc.created_at || inc.peak_ts,
       nowMs,
     );
-    setText(metaEl, `${cameraLabel(inc.camera_id)} · Started ${started}`);
+    setText(metaEl, `${cameraTitle(inc.camera_id)} · Started ${started}`);
   }
 
   function render(state) {
@@ -606,7 +606,7 @@ export function mountCallPanel(root, store, actions) {
     const ended = ENDED_CALL_STATES.has(inc.state);
     setText(classEl, `${classLabel(inc.class_token)} call`);
     headCamEl.hidden = false;
-    setText(headCamEl, cameraLabel(inc.camera_id));
+    setText(headCamEl, cameraTitle(inc.camera_id));
 
     if (ended) {
       briefEl.hidden = true;
@@ -614,7 +614,7 @@ export function mountCallPanel(root, store, actions) {
     } else {
       briefEl.hidden = false;
       endedEl.hidden = true;
-      setText(briefCamEl, cameraLabel(inc.camera_id));
+      setText(briefCamEl, cameraTitle(inc.camera_id));
       // The brief grid needs the cell: muted "Pending" until a description arrives.
       const person = String(inc.person_description || "").trim();
       briefPersonEl.classList.toggle("is-pending", !person);

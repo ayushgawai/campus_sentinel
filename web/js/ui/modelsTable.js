@@ -4,9 +4,9 @@
  * metric (Detection step p95) sits under the model name, never a placeholder.
  */
 
-import { el } from "../dom.js?v=fix10h";
-import { MODELS_FOOTER } from "../models.js?v=fix10h";
-import { STATUS_DOT, STATUS_LABEL, modelRows, modelsSignature } from "../modelStatus.js?v=fix10h";
+import { el } from "../dom.js?v=fix9b";
+import { MODELS_FOOTER } from "../models.js?v=fix9b";
+import { STATUS_DOT, STATUS_LABEL, modelRows, modelsSignature } from "../modelStatus.js?v=fix9b";
 
 const COLUMNS = ["Role", "Model", "Runtime", "Status"];
 

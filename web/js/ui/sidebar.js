@@ -4,9 +4,9 @@
  * a separate floating call panel (call.js's mountCallPanel).
  */
 
-import { now, subscribeTick } from "../clock.js?v=fix10h";
-import { WALL_CAMERA_IDS } from "../site.js?v=fix10h";
-import { onlineCount } from "../cameraStatus.js?v=fix10h";
+import { now, subscribeTick } from "../clock.js?v=fix9b";
+import { WALL_CAMERA_IDS } from "../site.js?v=fix9b";
+import { onlineCount } from "../cameraStatus.js?v=fix9b";
 import {
   classLabel,
   cameraLabel,
@@ -21,32 +21,32 @@ import {
   pctNumber,
   isOpenIncident,
   isDispatchSimState,
-} from "../format.js?v=fix10h";
-import { mountIncidentClip } from "./incidentClip.js?v=fix10h";
-import { clear, el, setText } from "../dom.js?v=fix10h";
-import { mountMap } from "./map.js?v=fix10h";
+} from "../format.js?v=fix9b";
+import { mountIncidentClip } from "./incidentClip.js?v=fix9b";
+import { clear, el, setText } from "../dom.js?v=fix9b";
+import { mountMap } from "./map.js?v=fix9b";
 import {
   legendMarkup,
   mountSiteCamerasList,
   mountTrackingCard,
   mountSiteOverview,
-} from "./sitePlanExtras.js?v=fix10h";
-import { findCallIncident, formatCallTimer, callElapsedMs } from "./call.js?v=fix10h";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix10h";
+} from "./sitePlanExtras.js?v=fix9b";
+import { findCallIncident, formatCallTimer, callElapsedMs } from "./call.js?v=fix9b";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix9b";
 import {
   OP_REPORT_EVENT,
   OP_STATUS_EVENT,
   actionBar,
   opButton,
   confidenceLong,
-} from "./operator.js?v=fix10h";
+} from "./operator.js?v=fix9b";
 import {
   detailHeaderCard,
   detailsCard,
   clipCard,
   timelineCard,
   emptyState,
-} from "./incidentDetail.js?v=fix10h";
+} from "./incidentDetail.js?v=fix9b";
 
 /** Same entries by identity (store replaces an incident object when it changes). */
 function sameSig(a, b) {
