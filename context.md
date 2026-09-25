@@ -107,7 +107,7 @@ Design and verified pre-change baseline: `docs/superpowers/specs/2026-09-25-comp
 | **Voice / Ayush** | Decide whether to enable ElevenLabs on the live call. It sounds more natural but adds about 2 s before each uncached line; do a real-call listen test with `CS_TTS_PROVIDER=elevenlabs` |
 | **Indraneel** | Officer F1 polish |
 | **Ayush / open** | OSNet weights · temp calibration · MediaMTX optional |
-| **Ayush / api** | CallBrief event (when available) |
+| **Group → Ayush / api** | CallBrief event: **blocked on a contract decision, not data.** `assemble_call_brief()` already works, but `contracts/events.py` (frozen) has no brief event type, and the 2026-09-25 wiring spec/plan chose *not* to add one (the call panel reads `incident.upsert`). To proceed, the group must approve adding `call.brief` (payload = `call_brief_to_dict`) to `EventType`; the hub would then publish it on dispatch/handoff through the normal replay path |
 | **Web / Manav** | Browser-test the SignalWire wiring (`2f5a0d0`) against the live API; `node web/check.mjs` was not run (no node on ZGX) |
 | **Web / Manav** | Bump the `?v=` module cache tag for `store.js`, `transport.js`, `actions.js`, `modelStatus.js`, `ui/call.js`, `ui/operator.js` |
 | **Web / Manav** | Uncommitted on ZGX main: `live.js` leader-lines-under-dock order + 150 ms leave (`app.css`); review and commit or drop |
