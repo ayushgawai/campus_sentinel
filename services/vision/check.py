@@ -18,7 +18,11 @@ from datetime import timedelta  # noqa: E402
 from contracts import BBox, EventType, OverlayBoxes, event_to_dict, utcnow  # noqa: E402
 from services.brain.sampler import sample_from_timestamps  # noqa: E402
 from services.vision.bundle import build_bundle  # noqa: E402
-from services.vision.decode import SyntheticSource  # noqa: E402
+from services.vision.decode import (  # noqa: E402
+    SyntheticSource,
+    active_camera_ids,
+    skip_count,
+)
 from services.vision.detector import DEFAULT_PT, N_KPTS, PoseDetector  # noqa: E402
 from services.vision.fusion import fuse, should_escalate  # noqa: E402
 from services.vision.pipeline import VisionRouter  # noqa: E402
@@ -180,6 +184,17 @@ def main() -> None:
             )
         )
     assert RUN in evaluate(run_mem, fps=15.0)
+    assert skip_count(0, 5.0, 0.0) == 0
+    assert skip_count(0, 5.0, 1.0) == 5
+    assert skip_count(3, 5.0, 0.4) == 0
+    windows = {
+        "CAM-01": [[0.0, 60.0]],
+        "CAM-02": [[60.0, 117.0]],
+        "CAM-03": [[117.0, 216.6]],
+    }
+    assert active_camera_ids(windows, 59.9) == {"CAM-01"}
+    assert active_camera_ids(windows, 60.0) == {"CAM-02"}
+    assert active_camera_ids(None, 60.0) is None
 
     if DEFAULT_PT.is_file():
         live = PoseDetector(forced=False)

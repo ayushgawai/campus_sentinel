@@ -1,4 +1,4 @@
-"""stdlib asyncio API on :8080 — /health, /ws, /mjpeg/{camera_id}.
+"""stdlib asyncio API on :8080 — /health, /ws, /mjpeg and /media.
 
 No third-party deps. WebSocket is a minimal RFC6455 server sufficient for
 one JSON object per text frame (contracts/events.py envelopes).
@@ -212,6 +212,10 @@ class ApiServer:
             cam = unquote(path[len("/mjpeg/") :].split("?")[0])
             await self._mjpeg(writer, cam)
             return
+        if method == "GET" and path.startswith("/media/"):
+            cam = unquote(path[len("/media/") :].split("?")[0])
+            await self._media(writer, cam, headers.get("range"))
+            return
         if method == "OPTIONS":
             await self._http_raw(
                 writer,
@@ -299,6 +303,9 @@ class ApiServer:
         if path is None or not path.is_file():
             await self._http_raw(writer, 404, b"no clip for camera\n")
             return
+        # First pane in a burst rewinds YOLO to t=0 with this ffmpeg -re.
+        if self.vision is not None:
+            self.vision.align_to_wall()
         # Multipart MJPEG via ffmpeg. Falls back to 503 if ffmpeg missing.
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -374,6 +381,55 @@ class ApiServer:
             except Exception:
                 pass
 
+    async def _media(
+        self, writer: asyncio.StreamWriter, camera_id: str, range_header: str | None
+    ) -> None:
+        entry = CLIP_BY_CAM.get(camera_id)
+        path = (entry[0] / entry[1]) if entry else None
+        if path is None or not path.is_file():
+            await self._http_raw(writer, 404, b"no clip for camera\n")
+            return
+        size = path.stat().st_size
+        start, end, code = 0, size - 1, 200
+        if range_header and range_header.startswith("bytes="):
+            raw_start, _, raw_end = range_header[6:].partition("-")
+            try:
+                start = int(raw_start)
+                end = min(int(raw_end), size - 1) if raw_end else size - 1
+            except ValueError:
+                await self._http_raw(writer, 400, b"bad range\n")
+                return
+            if start < 0 or start > end or start >= size:
+                await self._http_raw(writer, 416, b"range not satisfiable\n")
+                return
+            code = 206
+        length = end - start + 1
+        reason = "Partial Content" if code == 206 else "OK"
+        headers = {
+            "Content-Type": "video/mp4",
+            "Content-Length": str(length),
+            "Accept-Ranges": "bytes",
+            "Access-Control-Allow-Origin": "*",
+            "Connection": "close",
+        }
+        if code == 206:
+            headers["Content-Range"] = f"bytes {start}-{end}/{size}"
+        lines = [f"HTTP/1.1 {code} {reason}"] + [
+            f"{key}: {value}" for key, value in headers.items()
+        ]
+        writer.write(("\r\n".join(lines) + "\r\n\r\n").encode())
+        with path.open("rb") as clip:
+            clip.seek(start)
+            remaining = length
+            while remaining:
+                chunk = clip.read(min(64 * 1024, remaining))
+                if not chunk:
+                    break
+                writer.write(chunk)
+                await writer.drain()
+                remaining -= len(chunk)
+        writer.close()
+
     async def _http_json(
         self, writer: asyncio.StreamWriter, code: int, obj: dict[str, Any]
     ) -> None:
@@ -396,7 +452,7 @@ class ApiServer:
         *,
         extra: dict[str, str] | None = None,
     ) -> None:
-        reason = {200: "OK", 204: "No Content", 400: "Bad Request", 404: "Not Found", 503: "Unavailable"}.get(
+        reason = {200: "OK", 204: "No Content", 400: "Bad Request", 404: "Not Found", 416: "Range Not Satisfiable", 503: "Unavailable"}.get(
             code, "OK"
         )
         headers = {
@@ -415,7 +471,7 @@ class ApiServer:
             print("[api] CS_VISION_SEVILLE bridge starting", flush=True)
         server = await asyncio.start_server(self.handle, self.host, self.port)
         addrs = ", ".join(str(s.getsockname()) for s in server.sockets or [])
-        print(f"api listening on {addrs}  (/health /ws /mjpeg/{{cam}})", flush=True)
+        print(f"api listening on {addrs}  (/health /ws /mjpeg/{{cam}} /media/{{cam}})", flush=True)
         async with server:
             await server.serve_forever()
 

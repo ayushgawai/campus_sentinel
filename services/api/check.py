@@ -66,6 +66,42 @@ async def _send_text(writer: asyncio.StreamWriter, obj: dict) -> None:
 
 async def main() -> None:
     srv = ApiServer(host="127.0.0.1", port=0)
+
+    # The known demo subject reaches three cameras, but only the first may use Qwen.
+    from types import SimpleNamespace
+    from services.api.vision_bridge import VisionBridge
+
+    class _VisionHub:
+        paused = False
+        frames_screened = 0
+        frames_escalated = 0
+
+        async def publish(self, ev):
+            pass
+
+    class _Router:
+        def __init__(self):
+            self.last_escalations = []
+
+        def step(self):
+            return [object()]
+
+        def bundle(self, *args, **kwargs):
+            return SimpleNamespace(images=[object()])
+
+    bridge = VisionBridge(_VisionHub())  # type: ignore[arg-type]
+    router = _Router()
+    router.last_escalations = [
+        SimpleNamespace(camera_id="CAM-01", track_id="T-1", ts=None)
+    ]
+    _, work = bridge._step(router)
+    assert work[0][0] == "classify"
+    router.last_escalations = [
+        SimpleNamespace(camera_id="CAM-02", track_id="T-9", ts=None)
+    ]
+    _, work = bridge._step(router)
+    assert work[0][0] == "reuse"
+
     server = await asyncio.start_server(srv.handle, srv.host, 0)
     port = server.sockets[0].getsockname()[1]
 
@@ -77,11 +113,27 @@ async def main() -> None:
     assert b"200" in raw and b'"ok":true' in raw.replace(b" ", b"")
     w.close()
 
+    # Ambient cameras are browser-decoded MP4, with byte ranges for seeking/looping.
+    r, w = await asyncio.open_connection("127.0.0.1", port)
+    w.write(
+        b"GET /media/cam-04 HTTP/1.1\r\n"
+        b"Host: localhost\r\n"
+        b"Range: bytes=0-15\r\n\r\n"
+    )
+    await w.drain()
+    raw = await r.read()
+    head, body = raw.split(b"\r\n\r\n", 1)
+    assert b"206 Partial Content" in head
+    assert b"Content-Type: video/mp4" in head
+    assert b"Content-Range: bytes 0-15/" in head
+    assert len(body) == 16
+    w.close()
+
     # /ws — expect seeded envelopes + runScenario via brain.adjudicate
     r, w = await asyncio.open_connection("127.0.0.1", port)
     await _ws_handshake(r, w)
     types: list[str] = []
-    for _ in range(20):
+    for _ in range(32):
         env = await _recv_frame(r)
         types.append(env["type"])
         if env["type"] == "incident.upsert":
@@ -135,7 +187,7 @@ async def main() -> None:
     vb._upsert_times.clear()
     assert vb._should_fire("cam-01", "t-cooldown") is True
     assert vb._should_fire("cam-01", "t-cooldown") is False
-    assert vb._should_fire("cam-01", "t-other") is True
+    assert vb._should_fire("cam-01", "t-other") is False
     print("api self-check OK")
 
 

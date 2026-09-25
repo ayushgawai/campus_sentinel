@@ -6,6 +6,7 @@ SyntheticSource is the forced/demo decoder so the rest of the router can run.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -90,31 +91,72 @@ class SyntheticSource:
         return out
 
 
+def skip_count(already: int, fps: float, elapsed_s: float) -> int:
+    """How many frames to grab-drop so the next read is at wall-clock time."""
+    if fps <= 0:
+        return 0
+    target = int(elapsed_s * fps)
+    return max(0, target - already)
+
+
+def active_camera_ids(
+    windows: dict[str, list[list[float]]] | None, elapsed_s: float
+) -> set[str] | None:
+    """Return scheduled cameras, or None when every camera should be processed."""
+    if windows is None:
+        return None
+    return {
+        camera_id
+        for camera_id, spans in windows.items()
+        if any(start <= elapsed_s < end for start, end in spans)
+    }
+
+
 class FileSource:
-    """Decode local mp4s (Naman clips) until mediamtx RTSP exists."""
+    """Decode local mp4s (Naman clips) until mediamtx RTSP exists.
 
-    def __init__(self, paths: dict[str, str], *, start: datetime | None = None) -> None:
-        import cv2
+    realtime=True: grab-drop so the decoded frame matches wall time, same
+    pace as `ffmpeg -re` on the MJPEG wall. run_seville stays False (every frame).
+    """
 
+    def __init__(
+        self,
+        paths: dict[str, str],
+        *,
+        start: datetime | None = None,
+        realtime: bool = False,
+        active_windows: dict[str, list[list[float]]] | None = None,
+    ) -> None:
         if not paths:
             raise ValueError("paths must be non-empty")
+        self._paths = dict(paths)
         self.camera_ids = list(paths)
+        self.realtime = realtime
+        self.active_windows = active_windows
+        self._start = start
+        self._open_caps()
+
+    def _open_caps(self) -> None:
+        import cv2
+
         self._caps = {}
         self.fps = 15.0
-        for cid, path in paths.items():
+        fps_locked = False
+        for cid, path in self._paths.items():
             cap = cv2.VideoCapture(path)
             if not cap.isOpened():
                 raise FileNotFoundError(f"cannot open clip {path}")
             raw = cap.get(cv2.CAP_PROP_FPS)
-            if raw and raw > 1:
+            if raw and raw > 1 and not fps_locked:
                 self.fps = float(raw)
+                fps_locked = True
             self._caps[cid] = cap
         self._dt = 1.0 / self.fps
         self._i = 0
-        self._t0 = start or utcnow()
+        self._t0 = self._start or utcnow()
+        self._wall0 = time.monotonic()
         self.width = int(next(iter(self._caps.values())).get(cv2.CAP_PROP_FRAME_WIDTH) or 640)
         self.height = int(next(iter(self._caps.values())).get(cv2.CAP_PROP_FRAME_HEIGHT) or 640)
-        # UCF fight/theft staging files are 64x64 — YOLO/CLIP miss them raw.
         self._upscale = 1.0
         short = min(self.width, self.height)
         if short and short < 320:
@@ -122,14 +164,43 @@ class FileSource:
             self.width = int(self.width * self._upscale)
             self.height = int(self.height * self._upscale)
 
+    def rewind(self) -> None:
+        """Re-open from t=0 and reset the wall clock (mjpeg -re just started)."""
+        self.close()
+        self._open_caps()
+
+    def shift_wall(self, paused_s: float) -> None:
+        """Do not skip the pause interval when the hub unpauses."""
+        if paused_s > 0:
+            self._wall0 += paused_s
+
+    def _catch_up(self) -> bool:
+        """Grab-drop until wall-clock frame. False on EOF."""
+        if not self.realtime:
+            return True
+        n = skip_count(self._i, self.fps, time.monotonic() - self._wall0)
+        for _ in range(n):
+            for cap in self._caps.values():
+                if not cap.grab():
+                    return False
+            self._i += 1
+        return True
+
     def next_frames(self) -> list[Frame]:
         import cv2
 
+        if not self._catch_up():
+            return []
         ts = self._t0 + timedelta(seconds=self._i * self._dt)
         if ts.tzinfo is None:
             ts = ts.replace(tzinfo=timezone.utc)
         out: list[Frame] = []
+        active = active_camera_ids(self.active_windows, self._i * self._dt)
         for cid in self.camera_ids:
+            if active is not None and cid not in active:
+                if not self._caps[cid].grab():
+                    return []
+                continue
             ok, bgr = self._caps[cid].read()
             if not ok:
                 return []
@@ -152,5 +223,6 @@ class FileSource:
         return out
 
     def close(self) -> None:
-        for cap in self._caps.values():
+        for cap in getattr(self, "_caps", {}).values():
             cap.release()
+        self._caps = {}
