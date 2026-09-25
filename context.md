@@ -56,6 +56,7 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - A live conversational call exposed acoustic echo/noise fragments that repeatedly triggered the unknown-detail response. The media bridge now ignores inbound audio during Sentinel speech and for a 500 ms echo tail; acknowledgements and non-question fragments produce no answer. Operators must wait until Sentinel finishes speaking because barge-in is intentionally disabled for this demo path.
 - Unmatched questions now get an immediate short checking line before the Qwen lookup. Final replies are limited to one sentence, unknown visual details rotate between two natural camera-grounded answers, and medical/identity/visibility refusals use short context-specific wording instead of one repeated stock response.
 - Live-call timing showed Qwen replies arriving 0.28-1.02 seconds after dispatcher transcription; the perceived silence was before that, during turn closure and CPU ASR. Caller turns with about one second or more of speech now publish one rotating filler before ASR and transcribe while it is spoken; shorter turns get no filler, ASR misses ask for a repeat, and the agent no longer adds a second Qwen-stage filler.
+- **Phone TTS (opt-in):** `CS_TTS_PROVIDER=elevenlabs` + `ELEVENLABS_API_KEY` (`.env` only) speaks call audio through ElevenLabs `eleven_flash_v2_5`, premade voice Sarah, `ulaw_8000` straight onto the media stream. Any error/timeout (`CS_ELEVENLABS_TIMEOUT_S`, default 4) falls back to Kokoro for that line; 401/402/403 (bad key, quota) parks ElevenLabs for 10 min. Fillers and the repeat prompt are prewarmed and cached per process. `/voice/status.tts` shows the provider, never the key. **Free tier: 10,000 chars/month**; check.py mocks it. Measured from ZGX: ElevenLabs about 1.7-2.0 s to first audio when not cached, Kokoro 0.10 s for a whole clip. Default stays Kokoro; enabling needs an API restart.
 - Stub docstrings say Parakeet/Kokoro land with **Naman**, ownership table says **Pratham** owns `voice/` — Naman is doing it now, table should be updated.
 - The WEAPON demo promotes to SEVERE and uses the scripted transcript only while SignalWire is disabled. When enabled, the live call uses a short SJSU/MacQuarrie opener, answers one dispatcher question at a time, remembers repeat requests, publishes dispatcher speech to the dashboard, uses current-camera facts for common answers, and reserves bounded Qwen for unmatched questions.
 - Live call facts advance only on observed Camera 1 to 2 to 3 handoffs. Overlay presence also updates whether the person is currently visible, so the agent does not claim a subject remains on screen after the box clears.
@@ -94,6 +95,7 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - web: AI models card and System page AI models section (models actually running); System page rebuilt (full height camera status grid, stat cards); one camera status helper for tiles, pins, lists and header (MJPEG online from first frame until error, with 5 s retry; video online from frames; 10 s timeout); removed hard-coded fps (fix 10 to 10h)
 - web: SignalWire voice wiring (`2f5a0d0`) - call label shows SignalWire call / SignalWire call failed / Simulated call from the live provider state (idle label follows `/voice/status` `signalwire.configured`); backend reset clears every open dashboard; `voice_busy` blocked auto-calls show the "Declined by server" note; incident-not-found errors surface. JS only, no styling. (ayush)
 - voice: Twilio removed (`af75737`); SignalWire is the only provider. (ayush)
+- voice: ElevenLabs phone TTS with Kokoro fallback, opt-in via `CS_TTS_PROVIDER=elevenlabs` (see Voice). (ayush)
 - web: real SJSU site map (OpenStreetMap export, attribution and 'Illustrative layout' note), cameras named and placed on the backend camera graph, pursuit along walkways, ?map=plan fallback, ?mapedit=1 placement tool (fix 9b)
 
 ## Pending (owners)
@@ -102,7 +104,7 @@ Design and verified pre-change baseline: `docs/superpowers/specs/2026-09-25-comp
 | Who | What |
 |-----|------|
 | **Naman** | Ambient clips done. Optional more later |
-| **Voice / Ayush** | Optional voice upgrade beyond local Kokoro; current `af_heart` is Kokoro's highest-graded American voice, but 8 kHz phone audio remains less natural than paid conversational TTS |
+| **Voice / Ayush** | Decide whether to enable ElevenLabs on the live call. It sounds more natural but adds about 2 s before each uncached line; do a real-call listen test with `CS_TTS_PROVIDER=elevenlabs` |
 | **Indraneel** | Officer F1 polish |
 | **Ayush / open** | OSNet weights · temp calibration · MediaMTX optional |
 | **Ayush / api** | CallBrief event (when available) |

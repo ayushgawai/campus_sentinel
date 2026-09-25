@@ -10,7 +10,8 @@ This bridge never invents anything to say. It subscribes to the same
 call.transcript_delta envelopes the dashboard already renders (via
 ApiServer's per-incident fan-out) and voices every speaker=="sentinel" line
 verbatim — the phone hears exactly what the transcript panel shows, nothing
-more. Kokoro is the outbound TTS; if it has nothing to give us (unconfigured
+more. Outbound TTS is ElevenLabs (CS_TTS_PROVIDER=elevenlabs, ulaw_8000) with
+Kokoro fallback, else Kokoro; if neither gives audio (unconfigured
 CS_KOKORO_URL), we play a short synthesized tone instead of dead air, so the
 audio pipe itself is provably working even without real TTS.
 
@@ -43,7 +44,7 @@ except ImportError:  # pragma: no cover — degrade to silent rather than crash
 from contracts import CallTranscriptDelta, utcnow
 from services.brain.guardrails import Guardrails
 
-from .kokoro import get_tts
+from .elevenlabs import get_phone_tts
 from .parakeet import get_asr
 
 SendFn = Callable[[str], Awaitable[None]]
@@ -63,6 +64,7 @@ _SILENCE_FLUSH_BYTES = 16_000  # 500 ms at PCM16 mono 16kHz
 _MAX_UTTERANCE_BYTES = 480_000  # 15 seconds; discard longer noisy turns
 _FILLER_MIN_BYTES = 48_000  # one second of speech plus the closing silence
 _FILLERS = ("One moment.", "Let me check that.", "Give me a moment.")
+_REPEAT_PROMPT = "I didn't catch that. Please repeat."
 
 
 def _pcm16_to_mulaw(pcm16: bytes, in_rate: int) -> bytes:
@@ -146,8 +148,11 @@ class MediaStreamBridge:
             return
         if not await self._await_start():
             return
-        self._tts = get_tts()
+        self._tts = get_phone_tts()
         self._asr = get_asr()
+        prewarm = asyncio.create_task(
+            asyncio.to_thread(self._tts.prewarm, _FILLERS + (_REPEAT_PROMPT,))
+        )
         self._queue = self.subscribe(self.incident_id)
         for env in self.replay():
             await self._maybe_speak(env)
@@ -163,6 +168,7 @@ class MediaStreamBridge:
                 pass
             if self._asr_task is not None:
                 await self._asr_task
+            await prewarm
             self.unsubscribe(self.incident_id, self._queue)
 
     async def _await_start(self) -> bool:
@@ -276,7 +282,7 @@ class MediaStreamBridge:
                 CallTranscriptDelta(
                     incident_id=self.incident_id,
                     speaker="sentinel",
-                    text="I didn't catch that. Please repeat.",
+                    text=_REPEAT_PROMPT,
                     ts=utcnow(),
                 )
             )
@@ -324,12 +330,13 @@ class MediaStreamBridge:
             except asyncio.QueueEmpty:
                 break
         try:
-            pcm16 = await asyncio.to_thread(self._tts.synthesize, text)
-            audio = (
-                _pcm16_to_mulaw(pcm16, 16000)
-                if pcm16
-                else tone_mulaw(min(0.6, max(0.25, len(text) / 40)))
-            )
+            if hasattr(self._tts, "synthesize_mulaw"):
+                audio = await asyncio.to_thread(self._tts.synthesize_mulaw, text)
+            else:
+                pcm16 = await asyncio.to_thread(self._tts.synthesize, text)
+                audio = _pcm16_to_mulaw(pcm16, 16000)
+            if not audio:
+                audio = tone_mulaw(min(0.6, max(0.25, len(text) / 40)))
             await self._send_media(audio)
         finally:
             self._speaking = False

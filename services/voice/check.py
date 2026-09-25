@@ -372,7 +372,75 @@ async def _main() -> None:
     assert bridge._asr_task is not None
     await bridge._asr_task
     assert asked[-1] == (rec.incident_id, "Is anyone hurt?")
+    _check_phone_tts()
     print("voice self-check OK")
+
+
+def _check_phone_tts() -> None:
+    """ElevenLabs is mocked: no network, no characters billed."""
+    import os
+    import urllib.error
+
+    from services.voice import elevenlabs
+
+    saved = {k: os.environ.get(k) for k in ("CS_TTS_PROVIDER", "ELEVENLABS_API_KEY")}
+
+    class _Kokoro:
+        calls = 0
+
+        def synthesize(self, _text):
+            self.calls += 1
+            return b"\x00\x10" * 1600  # 100 ms PCM16 16 kHz
+
+    class _Remote:
+        calls = 0
+        fail: Exception | None = None
+
+        def synthesize_mulaw(self, _text):
+            self.calls += 1
+            if self.fail is not None:
+                raise self.fail
+            return b"\xff" * 800
+
+    try:
+        kokoro, remote = _Kokoro(), _Remote()
+        tts = elevenlabs.PhoneTts(kokoro=kokoro, remote=remote)
+        os.environ.pop("ELEVENLABS_API_KEY", None)
+        os.environ["CS_TTS_PROVIDER"] = "elevenlabs"
+        # No key: Kokoro only, resampled to 8 kHz mulaw (1 byte/sample).
+        assert len(tts.synthesize_mulaw("Hello.")) == 800 and remote.calls == 0
+        assert elevenlabs.status()["provider"] == "kokoro"
+
+        os.environ["ELEVENLABS_API_KEY"] = "test-key-not-real"
+        assert elevenlabs.status()["provider"] == "elevenlabs"
+        assert "test-key-not-real" not in str(elevenlabs.status())
+        assert tts.synthesize_mulaw("One moment.") == b"\xff" * 800
+        assert tts.synthesize_mulaw("One moment.") == b"\xff" * 800
+        assert remote.calls == 1 and tts.last_provider == "elevenlabs"  # cached filler
+        tts.prewarm(("One moment.", "Let me check that."))
+        assert remote.calls == 2
+        tts.synthesize_mulaw("Let me check that.")
+        assert remote.calls == 2
+
+        remote.fail = TimeoutError()
+        kokoro.calls = 0
+        assert len(tts.synthesize_mulaw("A longer sentence that is not cached at all.")) == 800
+        assert kokoro.calls == 1 and tts.last_provider == "kokoro"
+        assert elevenlabs._state["parked_until"] == 0.0  # timeouts don't park
+
+        remote.fail = urllib.error.HTTPError("u", 401, "quota_exceeded", {}, None)
+        tts.synthesize_mulaw("Another uncached sentence for the quota path.")
+        assert elevenlabs.status()["parked_s"] > 0
+        before = remote.calls
+        tts.synthesize_mulaw("Parked, so this must not reach the remote.")
+        assert remote.calls == before and tts.last_provider == "kokoro"
+    finally:
+        elevenlabs._state["parked_until"] = 0.0
+        for k, v in saved.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
 
 
 if __name__ == "__main__":

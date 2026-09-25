@@ -357,6 +357,8 @@ async def main() -> None:
     code, voice_status = await _http_json(port, "GET", "/voice/status")
     assert code == 200
     assert voice_status["parakeet"] is False and voice_status["kokoro"] is False
+    assert voice_status["tts"]["fallback"] == "kokoro"
+    assert "ELEVENLABS_API_KEY" not in json.dumps(voice_status)
 
     # Ambient cameras are browser-decoded MP4, with byte ranges for seeking/looping.
     r, w = await asyncio.open_connection("127.0.0.1", port)

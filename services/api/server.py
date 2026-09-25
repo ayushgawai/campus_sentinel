@@ -205,6 +205,7 @@ class ApiServer:
             await self._api_post(reader, writer, path.split("?", 1)[0], headers)
             return
         if method == "GET" and (path == "/voice/status" or path.startswith("/voice/status?")):
+            from services.voice.elevenlabs import status as tts_status
             from services.voice.signalwire_bridge import service_ready, status as signalwire_status
 
             await self._http_json(
@@ -219,6 +220,7 @@ class ApiServer:
                     "kokoro": await asyncio.to_thread(
                         service_ready, os.environ.get("CS_KOKORO_URL", "")
                     ),
+                    "tts": tts_status(),
                     "scripted_voice": True,
                 },
             )
