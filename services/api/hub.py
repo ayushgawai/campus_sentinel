@@ -84,6 +84,7 @@ class DemoHub:
     _incidents: dict[str, IncidentRecord] = field(default_factory=dict, repr=False)
     _incident_seq: int = field(default=0, repr=False)
     on_reset: Callable[[], None] | None = field(default=None, repr=False)
+    camera_ready: Callable[[str], bool] | None = field(default=None, repr=False)
 
     async def publish(self, ev: Any) -> None:
         if isinstance(ev, IncidentUpsert) and ev.incident is not None:
@@ -406,10 +407,14 @@ class DemoHub:
         # Every field is measured. gpu_util and p95_ms go out as null rather than
         # a placeholder when there is no GPU to read or no router work yet.
         gpu_util, p95_ms, models_resident = await telemetry.sample()
-        # Wall has six real feeds (CLIP_BY_CAM); do not advertise phantom cam-07..12.
+        online = 0
+        for camera_id in WALL_CAMS:
+            ready = self.camera_ready(camera_id) if self.camera_ready else True
+            online += int(ready)
+            await self.publish(CameraOnline(camera_id=camera_id, online=ready, ts=_utcnow()))
         await self.publish(
             HealthStrip(
-                cameras_online=len(WALL_CAMS),
+                cameras_online=online,
                 cameras_total=len(WALL_CAMS),
                 models_resident=models_resident,
                 gpu_util=gpu_util,

@@ -8,7 +8,7 @@ import os
 import re
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import quote, urlencode
+from urllib.parse import quote, urlencode, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 
 _BLOCKED = frozenset({"911", "112", "999", "000", "110"})
@@ -85,6 +85,20 @@ def place_call(incident_id: str, *, config: SignalWireConfig | None = None) -> d
         payload = json.loads(response.read().decode())
     sid = payload.get("sid") or payload.get("call_sid")
     return {"ok": bool(sid), "call_sid": sid, "incident_id": incident_id}
+
+
+def service_ready(url: str) -> bool:
+    """Probe the service's /health endpoint; configuration alone is not readiness."""
+    if not url:
+        return False
+    try:
+        parts = urlsplit(url)
+        health_url = urlunsplit((parts.scheme, parts.netloc, "/health", "", ""))
+        with urlopen(health_url, timeout=1) as response:
+            payload = json.loads(response.read().decode())
+        return payload.get("ok") is True
+    except (OSError, ValueError, json.JSONDecodeError):
+        return False
 
 
 def status() -> dict[str, Any]:

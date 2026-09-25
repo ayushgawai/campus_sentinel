@@ -61,6 +61,10 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - `DemoHub` is the in-memory authority for the current demo run. Manual report, dispatch, confirm, dismiss, broadcast, and reset now use REST and publish through the existing incident WebSocket events; live UI actions no longer claim local success when the API is unavailable.
 - Reset clears incidents, replay, counters, voice state, guardrail history, and the manual incident sequence, then restores only camera/health baseline state.
 
+## Live readiness
+- Camera heartbeats are limited to the six configured wall feeds and report file-backed availability. `/voice/status` now probes the ASR and TTS `/health` endpoints with a short timeout; configured URLs alone are not reported Ready.
+- The frontend CSP permits HTTP(S) API probes while retaining the existing strict script/style policy.
+
 ## Done
 - Live C→D→E + Completion B + guardrails + AUDIT.md
 - Officer 911 script + cross-cam whereabouts + security re-alerts

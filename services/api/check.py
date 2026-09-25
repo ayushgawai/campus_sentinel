@@ -222,6 +222,10 @@ async def main() -> None:
     assert b"200" in raw and b'"ok":true' in raw.replace(b" ", b"")
     w.close()
 
+    code, voice_status = await _http_json(port, "GET", "/voice/status")
+    assert code == 200
+    assert voice_status["parakeet"] is False and voice_status["kokoro"] is False
+
     # Ambient cameras are browser-decoded MP4, with byte ranges for seeking/looping.
     r, w = await asyncio.open_connection("127.0.0.1", port)
     w.write(
@@ -242,15 +246,19 @@ async def main() -> None:
     r, w = await asyncio.open_connection("127.0.0.1", port)
     await _ws_handshake(r, w)
     types: list[str] = []
+    camera_ids: set[str] = set()
     for _ in range(40):
         env = await _recv_frame(r)
         types.append(env["type"])
+        if env["type"] == "camera.online":
+            camera_ids.add(env["camera_id"])
         if env["type"] == "incident.upsert":
             assert "incident" in env and env["incident"]["camera_id"] == "cam-01"
             assert env["incident"]["class_token"] == "WEAPON"
         if {"camera.online", "health.strip", "incident.upsert"}.issubset(types):
             break
     assert "camera.online" in types
+    assert camera_ids and camera_ids <= {f"cam-{i:02d}" for i in range(1, 7)}
     assert "health.strip" in types
     assert "incident.upsert" in types
 

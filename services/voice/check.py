@@ -20,6 +20,7 @@ from services.voice import agent as agent_mod  # noqa: E402
 
 
 def _check_signalwire_request() -> None:
+    from services.voice import signalwire_bridge
     from services.voice.signalwire_bridge import SignalWireConfig, build_call_request
 
     cfg = SignalWireConfig(
@@ -44,6 +45,24 @@ def _check_signalwire_request() -> None:
     }
     auth = req.get_header("Authorization")
     assert auth == "Basic " + base64.b64encode(b"project-id:secret-token").decode()
+
+    class _Health:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return None
+
+        def read(self):
+            return b'{"ok": true}'
+
+    original = signalwire_bridge.urlopen
+    signalwire_bridge.urlopen = lambda *_args, **_kwargs: _Health()
+    try:
+        assert signalwire_bridge.service_ready("http://127.0.0.1:8093/transcribe") is True
+        assert signalwire_bridge.service_ready("") is False
+    finally:
+        signalwire_bridge.urlopen = original
 
 
 async def _main() -> None:
@@ -97,6 +116,35 @@ async def _main() -> None:
     assert any(
         getattr(e, "scenario_id", "").startswith("security_alert:") for e in events
     )
+
+    class _Qwen:
+        calls = 0
+
+        def answer_dispatcher(self, facts, question):
+            self.calls += 1
+            assert facts["camera_id"] == "cam-02"
+            return "The cameras do not confirm that detail."
+
+    live_events: list[object] = []
+
+    async def live_pub(ev: object) -> None:
+        live_events.append(ev)
+
+    qwen = _Qwen()
+    live = VoiceAgent(live_pub, zrt=qwen)  # type: ignore[arg-type]
+    await live.start_live_call(rec, brief)
+    opener = getattr(live_events[-2], "text", "")
+    assert opener.startswith("Hi, I am Campus Sentinel AI from San Jose State University.")
+    assert "MacQuarrie Hall" in opener and "visible long firearm" in opener
+    assert "One Washington Square" in await live.answer_dispatcher(rec.incident_id, "Where are you?")
+    assert "long firearm" in await live.answer_dispatcher(rec.incident_id, "What weapon do you see?")
+    assert "cannot confirm any injuries" in await live.answer_dispatcher(rec.incident_id, "Is anyone hurt?")
+    assert "toward the east corridor" in await live.answer_dispatcher(rec.incident_id, "Direction of travel?")
+    assert qwen.calls == 0
+    await live.notify_whereabouts("cam-02", assemble_call_brief(rec).address)
+    assert "east corridor" in await live.answer_dispatcher(rec.incident_id, "Where is the person now?")
+    assert await live.answer_dispatcher(rec.incident_id, "Is the door locked?") == "The cameras do not confirm that detail."
+    assert qwen.calls == 1
     print("voice self-check OK")
 
 

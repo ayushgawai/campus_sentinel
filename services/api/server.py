@@ -128,7 +128,12 @@ class ApiServer:
         self.host = host
         self.port = port
         self.clients: set[WsClient] = set()
-        self.hub = DemoHub(broadcast=self.broadcast)
+        self.hub = DemoHub(
+            broadcast=self.broadcast,
+            camera_ready=lambda camera_id: (
+                CLIP_BY_CAM[camera_id][0] / CLIP_BY_CAM[camera_id][1]
+            ).is_file(),
+        )
         self.vision = VisionBridge(self.hub) if vision_enabled() else None
         # incident_id -> live SignalWire stream listeners (one per real phone
         # call in progress). Fed by broadcast() below; nothing here changes
@@ -200,7 +205,7 @@ class ApiServer:
             await self._api_post(reader, writer, path.split("?", 1)[0], headers)
             return
         if method == "GET" and (path == "/voice/status" or path.startswith("/voice/status?")):
-            from services.voice.signalwire_bridge import status as signalwire_status
+            from services.voice.signalwire_bridge import service_ready, status as signalwire_status
 
             await self._http_json(
                 writer,
@@ -208,8 +213,12 @@ class ApiServer:
                 {
                     "ok": True,
                     "signalwire": signalwire_status(),
-                    "parakeet": bool(os.environ.get("CS_PARAKEET_URL")),
-                    "kokoro": bool(os.environ.get("CS_KOKORO_URL")),
+                    "parakeet": await asyncio.to_thread(
+                        service_ready, os.environ.get("CS_PARAKEET_URL", "")
+                    ),
+                    "kokoro": await asyncio.to_thread(
+                        service_ready, os.environ.get("CS_KOKORO_URL", "")
+                    ),
                     "scripted_voice": True,
                 },
             )
