@@ -210,9 +210,9 @@ const SEVERE_ID = "inc-severe-fall-001";
 /** Which camera currently hosts the severe track at demo time t (or null). */
 function severeCameraAt(t) {
   if (t < 28) return null;
-  if (t < 40) return "cam_05";
-  if (t < 52) return "cam_06";
-  if (t < 70) return "cam_03";
+  if (t < 40) return "cam-05";
+  if (t < 52) return "cam-06";
+  if (t < 70) return "cam-03";
   return null;
 }
 
@@ -243,7 +243,7 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
         {
           incident_id: MINOR_ID,
           track_id: "t-0312",
-          camera_id: "cam_03",
+          camera_id: "cam-03",
           peak_ts: atIso(minorAt),
           class_token: "RUN",
           class_logprob_calibrated: -0.18,
@@ -252,7 +252,7 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
           severity: "MINOR",
           description:
             "Person accelerating to a sustained run across an open walkway.",
-          location_text: cameraLabel("cam_03"),
+          location_text: cameraLabel("cam-03"),
           person_description:
             "Adult in dark jacket and light pants, moving quickly",
           state: "NEW",
@@ -306,7 +306,7 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
     severity: "SEVERE",
     description:
       "Person falls suddenly and remains on the ground, not moving.",
-    location_text: cameraLabel("cam_05"),
+    location_text: cameraLabel("cam-05"),
     person_description: "Adult, grey hoodie, dark backpack, short dark hair.",
     clip_uri: "file://clips/severe_fall_cam05.mp4",
     rules_fired: ["fast_descent", "orientation_flip", "stays_low"],
@@ -319,7 +319,7 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
     event: mkUpsert(
       {
         ...fallBase,
-        camera_id: "cam_05",
+        camera_id: "cam-05",
         peak_ts: atIso(severeAt),
         created_at: atIso(severeAt),
         updated_at: atIso(severeAt),
@@ -352,8 +352,8 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
   }
 
   const handoffs = [
-    { at: 40, camera_id: "cam_06", note: "Handoff to Camera 6" },
-    { at: 52, camera_id: "cam_03", note: "Handoff to Camera 3" },
+    { at: 40, camera_id: "cam-06", note: "Handoff to Camera 6" },
+    { at: 52, camera_id: "cam-03", note: "Handoff to Camera 3" },
   ];
   for (const h of handoffs) {
     script.push({
@@ -434,13 +434,13 @@ function pushCallExchange(script, severeAt) {
   const dispatchedAt = severeAt + 3.5; // 31.5
 
   const locResult = {
-    camera_id: "cam_05",
+    camera_id: "cam-05",
   };
   const personResult = {
     person_description: "Adult, grey hoodie, dark backpack, short dark hair.",
   };
   const statusResult = {
-    camera_id: "cam_06",
+    camera_id: "cam-06",
     in_view: true,
     state: "TRACKING",
   };
@@ -574,7 +574,7 @@ function pushCallExchange(script, severeAt) {
       incident_id: id,
       tool: "repeat_last",
       args: { field: "camera_id" },
-      result: { camera_id: "cam_03", in_view: true },
+      result: { camera_id: "cam-03", in_view: true },
       at: 52.5,
     }),
   });
@@ -592,8 +592,8 @@ function pushCallExchange(script, severeAt) {
  * highlight from (at - lead) until at, then clear on arrival.
  */
 export const MOCK_PREDICTED = [
-  { at: 40, camera_id: "cam_06", lead: 3 },
-  { at: 52, camera_id: "cam_03", lead: 3 },
+  { at: 40, camera_id: "cam-06", lead: 3 },
+  { at: 52, camera_id: "cam-03", lead: 3 },
 ];
 
 export function predictedCameraAt(t) {

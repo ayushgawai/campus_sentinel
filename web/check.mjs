@@ -2,6 +2,16 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import { cameraStream } from "./js/transport.js";
+import { createStore } from "./js/store.js";
+
+globalThis.requestAnimationFrame = (fn) => {
+  fn();
+  return 1;
+};
+
+const store = createStore();
+store.handle({ type: "camera.online", camera_id: "cam-01", online: true });
+assert.equal(store.getState().cameras["cam-01"]?.online, true);
 
 assert.deepEqual(cameraStream("cam-01", "ws://zgx-b505:8080/ws"), {
   kind: "mjpeg",

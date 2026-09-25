@@ -15,23 +15,23 @@ export const SITE = {
  * Ids and coordinates only — no place fields.
  */
 export const CAMERAS = [
-  { id: "cam_01", n: 1, x: 220, y: 170, heading: 135 },
-  { id: "cam_02", n: 2, x: 500, y: 150, heading: 180 },
-  { id: "cam_03", n: 3, x: 780, y: 170, heading: 225 },
-  { id: "cam_04", n: 4, x: 220, y: 420, heading: 90 },
-  { id: "cam_05", n: 5, x: 500, y: 440, heading: 0 },
-  { id: "cam_06", n: 6, x: 780, y: 420, heading: 270 },
+  { id: "cam-01", n: 1, x: 220, y: 170, heading: 135 },
+  { id: "cam-02", n: 2, x: 500, y: 150, heading: 180 },
+  { id: "cam-03", n: 3, x: 780, y: 170, heading: 225 },
+  { id: "cam-04", n: 4, x: 220, y: 420, heading: 90 },
+  { id: "cam-05", n: 5, x: 500, y: 440, heading: 0 },
+  { id: "cam-06", n: 6, x: 780, y: 420, heading: 270 },
 ];
 
 /** Undirected walk links for site-plan paths and mock pursuit. */
 export const ADJACENCY = [
-  ["cam_01", "cam_02"],
-  ["cam_02", "cam_03"],
-  ["cam_01", "cam_04"],
-  ["cam_02", "cam_05"],
-  ["cam_03", "cam_06"],
-  ["cam_04", "cam_05"],
-  ["cam_05", "cam_06"],
+  ["cam-01", "cam-02"],
+  ["cam-02", "cam-03"],
+  ["cam-01", "cam-04"],
+  ["cam-02", "cam-05"],
+  ["cam-03", "cam-06"],
+  ["cam-04", "cam-05"],
+  ["cam-05", "cam-06"],
 ];
 
 export const WALL_CAMERA_IDS = CAMERAS.map((c) => c.id);
@@ -145,17 +145,17 @@ export function redactPlaces(text) {
     if (!phrase) continue;
     const re = new RegExp(escapeRegExp(phrase), "gi");
     out = out.replace(re, (match, offset, full) => {
-      // Prefer a nearby cam_xx if present in the same string
+      // Prefer a nearby camera id if present in the same string.
       const window = full.slice(Math.max(0, offset - 40), offset + match.length + 40);
-      const near = window.match(/cam_0?([1-6])\b/i);
-      if (near) return cameraLabel(`cam_0${near[1]}`);
+      const near = window.match(/cam[-_]0?([1-6])\b/i);
+      if (near) return cameraLabel(`cam-0${near[1]}`);
       return "the camera area";
     });
   }
   // Raw camera ids → Camera N
-  out = out.replace(/\bcam_0*(\d+)\b/gi, (_, digits) => {
+  out = out.replace(/\bcam[-_]0*(\d+)\b/gi, (_, digits) => {
     const n = Number(digits);
-    const id = `cam_${String(n).padStart(2, "0")}`;
+    const id = `cam-${String(n).padStart(2, "0")}`;
     return cameraLabel(id);
   });
   return out;
