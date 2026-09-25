@@ -1,0 +1,414 @@
+/**
+ * Site plan extras — cameras list, tracking card, overview, legend.
+ * Shared by sidebar Site plan tab and the expand modal.
+ */
+
+import { WALL_CAMERA_IDS, cameraLabel } from "../site.js";
+import { DEMO_EPOCH_MS, predictedCameraAt } from "../mock.js";
+import {
+  classLabel,
+  severityLabel,
+  formatRel,
+  isOpenIncident,
+} from "../format.js";
+import { clear, el, setText } from "../dom.js";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js";
+
+function demoNowMs(state) {
+  return DEMO_EPOCH_MS + (state.demo?.t ?? 0) * 1000;
+}
+
+function activeHit(state, cameraId) {
+  for (const id of state.order) {
+    const inc = state.incidents[id];
+    if (!inc || inc.camera_id !== cameraId) continue;
+    if (!isOpenIncident(inc)) continue;
+    if (inc.severity === "SEVERE" || inc.severity === "MINOR") {
+      return { sev: inc.severity, inc };
+    }
+  }
+  return null;
+}
+
+function cameraStatus(state, cameraId) {
+  const cam = state.cameras?.[cameraId];
+  const online = cam ? Boolean(cam.online) : true;
+  const hit = activeHit(state, cameraId);
+  if (hit?.sev === "SEVERE") return { key: "severe", label: "Severe incident" };
+  if (hit?.sev === "MINOR") return { key: "minor", label: "Minor incident" };
+  if (!online) return { key: "offline", label: "Offline" };
+  return { key: "online", label: "Online" };
+}
+
+function peopleCount(state, cameraId) {
+  const boxes = state.cameras?.[cameraId]?.boxes;
+  return Array.isArray(boxes) ? boxes.length : 0;
+}
+
+function trackingIncident(state) {
+  for (const id of state.order) {
+    const inc = state.incidents[id];
+    if (inc && inc.state === "TRACKING") return inc;
+  }
+  return null;
+}
+
+function pursuitRoute(state, inc) {
+  if (!inc) return { steps: [], predicted: null };
+  const path = state.cameraPath?.[inc.incident_id];
+  let steps = Array.isArray(path) && path.length ? path.slice() : [];
+  if (!steps.length && inc.camera_id) steps = [inc.camera_id];
+  if (steps[steps.length - 1] !== inc.camera_id && inc.camera_id) {
+    steps = [...steps, inc.camera_id];
+  }
+  const t = state.demo?.t ?? 0;
+  const predicted =
+    (window.__transport?.mode || "MOCK") === "MOCK"
+      ? predictedCameraAt(t)
+      : null;
+  return { steps, predicted };
+}
+
+function formatElapsed(sec) {
+  const s = Math.max(0, Math.floor(sec));
+  const mm = Math.floor(s / 60);
+  const ss = s % 60;
+  return `+${mm}:${String(ss).padStart(2, "0")}`;
+}
+
+function stepTimes(steps, state, inc) {
+  const now = state.demo?.t ?? 0;
+  const startIso = inc?.created_at || inc?.peak_ts;
+  let startT = 0;
+  if (startIso) {
+    const ms = Date.parse(startIso);
+    if (Number.isFinite(ms)) startT = Math.max(0, (ms - DEMO_EPOCH_MS) / 1000);
+  }
+  const span = Math.max(0.1, now - startT);
+  return steps.map((_, i) => {
+    if (steps.length === 1) return formatElapsed(span);
+    return formatElapsed(span * (i / (steps.length - 1)));
+  });
+}
+
+export function legendMarkup() {
+  return `
+    <span class="leg-item"><i class="leg leg--ok"></i> Online</span>
+    <span class="leg-item"><i class="leg leg--minor"></i> Minor</span>
+    <span class="leg-item"><i class="leg leg--severe"></i> Severe</span>
+    <span class="leg-item"><i class="leg leg--off"></i> Offline</span>
+    <span class="leg-item"><i class="leg leg--path"></i> Pursuit</span>
+    <span class="leg-item"><i class="leg leg--pred"></i> Predicted</span>
+  `;
+}
+
+/**
+ * @param {HTMLElement} host
+ * @param {{ store: object, actions: object, layoutCtl?: object, columns?: 1|2, dense?: boolean }} opts
+ */
+export function mountSiteCamerasList(host, opts) {
+  const { store, actions, layoutCtl, columns = 2 } = opts;
+  host.classList.add(
+    "site-cams",
+    columns === 2 ? "site-cams--grid" : "site-cams--col",
+  );
+  host.replaceChildren();
+  host.classList.add("card", "card--compact");
+  const head = el("div", { className: "site-card__head" });
+  head.appendChild(el("h3", { className: "site-card__title", text: "Cameras" }));
+  const onlineEl = el("span", {
+    className: "site-card__meta",
+    text: "0 of 0 online",
+  });
+  head.appendChild(onlineEl);
+  host.appendChild(head);
+  const list = el("div", {
+    className: columns === 2 ? "site-cams__grid" : "site-cams__list",
+  });
+  host.appendChild(list);
+
+  /** @type {Map<string, HTMLElement>} */
+  const rows = new Map();
+
+  for (const id of WALL_CAMERA_IDS) {
+    const row = el("button", {
+      type: "button",
+      className: "site-cam-row",
+    });
+    row.dataset.cameraId = id;
+    row.setAttribute("aria-label", cameraLabel(id));
+
+    const mark = el("span", { className: "site-cam-row__mark mono" });
+    const n = Number(String(id).replace(/\D/g, "")) || "?";
+    setText(mark, String(n));
+
+    const body = el("div", { className: "site-cam-row__body" });
+    body.appendChild(
+      el("div", { className: "site-cam-row__name", text: cameraLabel(id) }),
+    );
+    const status = el("div", { className: "site-cam-row__status" });
+    status.appendChild(el("span", { className: "dot site-cam-row__dot" }));
+    status.appendChild(el("span", { className: "site-cam-row__status-text" }));
+    body.appendChild(status);
+
+    const people = el("div", {
+      className: "site-cam-row__people mono",
+      text: "0",
+    });
+
+    row.appendChild(mark);
+    row.appendChild(body);
+    row.appendChild(people);
+    list.appendChild(row);
+    rows.set(id, row);
+
+    row.addEventListener("pointerenter", () => {
+      window.__map?.setHover?.(id);
+    });
+    row.addEventListener("pointerleave", () => {
+      window.__map?.setHover?.(null);
+    });
+    row.addEventListener("click", () => {
+      layoutCtl?.swapMain?.(id);
+      document.dispatchEvent(
+        new CustomEvent(FOCUS_CAMERA_EVENT, { detail: { cameraId: id } }),
+      );
+      window.__map?.setFocus?.(id);
+      const hit = activeHit(store.getState(), id);
+      if (hit?.inc) actions.select(hit.inc.incident_id);
+    });
+  }
+
+  function paint(state) {
+    const focusId = window.__map?.getFocus?.() || null;
+    const hoverId = window.__map?.getHover?.() || null;
+    let onlineN = 0;
+    for (const id of WALL_CAMERA_IDS) {
+      if (cameraStatus(state, id).key !== "offline") onlineN += 1;
+    }
+    setText(
+      onlineEl,
+      `${onlineN} of ${WALL_CAMERA_IDS.length} online`,
+    );
+    for (const id of WALL_CAMERA_IDS) {
+      const row = rows.get(id);
+      const st = cameraStatus(state, id);
+      const people = peopleCount(state, id);
+      const dot = row.querySelector(".site-cam-row__dot");
+      const text = row.querySelector(".site-cam-row__status-text");
+      const peopleEl = row.querySelector(".site-cam-row__people");
+      dot.className = `dot site-cam-row__dot site-cam-row__dot--${st.key}`;
+      setText(text, st.label);
+      const peopleLabel =
+        people === 1 ? "1 person" : `${people} people`;
+      setText(peopleEl, peopleLabel);
+      peopleEl.title = peopleLabel;
+      row.classList.toggle("is-online", st.key === "online");
+      row.classList.toggle("is-focus", focusId === id);
+      row.classList.toggle("is-hover", hoverId === id);
+      row.classList.toggle("is-severe", st.key === "severe");
+      row.classList.toggle("is-minor", st.key === "minor");
+      row.classList.toggle("is-offline", st.key === "offline");
+    }
+  }
+
+  paint(store.getState());
+  const unsub = store.subscribe(paint);
+  const onMapHover = () => paint(store.getState());
+  document.addEventListener("sentinel:map-hover", onMapHover);
+  document.addEventListener("sentinel:map-focus", onMapHover);
+
+  return {
+    paint,
+    destroy() {
+      unsub();
+      document.removeEventListener("sentinel:map-hover", onMapHover);
+      document.removeEventListener("sentinel:map-focus", onMapHover);
+    },
+  };
+}
+
+/**
+ * @param {HTMLElement} host
+ * @param {{ store: object, vertical?: boolean }} opts
+ */
+export function mountTrackingCard(host, opts) {
+  const { store, vertical = false } = opts;
+
+  function paint(state) {
+    clear(host);
+    host.classList.add(
+      "site-track",
+      ...(vertical ? ["site-track--vertical"] : []),
+    );
+    if (!vertical) host.classList.remove("site-track--vertical");
+    const inc = trackingIncident(state);
+    if (!inc) {
+      host.classList.add("card", "card--compact");
+      const empty = el("p", { className: "site-track__empty" });
+      empty.appendChild(
+        el("span", {
+          className: "site-track__empty-dot",
+          attrs: { "aria-hidden": "true" },
+        }),
+      );
+      empty.appendChild(
+        el("span", { text: "No active tracking" }),
+      );
+      host.appendChild(empty);
+      return;
+    }
+
+    host.classList.add("card", "card--compact", "site-track--active");
+    const head = el("div", { className: "site-track__head" });
+    const titles = el("div", { className: "site-track__titles" });
+    const typeRow = el("div", { className: "site-track__type-row" });
+    typeRow.appendChild(
+      el("span", {
+        className: "site-track__type",
+        text: classLabel(inc.class_token),
+      }),
+    );
+    typeRow.appendChild(
+      el("span", {
+        className: `card-chip card-chip--${inc.severity === "SEVERE" ? "severe" : "minor"}`,
+        text: severityLabel(inc.severity),
+      }),
+    );
+    titles.appendChild(typeRow);
+    head.appendChild(titles);
+    head.appendChild(
+      el("div", {
+        className: "site-track__ago mono",
+        text: formatRel(inc.created_at || inc.peak_ts, demoNowMs(state)),
+      }),
+    );
+    host.appendChild(head);
+
+    const { steps, predicted } = pursuitRoute(state, inc);
+    const times = stepTimes(steps, state, inc);
+    const route = el("div", {
+      className: vertical ? "site-track__route site-track__route--v" : "site-track__route",
+    });
+
+    steps.forEach((camId, i) => {
+      if (i > 0) {
+        const arrow = el("span", {
+          className: "site-track__arrow",
+          attrs: { "aria-hidden": "true" },
+        });
+        arrow.appendChild(el("span", { className: "site-track__arrow-line" }));
+        arrow.appendChild(
+          el("span", { className: "site-track__arrow-chev", text: "›" }),
+        );
+        route.appendChild(arrow);
+      }
+      const step = el("div", {
+        className:
+          "site-track__step" +
+          (camId === inc.camera_id ? " is-current" : ""),
+      });
+      const mark = el("span", { className: "site-track__cam" });
+      setText(mark, cameraLabel(camId));
+      step.appendChild(mark);
+      step.appendChild(
+        el("span", { className: "site-track__time mono", text: times[i] }),
+      );
+      route.appendChild(step);
+    });
+
+    if (predicted && !steps.includes(predicted)) {
+      {
+        const arrow = el("span", {
+          className: "site-track__arrow",
+          attrs: { "aria-hidden": "true" },
+        });
+        arrow.appendChild(el("span", { className: "site-track__arrow-line" }));
+        arrow.appendChild(
+          el("span", { className: "site-track__arrow-chev", text: "›" }),
+        );
+        route.appendChild(arrow);
+      }
+      const pred = el("div", {
+        className: "site-track__step is-predicted",
+      });
+      const mark = el("span", { className: "site-track__cam" });
+      setText(mark, cameraLabel(predicted));
+      pred.appendChild(mark);
+      pred.appendChild(
+        el("span", { className: "site-track__time", text: "next" }),
+      );
+      route.appendChild(pred);
+    }
+
+    host.appendChild(route);
+  }
+
+  paint(store.getState());
+  return { paint, destroy: store.subscribe(paint) };
+}
+
+/**
+ * @param {HTMLElement} host
+ * @param {{ store: object, compact?: boolean }} opts
+ */
+export function mountSiteOverview(host, opts) {
+  const { store, compact = false } = opts;
+
+  function paint(state) {
+    clear(host);
+    host.classList.add("site-overview");
+    if (compact) host.classList.add("site-overview--compact");
+    else host.classList.remove("site-overview--compact");
+    host.appendChild(
+      el("h3", { className: "site-plan__h", text: "Site overview" }),
+    );
+    const grid = el("div", { className: "site-overview__grid" });
+
+    const online = state.health?.cameras_online ?? 0;
+    const total = state.health?.cameras_total ?? WALL_CAMERA_IDS.length;
+    let active = 0;
+    let people = 0;
+    let lastEsc = null;
+    for (const id of state.order) {
+      const inc = state.incidents[id];
+      if (!inc) continue;
+      if (isOpenIncident(inc)) active += 1;
+      if (inc.severity === "SEVERE") {
+        const ts = inc.created_at || inc.peak_ts;
+        if (ts && (!lastEsc || Date.parse(ts) > Date.parse(lastEsc))) {
+          lastEsc = ts;
+        }
+      }
+    }
+    for (const id of WALL_CAMERA_IDS) {
+      people += peopleCount(state, id);
+    }
+
+    const cells = [
+      ["Cameras online", `${online} of ${total}`],
+      ["Active incidents", String(active)],
+      ["People tracked", String(people)],
+      [
+        "Last escalation",
+        lastEsc
+          ? formatRel(lastEsc, demoNowMs(state))
+          : "None",
+      ],
+    ];
+    for (const [label, value] of cells) {
+      const cell = el("div", { className: "site-overview__cell" });
+      cell.appendChild(
+        el("div", { className: "site-overview__label", text: label }),
+      );
+      cell.appendChild(
+        el("div", { className: "site-overview__value mono", text: value }),
+      );
+      grid.appendChild(cell);
+    }
+    host.appendChild(grid);
+  }
+
+  paint(store.getState());
+  return { paint, destroy: store.subscribe(paint) };
+}

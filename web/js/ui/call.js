@@ -1,228 +1,367 @@
-/* Call console — playbook §04-F, reduced to what the wire carries.
- *
- * Two columns: both sides of the transcript, and the tool calls landing live.
- * The tool column is the visible proof of the agentic loop — every fact spoken
- * traces back to a lookup.
- *
- * Consumes contracts/events.py :: CallTranscriptDelta and ToolCallLive, both
- * published by services/voice/agent.py.
- *
- * The Call Brief column is gone. services/brain assembles a CallBrief
- * (assemble_call_brief, called from DemoHub._maybe_start_voice) but it is never
- * serialized onto the socket — there is no event type carrying one — so the
- * browser has no way to obtain it.
- */
+/** Call Console — single chat thread + tool cards. No floating overlay. */
 
-import { h, mount, clear, fmtUtcTime } from './dom.js';
-import { icons } from './icons.js';
-import { Change } from '../store.js';
+import { DEMO_EPOCH_MS } from "../mock.js";
+import {
+  awaiting,
+  classLabel,
+  cameraLabel,
+  notReported,
+  personLabel,
+  stateLabel,
+  textOr,
+  formatTimeLocal,
+  formatRel,
+  toolKeyLabel,
+  toolNameLabel,
+  LOCATION_TOOL_KEYS,
+  HIDDEN_TOOL_KEYS,
+} from "../format.js";
+import { redactPlaces } from "../site.js";
+import { clear, el, setText } from "../dom.js";
 
-const SPEAKER_LABEL = {
-  dispatcher: 'Dispatcher',
-  sentinel: 'Sentinel',
-};
+const STREAM_MERGE_MS = 700;
+const CALL_STATES = new Set([
+  "DISPATCHED",
+  "TRACKING",
+  "RESOLVED",
+  "DISMISSED",
+]);
 
-/* How long after the last delta the stream is still considered active.
- *
- * There is no call.ended envelope, so the console cannot know a call finished
- * — it can only observe that deltas stopped arriving. The pill therefore
- * reports the state of the stream, not the state of the call. The gap is
- * generous because WEAPON_SCRIPT in services/voice/agent.py consumes its
- * after_s values as cumulative sleeps, which stretches the exchange to roughly
- * 52 seconds with a 9 second pause before the closing line. */
-const STALE_MS = 15000;
-
-function streaming(call) {
-  if (!call || !call.lastDeltaAt) return false;
-  return Date.now() - call.lastDeltaAt.getTime() < STALE_MS;
+function demoNowMs(state) {
+  return DEMO_EPOCH_MS + (state.demo?.t ?? 0) * 1000;
 }
 
-export function createCall(root, store, { onClose }) {
-  let headEl;
-  let turnsBody;
-  let toolsBody;
-  let cursorEl = null;
-  let lastTurnCount = 0;
-  let lastToolCount = 0;
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
 
-  function renderTurns(call) {
-    const grow = call.transcript.length > lastTurnCount;
-    lastTurnCount = call.transcript.length;
-    cursorEl = null;
+export function formatCallTimer(ms) {
+  const sec = Math.max(0, Math.floor(ms / 1000));
+  return `${pad2(Math.floor(sec / 60))}:${pad2(sec % 60)}`;
+}
 
-    clear(turnsBody);
-
-    if (!call.transcript.length) {
-      turnsBody.append(h('div', {
-        class: 'call-empty',
-        text: 'Waiting for the first transcript delta…',
-      }));
-      return;
-    }
-
-    const wrap = h('div', { class: 'turns' });
-
-    call.transcript.forEach((t, i) => {
-      const isLast = i === call.transcript.length - 1;
-      const bubble = h('div', { class: 'turn__bubble' }, [t.text]);
-
-      // a caret on the newest line reads as speech still arriving
-      if (isLast) {
-        cursorEl = h('span', {
-          class: 'turn__cursor',
-          'aria-hidden': 'true',
-          hidden: !streaming(call),
-        });
-        bubble.append(cursorEl);
-      }
-
-      wrap.append(h('div', { class: `turn turn--${t.speaker}` }, [
-        h('div', { class: 'turn__who' }, [
-          h('span', {
-            html: t.speaker === 'sentinel' ? icons.shield : icons.bell,
-            style: 'width:10px;height:10px;display:block',
-          }),
-          SPEAKER_LABEL[t.speaker] || t.speaker,
-        ]),
-        bubble,
-        h('div', { class: 'turn__ts', text: fmtUtcTime(t.ts) }),
-      ]));
-    });
-
-    turnsBody.append(wrap);
-
-    if (grow) turnsBody.scrollTop = turnsBody.scrollHeight;
+function dispatchedTs(inc, state) {
+  if (state?.call?.dispatchedAt) return state.call.dispatchedAt;
+  if (!inc?.timeline) return null;
+  for (const ev of inc.timeline) {
+    if (ev.state === "DISPATCHED" && ev.ts) return ev.ts;
   }
+  return null;
+}
 
-  function renderTools(call) {
-    const grow = call.toolCalls.length > lastToolCount;
-    lastToolCount = call.toolCalls.length;
+export function findCallIncident(state) {
+  const id = state.call?.incidentId;
+  if (id && state.incidents[id]) {
+    const inc = state.incidents[id];
+    if (CALL_STATES.has(inc.state)) return inc;
+  }
+  for (const iid of state.order) {
+    const inc = state.incidents[iid];
+    if (!inc) continue;
+    if (inc.severity === "SEVERE" && CALL_STATES.has(inc.state)) return inc;
+  }
+  return null;
+}
 
-    clear(toolsBody);
+/**
+ * Build chronological utterances. Merge only tight streaming chunks from the
+ * same speaker; never bridge across a speaker change or a long gap.
+ */
+export function buildThread(transcript) {
+  const lines = transcript || [];
+  /** @type {{ speaker: string, text: string, ts: string|null, lastMs: number }[]} */
+  const out = [];
+  for (const line of lines) {
+    const ms = line.ts ? Date.parse(line.ts) : NaN;
+    const text = line.text == null ? "" : String(line.text);
+    const last = out[out.length - 1];
+    const canMerge =
+      last &&
+      last.speaker === line.speaker &&
+      !Number.isNaN(ms) &&
+      !Number.isNaN(last.lastMs) &&
+      ms - last.lastMs <= STREAM_MERGE_MS;
 
-    if (!call.toolCalls.length) {
-      toolsBody.append(h('div', { class: 'call-empty', text: 'No tool calls yet.' }));
-      return;
-    }
-
-    const wrap = h('div', { class: 'tools' });
-
-    for (const tc of call.toolCalls) {
-      const rows = Object.entries(tc.result).map(([k, v]) => {
-        const val = Array.isArray(v)
-          ? v.map((x) => (typeof x === 'number' ? x.toFixed(4) : x)).join(', ')
-          : String(v);
-        return h('div', { class: 'tool__kv' }, [
-          h('b', { text: `${k}: ` }),
-          val,
-        ]);
+    if (canMerge) {
+      const needSpace =
+        last.text.length > 0 &&
+        text.length > 0 &&
+        !/\s$/.test(last.text) &&
+        !/^\s/.test(text);
+      last.text += (needSpace ? " " : "") + text;
+      last.lastMs = ms;
+      last.ts = line.ts ?? last.ts;
+    } else {
+      out.push({
+        speaker: line.speaker,
+        text,
+        ts: line.ts ?? null,
+        lastMs: Number.isNaN(ms) ? 0 : ms,
       });
-
-      wrap.append(h('div', { class: 'tool' }, [
-        h('div', { class: 'tool__top' }, [
-          h('span', { class: 'tool__name', text: `${tc.tool}()` }),
-          h('span', { class: 'tool__ts', text: fmtUtcTime(tc.ts) }),
-        ]),
-        ...rows,
-      ]));
     }
-
-    wrap.append(h('div', { class: 'call__note' },
-      'Lookups only. Every fact the system states on a call is read from the '
-      + 'incident record or the camera map. Where it holds no fact, it says it '
-      + 'cannot confirm.'));
-
-    toolsBody.append(wrap);
-
-    if (grow) toolsBody.scrollTop = toolsBody.scrollHeight;
   }
+  return out;
+}
 
-  function renderHead(call) {
-    const live = streaming(call);
-    clear(headEl);
+function formatToolValue(key, value) {
+  if (value == null) return notReported();
+  if (key === "camera_id") return cameraLabel(String(value));
+  if (key === "state") return stateLabel(String(value));
+  if (key === "track_id") return personLabel(String(value));
+  if (key === "peak_ts") return formatTimeLocal(String(value));
+  if (key === "elapsed_seconds") return `${value} s`;
+  if (key === "in_view") return value ? "Yes" : "No";
+  if (typeof value === "string") return redactPlaces(value);
+  return String(value);
+}
 
-    headEl.append(
-      h('div', { class: 'panel__head-l' }, [
-        h('div', { class: 'eyebrow eyebrow--alert', text: 'Simulated call · 911' }),
-        h('h2', {
-          class: 'panel__title',
-          id: 'call-title',
-          text: 'Live transcript',
-        }),
-      ]),
-      h('div', { class: 'panel__head-r' }, [
-        h('span', {
-          class: `callstat${live ? '' : ' callstat--ended'}`,
-          // No call.ended event exists — this reports the stream, not the call.
-          title: live
-            ? 'Transcript deltas are arriving'
-            : `No transcript delta in the last ${STALE_MS / 1000}s`,
-        }, [
-          h('span', { class: 'callstat__dot', 'aria-hidden': 'true' }),
-          live ? 'Receiving' : 'Idle',
-        ]),
-        h('button', {
-          class: 'panelbtn',
-          type: 'button',
-          'aria-label': 'Close the transcript and return to the campus map',
-          onClick: () => onClose(),
-        }, [
-          h('span', { html: icons.pin }),
-          h('span', { class: 'panelbtn__text', text: 'Map' }),
-        ]),
-      ]),
+function appendDl(parent, obj, rawHost) {
+  if (!obj || typeof obj !== "object") {
+    parent.appendChild(
+      el("div", { className: "call-tool__empty", text: notReported() }),
     );
+    return;
   }
-
-  function render() {
-    const state = store.getState();
-    const call = store.activeCall();
-
-    root.hidden = !(state.callVisible && call);
-    if (root.hidden) return;
-
-    renderHead(call);
-    renderTurns(call);
-    renderTools(call);
+  const entries = Object.entries(obj);
+  if (!entries.length) {
+    parent.appendChild(
+      el("div", { className: "call-tool__empty", text: notReported() }),
+    );
+    return;
   }
-
-  headEl = h('div', { class: 'panel__head' });
-  turnsBody = h('div', { class: 'call__colbody', 'aria-live': 'polite' });
-  toolsBody = h('div', { class: 'call__colbody', 'aria-live': 'polite' });
-
-  function column(label, body) {
-    return h('div', { class: 'call__col' }, [
-      h('div', { class: 'call__colhead' }, [
-        h('div', { class: 'eyebrow eyebrow--muted', text: label }),
-      ]),
-      body,
-    ]);
-  }
-
-  mount(root,
-    headEl,
-    h('div', { class: 'panel__body panel__body--flush' }, [
-      h('div', { class: 'call' }, [
-        column('Transcript · services/voice', turnsBody),
-        column('Tool calls · live', toolsBody),
-      ]),
-    ]),
+  const RAW_KEYS = HIDDEN_TOOL_KEYS;
+  const visible = entries.filter(
+    ([k]) => !RAW_KEYS.has(k) && !LOCATION_TOOL_KEYS.has(k),
   );
 
-  render();
+  if (visible.length) {
+    const dl = el("dl", { className: "call-tool__dl" });
+    for (const [k, v] of visible) {
+      dl.appendChild(el("dt", { text: toolKeyLabel(k) }));
+      const dd = el("dd", { text: formatToolValue(k, v) });
+      dd.title = formatToolValue(k, v);
+      dl.appendChild(dd);
+    }
+    parent.appendChild(dl);
+  } else {
+    parent.appendChild(
+      el("div", { className: "call-tool__empty", text: notReported() }),
+    );
+  }
+  if (rawHost) rawHost.replaceChildren();
+}
 
-  store.subscribe((_state, kind) => {
-    if (kind === Change.CALL) render();
+/**
+ * Full Call Console page — white cards on dotted carbon (matches Call tab).
+ */
+export function mountCallHost(host, store) {
+  host.innerHTML = `
+    <div class="call-console">
+      <header class="card call-head-card" data-head>
+        <div class="call-head-card__title-row">
+          <h2 class="call-head-card__title" data-class>No active call</h2>
+          <span class="card-chip card-chip--dispatch" data-sim hidden>SIMULATED</span>
+        </div>
+        <span class="call-head-card__timer mono" data-timer>00:00</span>
+        <p class="call-head-card__meta" data-meta></p>
+      </header>
+
+      <div class="call-console__grid">
+        <section class="card chat-card call-console__chat" aria-label="Conversation">
+          <h3 class="card__title call-console__section-h">Conversation</h3>
+          <div class="call-console__chat-scroll" data-chat></div>
+        </section>
+        <section class="call-console__tools" aria-label="Live tools" data-tools></section>
+      </div>
+    </div>
+  `;
+
+  const classEl = host.querySelector("[data-class]");
+  const simEl = host.querySelector("[data-sim]");
+  const metaEl = host.querySelector("[data-meta]");
+  const timerEl = host.querySelector("[data-timer]");
+  const chatScroll = host.querySelector("[data-chat]");
+  const toolsHost = host.querySelector("[data-tools]");
+
+  let lastThreadLen = -1;
+  let lastToolCount = -1;
+  let stickChat = true;
+  let stickTools = true;
+
+  chatScroll.addEventListener("scroll", () => {
+    const gap =
+      chatScroll.scrollHeight - chatScroll.scrollTop - chatScroll.clientHeight;
+    stickChat = gap < 48;
+  });
+  toolsHost.addEventListener("scroll", () => {
+    const gap =
+      toolsHost.scrollHeight - toolsHost.scrollTop - toolsHost.clientHeight;
+    stickTools = gap < 48;
   });
 
-  /* The pill and the caret age out on their own once deltas stop, so they need
-   * a tick of their own. Only the head is redrawn — re-rendering the columns
-   * here would throw away the operator's scroll position. */
-  setInterval(() => {
-    if (root.hidden) return;
-    const call = store.activeCall();
-    if (!call) return;
-    renderHead(call);
-    if (cursorEl) cursorEl.hidden = !streaming(call);
-  }, 3000);
+  function renderChat(thread) {
+    clear(chatScroll);
+    if (!thread.length) {
+      chatScroll.appendChild(
+        el("p", {
+          className: "card__meta",
+          text: "Awaiting dispatch. The console opens when a severe incident is handed to a unit.",
+        }),
+      );
+      return;
+    }
+    for (const u of thread) {
+      const row = el("div", {
+        className: `chat-msg chat-msg--${u.speaker}`,
+      });
+      row.appendChild(
+        el("div", {
+          className: "chat-msg__who",
+          text: u.speaker === "dispatcher" ? "Dispatcher" : "Sentinel",
+        }),
+      );
+      row.appendChild(
+        el("div", {
+          className: "chat-msg__bubble",
+          text: redactPlaces(u.text),
+        }),
+      );
+      chatScroll.appendChild(row);
+    }
+  }
+
+  function renderTools(tools) {
+    clear(toolsHost);
+    if (!tools.length) {
+      const empty = el("div", { className: "card tool-card" });
+      empty.appendChild(
+        el("p", {
+          className: "card__meta",
+          text: "No tools used yet.",
+        }),
+      );
+      toolsHost.appendChild(empty);
+      return;
+    }
+    tools.forEach((t, i) => {
+      const card = el("article", {
+        className: `card tool-card${i === tools.length - 1 ? " call-tool--flash" : ""}`,
+      });
+      const head = el("header", { className: "tool-card__head" });
+      head.appendChild(
+        el("h3", {
+          className: "tool-card__name",
+          text: toolNameLabel(t.tool),
+        }),
+      );
+      if (t.ts) {
+        head.appendChild(
+          el("span", {
+            className: "card__label mono",
+            text: formatTimeLocal(t.ts),
+          }),
+        );
+      }
+      card.appendChild(head);
+
+      const body = el("div", { className: "tool-card__body" });
+      if (t.result && typeof t.result === "object") {
+        appendDl(body, t.result, null);
+      } else if (t.args && typeof t.args === "object") {
+        appendDl(body, t.args, null);
+      } else {
+        body.appendChild(
+          el("p", { className: "card__meta", text: notReported() }),
+        );
+      }
+      card.appendChild(body);
+      toolsHost.appendChild(card);
+      if (i === tools.length - 1) {
+        window.setTimeout(() => card.classList.remove("call-tool--flash"), 600);
+      }
+    });
+  }
+
+  function updateTimer(inc, state) {
+    const dts = dispatchedTs(inc, state);
+    if (!dts) {
+      setText(timerEl, "00:00");
+      return;
+    }
+    setText(timerEl, formatCallTimer(demoNowMs(state) - Date.parse(dts)));
+  }
+
+  function render(state) {
+    const inc = findCallIncident(state);
+    if (!inc) {
+      setText(classEl, "No active call");
+      setText(metaEl, "");
+      setText(timerEl, "00:00");
+      simEl.hidden = true;
+      if (lastThreadLen !== 0) {
+        renderChat([]);
+        lastThreadLen = 0;
+      }
+      if (lastToolCount !== 0) {
+        renderTools([]);
+        lastToolCount = 0;
+      }
+      return;
+    }
+
+    setText(classEl, `${classLabel(inc.class_token)} call`);
+    simEl.hidden = false;
+    const dts = dispatchedTs(inc, state);
+    const started = formatRel(
+      dts || inc.created_at || inc.peak_ts,
+      demoNowMs(state),
+    );
+    setText(
+      metaEl,
+      `${cameraLabel(inc.camera_id)} · started ${started}`,
+    );
+    updateTimer(inc, state);
+
+    const all = (state.call?.transcript || []).filter(
+      (t) => !state.call.incidentId || t.incident_id === inc.incident_id,
+    );
+    const tools = (state.call?.tools || []).filter(
+      (t) => !state.call.incidentId || t.incident_id === inc.incident_id,
+    );
+
+    const thread = buildThread(all);
+    if (thread.length !== lastThreadLen) {
+      renderChat(thread);
+      lastThreadLen = thread.length;
+    }
+    if (tools.length !== lastToolCount) {
+      renderTools(tools);
+      lastToolCount = tools.length;
+    }
+
+    if (stickChat) chatScroll.scrollTop = chatScroll.scrollHeight;
+    if (stickTools) toolsHost.scrollTop = toolsHost.scrollHeight;
+  }
+
+  render(store.getState());
+  const unsub = store.subscribe(render);
+  const tick = window.setInterval(() => {
+    const state = store.getState();
+    const inc = findCallIncident(state);
+    if (inc) updateTimer(inc, state);
+  }, 1000);
+
+  return () => {
+    unsub();
+    window.clearInterval(tick);
+  };
+}
+
+/** @deprecated overlay removed — keep export for autofollow import. */
+export function mountCall() {
+  return () => {};
+}
+
+export function mountCallPage(el, store) {
+  return mountCallHost(el, store);
 }
