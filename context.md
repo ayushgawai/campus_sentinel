@@ -49,7 +49,7 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - Outbound calls use `/signalwire/voice`; bidirectional audio uses `/signalwire/media`. `GET /voice/status` reports configuration without returning secrets. `CS_KILL_SWITCH=1` blocks calling.
 - The media bridge voices live `speaker=="sentinel"` transcript lines via Kokoro and closes dispatcher turns after 500 ms of silence. One worker serializes ASR and answers; overlong 15-second/noisy turns are discarded as one turn instead of split into multiple answers.
 - Kokoro and faster-whisper endpoints are live on ports 8092/8093 in an isolated `services/voice/.venv`; the UI keeps the historical Parakeet label, but the runtime backend is faster-whisper `base.en` on CPU.
-- SignalWire outbound calling, public WSS media, inbound audio, ASR, Qwen fallback, Kokoro return audio, and dashboard transcript transport were validated on real calls. Outbound calling is currently disabled with `CS_SIGNALWIRE_ENABLED=0` while local conversation tuning continues.
+- SignalWire outbound calling, public WSS media, inbound audio, ASR, Qwen fallback, Kokoro return audio, and dashboard transcript transport were validated on real calls. The final demo tmux session runs with `CS_SIGNALWIRE_ENABLED=1`; use `CS_KILL_SWITCH=1` before non-call testing.
 - API/WebSocket startup now seeds only camera and health state; it never creates the synthetic armed-intruder incident. Demo scenarios must be triggered explicitly, preventing provider-enabled restarts from placing an extra call before the intended dispatch.
 - A later looping-vision incident can never invoke SignalWire while a voice call is already active. The shared dispatch boundary blocks it as `voice_busy`; same-incident Camera 1 to 2 to 3 handoffs continue updating the existing call.
 - Phone-codec local simulation transcribed emergency, exact-address, repeat, current-location, and unknown-detail questions exactly. Time from end of speech to generated answer audio was 0.75 to 1.20 seconds; deterministic text answers were under 1 ms and one Qwen refusal took 365 ms.
@@ -73,8 +73,8 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - Camera heartbeats are limited to the six configured wall feeds and report file-backed availability. `/voice/status` now probes the ASR and TTS `/health` endpoints with a short timeout; configured URLs alone are not reported Ready.
 - The frontend CSP permits HTTP(S) API probes while retaining the existing strict script/style policy.
 
-## Frontend redesign handoff
-- `docs/FRONTEND_REDESIGN_PROMPT.md` is the clean-sheet Claude brief. It inventories the verified product and API behavior without anchoring the redesign to the current layout or source structure; the existing frontend must remain untouched as backup.
+## Frontend redesign
+- The new Live Operations layout is integrated on main in `5fe1f80`; the prior frontend remains recoverable from git at `5db9808`. `docs/FRONTEND_REDESIGN_PROMPT.md` is the clean-sheet brief used for the redesign.
 
 ## Done
 - Live C→D→E + Completion B + guardrails + AUDIT.md
