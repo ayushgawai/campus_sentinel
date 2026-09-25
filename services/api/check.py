@@ -297,6 +297,88 @@ async def main() -> None:
         srv.hub.broadcast = original_broadcast
         srv.hub._voice = None
 
+    # call.brief: one on dispatch, one per real camera handoff, in the bounded replay.
+    import services.voice.signalwire_bridge as sw
+    from contracts import call_brief_to_dict
+    from services.brain.call_brief import assemble_call_brief
+
+    class _BriefVoice:
+        active = False
+        handoffs: list[str] = []
+
+        def active_incident_id(self):
+            return "brief-1" if self.active else None
+
+        def busy(self):
+            return self.active
+
+        async def start_call(self, _rec, _brief):
+            self.active = True
+
+        async def start_live_call(self, rec, brief):
+            await self.start_call(rec, brief)
+
+        async def notify_whereabouts(self, camera_id, _address):
+            self.handoffs.append(camera_id)
+
+        async def cancel(self):
+            self.active = False
+
+    sent_env: list[dict] = []
+
+    async def capture(payload):
+        sent_env.append(payload)
+
+    saved_sw = (sw.load_config, sw.place_call)
+    sw.load_config = lambda: None  # never a real call from a check
+    sw.place_call = lambda *_a, **_k: {"ok": False, "skipped": True}
+    dispatched_before = set(DEFAULT_GUARDRAILS._dispatched)
+    hits_before = list(DEFAULT_GUARDRAILS._hour_hits)
+    brief_voice = _BriefVoice()
+    srv.hub.broadcast = capture
+    srv.hub._voice = brief_voice  # type: ignore[assignment]
+    try:
+        rec = replace(
+            result.record,
+            incident_id="brief-1",
+            camera_id="cam-01",
+            severity=Severity.SEVERE,
+            state=IncidentState.ALERTED,
+            rules_fired=["weapon"],
+        )
+        await srv.hub._maybe_start_voice(rec)
+        briefs = [e for e in sent_env if e["type"] == "call.brief"]
+        assert len(briefs) == 1 and briefs[0]["reason"] == "dispatch"
+        assert briefs[0]["incident_id"] == "brief-1" and briefs[0]["ts"]
+        assert set(briefs[0]["brief"]) == set(call_brief_to_dict(assemble_call_brief(rec)))
+        assert briefs[0]["brief"]["camera_id"] == "cam-01"
+        json.dumps(briefs[0])  # wire-safe
+        types = [e["type"] for e in sent_env]
+        assert types.index("incident.state_change") < types.index("call.brief")
+        for cam in ("cam-02", "cam-02", "cam-03"):
+            await srv.hub._on_incident(replace(rec, camera_id=cam))
+        briefs = [e for e in sent_env if e["type"] == "call.brief"]
+        assert [(b["reason"], b["brief"]["camera_id"]) for b in briefs] == [
+            ("dispatch", "cam-01"),
+            ("handoff", "cam-02"),
+            ("handoff", "cam-03"),
+        ]
+        assert brief_voice.handoffs == ["cam-02", "cam-02", "cam-03"]
+        assert [
+            e
+            for e in srv.hub.replay_events()
+            if e["type"] == "call.brief" and e["incident_id"] == "brief-1"
+        ] == briefs
+        await srv.hub.reset()
+        assert not srv.hub._brief_camera
+        assert not [e for e in srv.hub.replay_events() if e["type"] == "call.brief"]
+    finally:
+        sw.load_config, sw.place_call = saved_sw
+        DEFAULT_GUARDRAILS._dispatched = dispatched_before
+        DEFAULT_GUARDRAILS._hour_hits = hits_before
+        srv.hub.broadcast = original_broadcast
+        srv.hub._voice = None
+
     server = await asyncio.start_server(srv.handle, srv.host, 0)
     port = server.sockets[0].getsockname()[1]
 

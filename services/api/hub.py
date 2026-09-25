@@ -15,6 +15,7 @@ from typing import Any, Callable, Awaitable
 
 from contracts import (
     BBox,
+    CallBriefEvent,
     CameraOnline,
     DemoControl,
     HealthStrip,
@@ -26,6 +27,7 @@ from contracts import (
     OverlayBoxes,
     Severity,
     TimelineEvent,
+    call_brief_to_dict,
     event_to_dict,
     incident_to_dict,
 )
@@ -60,6 +62,7 @@ _REPLAY_TYPES = {
     "incident.state_change",
     "call.transcript_delta",
     "tool.call_live",
+    "call.brief",
 }
 
 
@@ -84,6 +87,8 @@ class DemoHub:
     _incidents: dict[str, IncidentRecord] = field(default_factory=dict, repr=False)
     _incident_seq: int = field(default=0, repr=False)
     _dispatch_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
+    # Camera of the last call.brief per incident: one brief per real handoff.
+    _brief_camera: dict[str, str] = field(default_factory=dict, repr=False)
     on_reset: Callable[[], None] | None = field(default=None, repr=False)
     camera_ready: Callable[[str], bool] | None = field(default=None, repr=False)
 
@@ -111,6 +116,17 @@ class DemoHub:
         if isinstance(ev, IncidentUpsert) and ev.incident is not None:
             await self._on_incident(ev.incident)
 
+    async def _publish_brief(self, brief: Any, reason: str) -> None:
+        self._brief_camera[brief.incident_id] = brief.camera_id
+        await self.publish(
+            CallBriefEvent(
+                incident_id=brief.incident_id,
+                reason=reason,  # type: ignore[arg-type]
+                brief=call_brief_to_dict(brief),
+                ts=_utcnow(),
+            )
+        )
+
     def replay_events(self) -> list[dict[str, Any]]:
         return list(self._replay)
 
@@ -133,6 +149,8 @@ class DemoHub:
             and rec.camera_id in {"cam-02", "cam-03", "cam-01"}
         ):
             brief = assemble_call_brief(rec)
+            if self._brief_camera.get(rec.incident_id) != rec.camera_id:
+                await self._publish_brief(brief, "handoff")
             await voice.notify_whereabouts(rec.camera_id, brief.address)
             return
         if "operator_report" not in getattr(rec, "rules_fired", []):
@@ -184,6 +202,7 @@ class DemoHub:
                     note="SignalWire call started" if signalwire else "Simulated call started",
                 )
             )
+            await self._publish_brief(brief, "dispatch")
             if signalwire:
                 await self._voice_agent().start_live_call(rec, brief)
             else:
@@ -267,6 +286,7 @@ class DemoHub:
             self.on_reset()
         self._replay.clear()
         self._incidents.clear()
+        self._brief_camera.clear()
         self._incident_seq = 0
         DEFAULT_GUARDRAILS._dispatched.clear()
         DEFAULT_GUARDRAILS._hour_hits.clear()

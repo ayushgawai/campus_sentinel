@@ -28,6 +28,7 @@ class EventType(str, Enum):
     TOOL_CALL_LIVE = "tool.call_live"
     DEMO_CONTROL = "demo.control"
     CAMERA_ONLINE = "camera.online"
+    CALL_BRIEF = "call.brief"  # additive 2026-09-25, approved by api owner
 
 
 @dataclass(frozen=True)
@@ -138,6 +139,20 @@ class CameraOnline:
         _opt_utc("ts", self.ts)
 
 
+@dataclass
+class CallBriefEvent:
+    """Facts-only brief the call is working from, on dispatch and each camera handoff."""
+
+    type: Literal["call.brief"] = EventType.CALL_BRIEF.value
+    incident_id: str = ""
+    reason: Literal["dispatch", "handoff"] = "dispatch"
+    brief: dict[str, Any] = field(default_factory=dict)  # call_brief_to_dict() output
+    ts: datetime | None = None
+
+    def __post_init__(self) -> None:
+        _opt_utc("ts", self.ts)
+
+
 SocketEvent = Union[
     IncidentUpsert,
     IncidentStateChange,
@@ -147,6 +162,7 @@ SocketEvent = Union[
     ToolCallLive,
     DemoControl,
     CameraOnline,
+    CallBriefEvent,
 ]
 
 

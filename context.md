@@ -97,6 +97,7 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - voice: Twilio removed (`af75737`); SignalWire is the only provider. (ayush)
 - brain: temperature-calibration plumbing, default off. `CS_CALIB_LOG` writes JSONL, `scripts/fit_temperature.py` fits T, `CS_VLM_TEMPERATURE` applies it (1.0 = identity). There is no labelled data yet, so T is not fitted. (ayush)
 - voice: ElevenLabs phone TTS with Kokoro fallback, opt-in via `CS_TTS_PROVIDER=elevenlabs` (see Voice). (ayush)
+- api: `call.brief` event (additive to frozen `EventType`, approved by Ayush as api owner). Envelope `{type, incident_id, reason: "dispatch"|"handoff", brief: call_brief_to_dict(...), ts}`; the hub publishes it after the DISPATCHED state change and once per real camera handoff (repeat upserts on the same camera send nothing), via the normal broadcast and bounded replay; reset clears it. The web store ignores unknown types, so no frontend change; the call panel still reads `incident.upsert`. (ayush)
 - web: real SJSU site map (OpenStreetMap export, attribution and 'Illustrative layout' note), cameras named and placed on the backend camera graph, pursuit along walkways, ?map=plan fallback, ?mapedit=1 placement tool (fix 9b)
 
 ## Pending (owners)
@@ -108,7 +109,6 @@ Design and verified pre-change baseline: `docs/superpowers/specs/2026-09-25-comp
 | **Voice / Ayush** | Decide whether to enable ElevenLabs on the live call. It sounds more natural; streaming now starts uncached lines in about 0.16 s; do a real-call listen test with `CS_TTS_PROVIDER=elevenlabs` |
 | **Indraneel** | Officer F1 polish |
 | **Ayush / open** | See `docs/OPEN_ML_ITEMS.md`. OSNet: stub with no callers; needs model code, weights, a crop path and a handoff consumer. Temperature: collect labelled rows with `CS_CALIB_LOG`, run `scripts/fit_temperature.py`, set `CS_VLM_TEMPERATURE`. MediaMTX: optional, document only; keep FileSource for the demo |
-| **Group → Ayush / api** | CallBrief event: **blocked on a contract decision, not data.** `assemble_call_brief()` already works, but `contracts/events.py` (frozen) has no brief event type, and the 2026-09-25 wiring spec/plan chose *not* to add one (the call panel reads `incident.upsert`). To proceed, the group must approve adding `call.brief` (payload = `call_brief_to_dict`) to `EventType`; the hub would then publish it on dispatch/handoff through the normal replay path |
 | **Web / Manav** | Browser-test the SignalWire wiring (`2f5a0d0`) against the live API; `node web/check.mjs` was not run (no node on ZGX) |
 | **Web / Manav** | Bump the `?v=` module cache tag for `store.js`, `transport.js`, `actions.js`, `modelStatus.js`, `ui/call.js`, `ui/operator.js` |
 | **Web / Manav** | Uncommitted on ZGX main: `live.js` leader-lines-under-dock order + 150 ms leave (`app.css`); review and commit or drop |

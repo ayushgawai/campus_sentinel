@@ -3,6 +3,7 @@
 from .call_brief import CallBrief, call_brief_to_dict
 from .events import (
     BBox,
+    CallBriefEvent,
     CallTranscriptDelta,
     CameraOnline,
     DemoControl,
@@ -28,6 +29,7 @@ from .incident import (
 __all__ = [
     "BBox",
     "CallBrief",
+    "CallBriefEvent",
     "CallTranscriptDelta",
     "CameraOnline",
     "DemoControl",
