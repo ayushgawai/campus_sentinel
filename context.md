@@ -45,7 +45,7 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - **cam-04..06:** Naman `feeds/naman/demo_clips` — VLM-assigned. See `docs/NAMAN_CLIPS.md`.
 
 ## Voice / SignalWire
-- Active provider: SignalWire Compatibility API (`signalwire_bridge`); legacy `twilio_bridge` remains inactive only for rollback. Credentials live in ZGX **`.env` only** (gitignored).
+- Active provider: SignalWire Compatibility API (`signalwire_bridge`) is the only outbound voice provider. Credentials live in ZGX **`.env` only** (gitignored).
 - Outbound calls use `/signalwire/voice`; bidirectional audio uses `/signalwire/media`. `GET /voice/status` reports configuration without returning secrets. `CS_KILL_SWITCH=1` blocks calling.
 - The media bridge voices live `speaker=="sentinel"` transcript lines via Kokoro and closes dispatcher turns after 500 ms of silence. One worker serializes ASR and answers; overlong 15-second/noisy turns are discarded as one turn instead of split into multiple answers.
 - Kokoro and faster-whisper endpoints are live on ports 8092/8093 in an isolated `services/voice/.venv`; the UI keeps the historical Parakeet label, but the runtime backend is faster-whisper `base.en` on CPU.

@@ -513,7 +513,7 @@
     <div class="rule"><span class="mark must">MUST</span><p><b>One explicit, defensible, measurable escalation decision.</b> Ours: all understanding is local, one calibrated threshold decides whether we reach outside the building, and what crosses is a voice and a text brief, never a frame.</p></div>
     <div class="rule"><span class="mark never">NEVER</span><p><b>On a call, never infer a fact.</b> Addresses, coordinates, building names and medical status are read from the Call Brief and camera map. If it is not in the brief, the system says it cannot confirm it.</p></div>
     <div class="rule"><span class="mark never">NEVER</span><p><b>Never dial a real emergency number.</b> Calls go only to a verified teammate's phone, and everything is labelled simulated in the UI, the README and the video.</p></div>
-    <div class="rule"><span class="mark never">NEVER</span><p><b>Never let Twilio do speech.</b> No <span class="mono">&lt;Say&gt;</span>, no <span class="mono">&lt;Gather input="speech"&gt;</span>. That would be cloud AI inference. We use Media Streams: Twilio carries raw audio, our models do all the speech work on the Nano.</p></div>
+    <div class="rule"><span class="mark never">NEVER</span><p><b>Never let SignalWire do speech.</b> No <span class="mono">&lt;Say&gt;</span>, no <span class="mono">&lt;Gather input="speech"&gt;</span>. That would be cloud AI inference. We use a bidirectional media stream: SignalWire carries raw audio, our models do all the speech work on the Nano.</p></div>
     <div class="rule"><span class="mark must">MUST</span><p><b>Everything lives in the repo.</b> The Nano is wiped at the end of the event.</p></div>
     <div class="rule"><span class="mark never">NEVER</span><p><b>Do not SSH into another team's device, saturate shared egress, or reboot and walk away.</b> A reboot kills Tailscale and needs someone physically in the lab.</p></div>
   </div>
@@ -580,7 +580,7 @@
       <li><b>Security notified always,</b> with the clip and the reasoning.</li>
       <li><b>Incident timeline,</b> appended to by every event, rendered live.</li>
       <li><b>Call Brief</b> assembled from record plus camera map plus tracking state. Lookups only.</li>
-      <li><b>Dispatch</b> via Twilio Media Streams to a verified teammate's phone. Browser console as the fallback.</li>
+      <li><b>Dispatch</b> via a SignalWire media stream to a verified teammate's phone. Browser console as the fallback.</li>
       <li><b>Agentic loop during the call:</b> lookup_location, get_suspect_status, get_elapsed_time, get_person_description, repeat_last.</li>
       <li><b>Audit log:</b> every action, reason, confidence, timestamp.</li>
     </ol>
@@ -608,7 +608,7 @@
 
   <figure>
     <div class="scroller">
-      <svg viewBox="0 0 1000 420" role="img" aria-label="Five containers on the Nano: mediamtx serves RTSP to the vision service, which sends escalations to the brain service and frames to the api service. Brain talks to HP Z Runtime on the host and to the voice service, and out to Twilio. The api service serves the dashboard over WebSocket and MJPEG.">
+      <svg viewBox="0 0 1000 420" role="img" aria-label="Five containers on the Nano: mediamtx serves RTSP to the vision service, which sends escalations to the brain service and frames to the api service. Brain talks to HP Z Runtime on the host and to the voice service, and out to SignalWire. The api service serves the dashboard over WebSocket and MJPEG.">
         <defs>
           <marker id="s1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--line-strong)"/></marker>
           <marker id="s2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--red)"/></marker>
@@ -659,7 +659,7 @@
         <text class="svc" x="862" y="150">call console</text>
 
         <rect x="852" y="250" width="132" height="80" rx="3" fill="var(--red-soft)" stroke="var(--red-line)" stroke-width="1.5"/>
-        <text class="d-h" x="862" y="274" fill="var(--red)">Twilio</text>
+        <text class="d-h" x="862" y="274" fill="var(--red)">SignalWire</text>
         <text class="svc" x="862" y="292" fill="var(--red)">carrier only</text>
         <text class="svc" x="862" y="308" fill="var(--red)">raw audio, no AI</text>
 
@@ -683,7 +683,7 @@
         <text class="d-a" x="24" y="394">Only the red line leaves the building, and it carries a voice and a text brief. Never a frame.</text>
       </svg>
     </div>
-    <figcaption>fig. 2 &nbsp; Five containers, Z Runtime on the host, Twilio as a dumb carrier outside the boundary.</figcaption>
+    <figcaption>fig. 2 &nbsp; Five containers, Z Runtime on the host, SignalWire as a dumb carrier outside the boundary.</figcaption>
   </figure>
 
   <h3 style="margin-top:30px">Why five services and not nine</h3>
@@ -795,7 +795,7 @@ Hard rules you must not break:
 - Every model call goes to the local ZRT endpoint. Never a cloud AI API.
 - Never place a real call to an emergency number. The dispatch path is a
   simulation and stays labelled as one.
-- Never use Twilio &lt;Say&gt; or &lt;Gather input="speech"&gt;. Speech happens on
+- Never use SignalWire &lt;Say&gt; or &lt;Gather input="speech"&gt;. Speech happens on
   our box only.
 - On a call, never infer an address, a location or a medical fact. Read
   them from the Call Brief.
@@ -817,7 +817,7 @@ My task right now is: <b>&lt;TASK&gt;</b></pre>
         <tr><td>contracts/</td><td><b>shared</b></td><td>Frozen after Tuesday night. Changes need a message to the group first</td></tr>
         <tr><td>services/vision/</td><td>Pratham</td><td>Decode, ring buffer, YOLO, ByteTrack, rules, VadCLIP, tracking</td></tr>
         <tr><td>services/brain/</td><td>Ayush</td><td>Sampler, adjudication, calibration, state machine, Call Brief, audit</td></tr>
-        <tr><td>services/voice/</td><td>Pratham</td><td>Parakeet, Kokoro, dispatcher prompt, Twilio bridge</td></tr>
+        <tr><td>services/voice/</td><td>Pratham</td><td>Parakeet, Kokoro, dispatcher prompt, SignalWire bridge</td></tr>
         <tr><td>services/api/</td><td>Ayush</td><td>WebSocket, MJPEG, REST</td></tr>
         <tr><td>web/</td><td>Manav</td><td>Dashboard, camera wall, map, call console</td></tr>
         <tr><td>data/</td><td>Naman</td><td>Clips, camera map, scenario timelines</td></tr>
@@ -852,7 +852,7 @@ My task right now is: <b>&lt;TASK&gt;</b></pre>
       <li>Owns: vision, voice, all models</li>
       <li>Gets ZRT serving tonight. This is the one day-one risk in the plan</li>
       <li>Router: YOLO, ByteTrack, rules, VadCLIP, fusion</li>
-      <li>Voice loop: Parakeet, Kokoro, dispatcher prompt, Twilio bridge</li>
+      <li>Voice loop: Parakeet, Kokoro, dispatcher prompt, SignalWire bridge</li>
       <li>Records model numbers as he goes, they go straight into the deck</li>
     </ul></div>
     <div class="ow"><span class="who">Manav</span><ul>
@@ -902,7 +902,7 @@ My task right now is: <b>&lt;TASK&gt;</b></pre>
     <div class="day-head"><h3>Thursday</h3><span class="day-when">The two moments, then integration</span></div>
     <p style="margin-top:10px">Morning is the call and the chase, the two things the video is built around. Afternoon is nothing but making it run together.</p>
     <div class="owner">
-      <div class="ow"><span class="who">Ayush</span><ul><li>Morning: Call Brief assembly, dispatch path, Twilio bridge or browser fallback</li><li>Afternoon: scenario mode hardened, pre-warm, cached fallback, reset button</li><li>Evening: clean-clone check on another machine</li></ul></div>
+      <div class="ow"><span class="who">Ayush</span><ul><li>Morning: Call Brief assembly, dispatch path, SignalWire bridge or browser fallback</li><li>Afternoon: scenario mode hardened, pre-warm, cached fallback, reset button</li><li>Evening: clean-clone check on another machine</li></ul></div>
       <div class="ow"><span class="who">Pratham</span><ul><li>Morning: Parakeet in, Kokoro out, dispatcher prompt, the five call tools</li><li>Afternoon: OSNet, camera graph, handoff. Then latency tuning</li></ul></div>
       <div class="ow"><span class="who">Manav</span><ul><li>Morning: call console with both transcripts and live tool calls</li><li>Afternoon: map prediction animation, health strip, polish</li><li>Evening: record the backup run</li></ul></div>
       <div class="ow"><span class="who">Naman</span><ul><li>Run all five benchmarks, commit raw output</li><li>Draft the metrics section: how and why each was chosen</li></ul></div>
@@ -941,7 +941,7 @@ My task right now is: <b>&lt;TASK&gt;</b></pre>
   <p class="sec-note">If we fall behind, drop in this order. Decided now, while nobody is tired or attached.</p>
   <div class="cuts">
     <div class="cut"><span class="n">01</span><div><p>On-device LoRA fine-tune of the router</p><p class="cost">costs half a day, buys HP points and one chart.</p></div></div>
-    <div class="cut"><span class="n">02</span><div><p>Twilio, fall back to the browser console</p><p class="cost">looks nearly identical on video. removes the tunnel risk entirely.</p></div></div>
+    <div class="cut"><span class="n">02</span><div><p>SignalWire, fall back to the browser console</p><p class="cost">looks nearly identical on video. removes the tunnel risk entirely.</p></div></div>
     <div class="cut"><span class="n">03</span><div><p>Cross-camera chase beyond two cameras</p><p class="cost">two handoffs proves the algorithm. four is just longer.</p></div></div>
     <div class="cut"><span class="n">04</span><div><p>Live dispatcher dialogue</p><p class="cost">pre-rendered audio with a live transcript. nearly identical on video.</p></div></div>
     <div class="cut"><span class="n">05</span><div><p>VadCLIP</p><p class="cost">temporal rules alone. medical still fires reliably, theft scenario weakens.</p></div></div>
@@ -983,7 +983,7 @@ My task right now is: <b>&lt;TASK&gt;</b></pre>
   <div class="sec-head"><span class="num">14</span><h2>Answers to have ready</h2></div>
   <p class="sec-note">Everyone should be able to give these without thinking.</p>
   <div class="owner">
-    <div class="ow"><span class="who">Cloud</span><ul><li>All understanding is local. One boundary, one calibrated decision, and what crosses is a voice and a text brief, never a frame. You cannot make a phone ring from a local network without a carrier, which is exactly why Twilio is there and why it never touches AI.</li></ul></div>
+    <div class="ow"><span class="who">Cloud</span><ul><li>All understanding is local. One boundary, one calibrated decision, and what crosses is a voice and a text brief, never a frame. You cannot make a phone ring from a local network without a carrier, which is exactly why SignalWire is there and why it never touches AI.</li></ul></div>
     <div class="ow"><span class="who">Novelty</span><ul><li>NVIDIA VSS is the reference architecture for video analytics agents and we know it. We diverge on three things it does not do: a cheap ML router in front of the VLM, autonomous outbound dispatch with live dialogue, and cross-camera pursuit.</li></ul></div>
     <div class="ow"><span class="who">Competitors</span><ul><li>Volt AI, Verkada, Rhombus and Spot AI all solve false alarms by putting humans in a cloud operations center to verify alerts. We solve it with a cascade that runs in the building. No video leaving, no per-seat monitoring cost.</li></ul></div>
     <div class="ow"><span class="who">Confidence</span><ul><li>It is not a number the model wrote. We constrain the class to one token, read the logprobs, and temperature-scale them on a held-out slice. Here is the reliability curve.</li></ul></div>
@@ -1010,8 +1010,8 @@ My task right now is: <b>&lt;TASK&gt;</b></pre>
     </div>
     <div class="q">
       <span class="qid">open 03 &middot; thursday</span>
-      <h3>Twilio Media Streams on a trial account</h3>
-      <p>Trial gives 75 voice minutes to 5 verified numbers. Media Streams needs a publicly reachable WebSocket, so a tunnel out of the Nano, and availability on trial is unconfirmed.</p>
+      <h3>SignalWire media stream reachability</h3>
+      <p>The media stream needs a publicly reachable WebSocket, so a tunnel out of the Nano.</p>
       <p class="need"><b>Pratham, Thursday morning.</b> Browser console is built regardless and is the fallback.</p>
     </div>
     <div class="q">

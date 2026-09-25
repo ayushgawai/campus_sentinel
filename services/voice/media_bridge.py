@@ -1,6 +1,6 @@
 """Compatibility media stream bridge — the real audio leg of a SEVERE call.
 
-Protocol: https://www.twilio.com/docs/voice/twiml/stream
+Protocol: SignalWire Compatibility API bidirectional media stream (<Connect><Stream>).
 SignalWire opens WSS `/signalwire/media?incident_id=...` and sends JSON frames:
   connected -> start (carries streamSid) -> media* (mulaw/8k, base64) -> stop
 We speak by sending back {"event":"media", streamSid, media:{payload}} frames,
@@ -66,7 +66,7 @@ _FILLERS = ("One moment.", "Let me check that.", "Give me a moment.")
 
 
 def _pcm16_to_mulaw(pcm16: bytes, in_rate: int) -> bytes:
-    """16-bit mono PCM at in_rate -> 8kHz mulaw bytes for Twilio."""
+    """16-bit mono PCM at in_rate -> 8kHz mulaw bytes for the media stream."""
     if audioop is None or not pcm16:
         return b""
     if in_rate != 8000:
@@ -75,7 +75,7 @@ def _pcm16_to_mulaw(pcm16: bytes, in_rate: int) -> bytes:
 
 
 def mulaw_to_pcm16(mulaw: bytes, out_rate: int) -> bytes:
-    """8kHz mulaw from Twilio -> 16-bit mono PCM at out_rate (Parakeet wants 16k)."""
+    """8kHz mulaw from the media stream -> 16-bit mono PCM at out_rate (Parakeet wants 16k)."""
     if audioop is None or not mulaw:
         return b""
     pcm8k = audioop.ulaw2lin(mulaw, 2)
