@@ -1,7 +1,7 @@
 /** Single app state + event reducers. Mirrors contracts/events.py + incident.py. */
 
-import { compareIncidents, isOpenIncident, preferredIncidentId } from "./format.js?v=fix7d";
-import { isConfiguredCamera, redactPlaces } from "./site.js?v=fix7d";
+import { compareIncidents, isOpenIncident, preferredIncidentId } from "./format.js?v=fix10h";
+import { isConfiguredCamera, redactPlaces } from "./site.js?v=fix10h";
 
 const warnedCameras = new Set();
 
@@ -32,6 +32,8 @@ function emptyHealth() {
     frames_screened: 0,
     frames_escalated: 0,
     ts: null,
+    // False until the first health.strip, so views can show "Pending".
+    received: false,
   };
 }
 
@@ -134,6 +136,11 @@ export function createStore() {
       const snap = state;
       for (const fn of listeners) fn(snap);
     });
+  }
+
+  /** Re-run listeners without a new event (time-based status expiry). */
+  function touch() {
+    notify();
   }
 
   function flush() {
@@ -294,6 +301,7 @@ export function createStore() {
           frames_screened: event.frames_screened ?? 0,
           frames_escalated: event.frames_escalated ?? 0,
           ts: event.ts ?? null,
+          received: true,
         };
         break;
       }
@@ -376,6 +384,7 @@ export function createStore() {
     setRoute,
     reset,
     softReset,
+    touch,
     getActiveSevere,
     flush,
   };

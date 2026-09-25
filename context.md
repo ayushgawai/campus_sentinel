@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-25 08:26 UTC - web fix 7 to 7d: wording pass, demo control redesign, splash fix, cache busting (manav)
+Last updated: 2026-09-25 09:07 UTC - web fix 10 to 10h: models card, system page camera grid, unified camera status (manav)
 
 ## HARD RULES
 1. `git pull --rebase origin main` before every push. Work on **main**.
@@ -70,6 +70,7 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - web: floating incidents panel with a second call panel beside it, autofollow keeps map and call visible during tracking (fix 4)
 - web: operator actions (report incident, call for help, broadcast) with local fallback until api routes exist; cleaner incident detail panel (wider, merged details card, aligned action bar); fixed swallowed clicks (fix 5, 5b)
 - web: professional wording, Demo control redesign (collapsible sections, intro section removed), splash reveal in CSS starting on first paint and independent of video loading, js/boot.js for ?nosplash=1, module cache busting with one ?v= tag (bump it on every change), All cameras in camera toolbar (fix 7 to 7d)
+- web: AI models card and System page AI models section (models actually running); System page rebuilt (full height camera status grid, stat cards); one camera status helper for tiles, pins, lists and header (MJPEG online from first frame until error, with 5 s retry; video online from frames; 10 s timeout); removed hard-coded fps (fix 10 to 10h)
 
 ## Pending (owners)
 | Who | What |
@@ -81,6 +82,7 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 | **Ayush / api** | REST routes: confirm, dismiss (demo reset is already WS) |
 | **Ayush / api** | CallBrief event (when available) |
 | **Ayush / api** | POST /api/incidents/manual, /api/incidents/{id}/dispatch, /api/broadcast, /confirm, /dismiss; CORS allow POST from :8090; rules_fired ['operator_report'] on manual incidents (blocks web fix 5 live path) |
+| **Ayush / api** | Send camera.online per camera every few seconds as a heartbeat, and camera.online false when a feed stops |
 
 ## Decisions made since the playbook
 - UI branded **Sentinel**; cameras only as Camera 1–6; no place names in UI or mock (public video). (manav)

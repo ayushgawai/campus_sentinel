@@ -1,7 +1,7 @@
 /** Camera wall — layout modes, VMS OSD, corner brackets. */
 
-import { WALL_CAMERA_IDS, cameraLabel, SITE } from "../site.js?v=fix7d";
-import { now, subscribeTick } from "../clock.js?v=fix7d";
+import { WALL_CAMERA_IDS, cameraLabel, SITE } from "../site.js?v=fix10h";
+import { now, subscribeTick } from "../clock.js?v=fix10h";
 import {
   classLabel,
   formatPct,
@@ -10,15 +10,21 @@ import {
   personLabel,
   stateLabel,
   severityLabel,
-  isOpenIncident,
-} from "../format.js?v=fix7d";
-import { clear, el, setText } from "../dom.js?v=fix7d";
-import { createCameraLayout } from "./cameraLayout.js?v=fix7d";
-import { themeColors } from "../theme.js?v=fix7d";
-import * as cameraSources from "../cameraSources.js?v=fix7d";
-import { cameraStream } from "../transport.js?v=fix7d";
-import { icon } from "../icons.js?v=fix7d";
-import { OP_REPORT_EVENT, confidenceShort } from "./operator.js?v=fix7d";
+} from "../format.js?v=fix10h";
+import {
+  activeIncidentForCamera,
+  cameraStatus,
+  noteFrame,
+  noteStream,
+  onlineCount,
+} from "../cameraStatus.js?v=fix10h";
+import { clear, el, setText } from "../dom.js?v=fix10h";
+import { createCameraLayout } from "./cameraLayout.js?v=fix10h";
+import { themeColors } from "../theme.js?v=fix10h";
+import * as cameraSources from "../cameraSources.js?v=fix10h";
+import { cameraStream } from "../transport.js?v=fix10h";
+import { icon } from "../icons.js?v=fix10h";
+import { OP_REPORT_EVENT, confidenceShort } from "./operator.js?v=fix10h";
 
 export const FOCUS_CAMERA_EVENT = "sentinel:focus-camera";
 export const OPEN_SIDEBAR_EVENT = "sentinel:open-sidebar";
@@ -31,16 +37,6 @@ export function toPanePx(bbox, w, h) {
     w: bbox.w * w,
     h: bbox.h * h,
   };
-}
-
-function activeIncidentForCamera(state, cameraId) {
-  for (const id of state.order) {
-    const inc = state.incidents[id];
-    if (!inc || inc.camera_id !== cameraId) continue;
-    if (!isOpenIncident(inc)) continue;
-    if (inc.severity === "SEVERE" || inc.severity === "MINOR") return inc;
-  }
-  return null;
 }
 
 function boxesEqual(a, b) {
@@ -138,6 +134,30 @@ function uploadIconSvg() {
 }
 
 export function mountCameras(root, store, actions, layout) {
+  /** Pending 5 s MJPEG retry per camera. */
+  const streamRetry = new Map();
+  const STREAM_RETRY_MS = 5000;
+
+  function cancelStreamRetry(id) {
+    const t = streamRetry.get(id);
+    if (t) window.clearTimeout(t);
+    streamRetry.delete(id);
+  }
+
+  function scheduleStreamRetry(id, img) {
+    cancelStreamRetry(id);
+    const src = img.getAttribute("src");
+    streamRetry.set(
+      id,
+      window.setTimeout(() => {
+        streamRetry.delete(id);
+        // Only if the tile still wants this stream; setting src again
+        // (same value) makes the browser fetch it anew.
+        if (img.getAttribute("src") === src) img.setAttribute("src", src);
+      }, STREAM_RETRY_MS),
+    );
+  }
+
   const layoutCtl = layout || createCameraLayout();
 
   root.innerHTML = `
@@ -208,6 +228,7 @@ export function mountCameras(root, store, actions, layout) {
     video.setAttribute("aria-hidden", "true");
     video.hidden = true;
     videos.set(id, video);
+    video.addEventListener("timeupdate", () => noteFrame(id));
 
     const streamImg = document.createElement("img");
     streamImg.className = "cam-tile__stream";
@@ -215,6 +236,17 @@ export function mountCameras(root, store, actions, layout) {
     streamImg.decoding = "async";
     streamImg.hidden = true;
     streams.set(id, streamImg);
+    // MJPEG status: up once a frame has loaded, and it stays up (a stream
+    // fires load only once) until an error or a src change. On error, retry
+    // the same src every 5 s; the next load brings it back up.
+    streamImg.addEventListener("load", () => {
+      if (streamImg.naturalWidth > 0) noteStream(id, true);
+    });
+    streamImg.addEventListener("error", () => {
+      if (!streamImg.getAttribute("src")) return;
+      noteStream(id, false);
+      scheduleStreamRetry(id, streamImg);
+    });
 
     const canvas = document.createElement("canvas");
     canvas.className = "cam-tile__canvas";
@@ -262,10 +294,6 @@ export function mountCameras(root, store, actions, layout) {
     osdBl.className = "cam-tile__osd cam-tile__osd--bl";
     osdBl.dataset.clock = "";
 
-    const osdBr = document.createElement("div");
-    osdBr.className = "cam-tile__osd cam-tile__osd--br";
-    osdBr.dataset.fps = "";
-    osdBr.textContent = "12.0 fps";
 
     const chip = document.createElement("span");
     chip.className = "cam-tile__chip";
@@ -281,7 +309,6 @@ export function mountCameras(root, store, actions, layout) {
     tile.appendChild(liveRow);
     tile.appendChild(osdTr);
     tile.appendChild(osdBl);
-    tile.appendChild(osdBr);
     tile.appendChild(chip);
     tile.appendChild(leftNote);
 
@@ -318,7 +345,6 @@ export function mountCameras(root, store, actions, layout) {
       canvas,
       ctx: canvas.getContext("2d"),
       clockEl: osdBl,
-      fpsEl: osdBr,
       recDot,
       chipEl: chip,
       offlineEl: offline,
@@ -387,6 +413,22 @@ export function mountCameras(root, store, actions, layout) {
 
   window.__cameraVideos = videos;
   window.__cameraStreams = streams;
+
+  // Frame monitor for video tiles: a camera counts as active while its video
+  // presents frames (requestVideoFrameCallback; timeupdate above as a
+  // fallback). MJPEG tiles use their image load event plus backend events.
+  const hasRvfc =
+    typeof HTMLVideoElement !== "undefined" &&
+    "requestVideoFrameCallback" in HTMLVideoElement.prototype;
+  if (hasRvfc) {
+    for (const [id, video] of videos) {
+      const onFrame = () => {
+        noteFrame(id);
+        video.requestVideoFrameCallback(onFrame);
+      };
+      video.requestVideoFrameCallback(onFrame);
+    }
+  }
 
   function syncVideoSources() {
     const state = store.getState();
@@ -797,7 +839,7 @@ export function mountCameras(root, store, actions, layout) {
     const state = store.getState();
     const clock = formatOsdClock(nowMs);
     for (const id of WALL_CAMERA_IDS) {
-      const online = Boolean(state.cameras[id]?.online);
+      const { online } = cameraStatus(state, id, nowMs);
       setText(tiles.get(id).clockEl, online ? clock : "");
     }
     for (const { node, iso } of headerAgo.values()) {
@@ -820,13 +862,12 @@ export function mountCameras(root, store, actions, layout) {
 
   function applyChrome(state) {
     const clock = formatOsdClock(now());
-    let onlineCount = 0;
 
     for (const id of WALL_CAMERA_IDS) {
       const cam = state.cameras[id] || { online: false, boxes: [] };
       const tile = tiles.get(id);
-      const online = Boolean(cam.online);
-      if (online) onlineCount += 1;
+      const st = cameraStatus(state, id);
+      const online = st.online;
 
       const local = cameraSources.get(id);
       const hasLocal = local && local.status === "ready" && local.url;
@@ -836,12 +877,17 @@ export function mountCameras(root, store, actions, layout) {
       tile.hasStream = Boolean(stream);
       if (mjpeg) {
         if (tile.streamImg.getAttribute("src") !== mjpeg) {
+          // New or replaced stream: down until its first frame loads.
+          cancelStreamRetry(id);
+          noteStream(id, false);
           tile.streamImg.setAttribute("src", mjpeg);
         }
         tile.streamImg.hidden = false;
         tile.noise.hidden = true;
       } else {
         if (tile.streamImg.hasAttribute("src")) {
+          cancelStreamRetry(id);
+          noteStream(id, false);
           tile.streamImg.removeAttribute("src");
         }
         tile.streamImg.hidden = true;
@@ -850,10 +896,10 @@ export function mountCameras(root, store, actions, layout) {
 
       tile.tile.classList.toggle("is-offline", !online);
       tile.offlineEl.hidden = online;
+      setText(tile.offlineEl, st.key === "connecting" ? "Connecting" : "No signal");
       tile.recDot.hidden = !online;
-      // Offline: one centred "No signal"; the footer shows time and fps only when live.
+      // Offline: one centred "No signal"; the footer shows time only when live.
       setText(tile.clockEl, online ? clock : "");
-      setText(tile.fpsEl, online ? "12.0 fps" : "");
 
       const boxes = Array.isArray(cam.boxes) ? cam.boxes : [];
       if (!boxesEqual(tile.boxes, boxes)) {
@@ -863,7 +909,7 @@ export function mountCameras(root, store, actions, layout) {
         tile.dirty = true;
       }
 
-      const inc = activeIncidentForCamera(state, id);
+      const inc = st.inc;
       tile.tile.classList.remove("is-minor", "is-severe");
       if (!online) {
         tile.severity = null;
@@ -898,7 +944,7 @@ export function mountCameras(root, store, actions, layout) {
         tile.chipEl.hidden = true;
       }
     }
-    setText(countEl, `${onlineCount}/${WALL_CAMERA_IDS.length} online`);
+    setText(countEl, `${onlineCount(state, WALL_CAMERA_IDS)}/${WALL_CAMERA_IDS.length} online`);
     applyLayout(state);
   }
 
@@ -933,6 +979,7 @@ export function mountCameras(root, store, actions, layout) {
       ro.disconnect();
       if (raf) cancelAnimationFrame(raf);
       unsubTick();
+      for (const id of [...streamRetry.keys()]) cancelStreamRetry(id);
     },
   };
 }

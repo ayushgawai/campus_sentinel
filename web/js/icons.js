@@ -1,6 +1,6 @@
 /** Inline 16px stroke icons, same drawing style as the camera upload icon. */
 
-import { svgEl } from "./dom.js?v=fix7d";
+import { svgEl } from "./dom.js?v=fix10h";
 
 const PATHS = {
   flag: "M4 14V2.5M4 3h7.5l-1.6 2.7L11.5 8.5H4",
@@ -9,9 +9,10 @@ const PATHS = {
   megaphone: "M2.5 6.5v3h2l5 3v-9l-5 3h-2ZM11.5 6a2.5 2.5 0 0 1 0 4M5 9.5l1 3.5",
   check: "M3.5 8.5 6.5 11.5 12.5 4.5",
   close: "M4.5 4.5 11.5 11.5M11.5 4.5 4.5 11.5",
+  camera: "M2.5 5.5h7.5v6H2.5ZM10 7.5l3.5-2v6l-3.5-2",
 };
 
-/** @param {"flag"|"phone"|"megaphone"|"check"|"close"} name */
+/** @param {"flag"|"phone"|"megaphone"|"check"|"close"|"camera"} name */
 export function icon(name) {
   const svg = svgEl("svg", {
     width: 16,

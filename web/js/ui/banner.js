@@ -9,8 +9,8 @@ import {
   cameraLabel,
   severityLabel,
   stateLabel,
-} from "../format.js?v=fix7d";
-import { clear, el } from "../dom.js?v=fix7d";
+} from "../format.js?v=fix10h";
+import { clear, el } from "../dom.js?v=fix10h";
 
 /**
  * @param {HTMLElement} root

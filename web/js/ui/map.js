@@ -9,12 +9,13 @@ import {
   cameraLabel,
   fromCameraMap,
   getCamera,
-} from "../site.js?v=fix7d";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix7d";
-import { clear, setText } from "../dom.js?v=fix7d";
-import { themeColors } from "../theme.js?v=fix7d";
-import { classLabel, formatElapsedPlus } from "../format.js?v=fix7d";
-import { now, subscribeTick } from "../clock.js?v=fix7d";
+} from "../site.js?v=fix10h";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix10h";
+import { clear, setText } from "../dom.js?v=fix10h";
+import { themeColors } from "../theme.js?v=fix10h";
+import { classLabel, formatElapsedPlus } from "../format.js?v=fix10h";
+import { now, subscribeTick } from "../clock.js?v=fix10h";
+import { cameraStatus } from "../cameraStatus.js?v=fix10h";
 
 const LEVEL_RANK = { none: 0, minor: 1, severe: 2 };
 
@@ -52,15 +53,10 @@ function computeViewBox() {
   };
 }
 
+/** Incident level via the shared camera status (offline shows none). */
 function activeSeverityForCamera(state, cameraId) {
-  for (const id of state.order) {
-    const inc = state.incidents[id];
-    if (!inc || inc.camera_id !== cameraId) continue;
-    if (inc.state === "RESOLVED" || inc.state === "DISMISSED") continue;
-    if (inc.severity === "SEVERE" || inc.severity === "MINOR")
-      return { sev: inc.severity, inc };
-  }
-  return null;
+  const st = cameraStatus(state, cameraId);
+  return st.inc ? { sev: st.inc.severity, inc: st.inc } : null;
 }
 
 function trackingIncidents(state) {
@@ -308,16 +304,8 @@ export function mountMap(el, store, actions, opts = {}) {
         setHover(pin.id);
         const state = store.getState();
         const cam = state.cameras[pin.id];
-        const online = cam ? Boolean(cam.online) : true;
         const people = Array.isArray(cam?.boxes) ? cam.boxes.length : 0;
-        const hitSev = activeSeverityForCamera(state, pin.id);
-        const status = hitSev
-          ? hitSev.sev === "SEVERE"
-            ? "Severe"
-            : "Minor"
-          : online
-            ? "Online"
-            : "Offline";
+        const status = cameraStatus(state, pin.id).label;
         if (tip && !tip.hidden) {
           setText(
             tip,
@@ -482,8 +470,7 @@ export function mountMap(el, store, actions, opts = {}) {
     for (const pin of activePins) {
       const g = pinEls.get(pin.id);
       if (!g) continue;
-      const cam = state.cameras[pin.id];
-      const online = cam ? Boolean(cam.online) : true;
+      const { online } = cameraStatus(state, pin.id);
       const hit = activeSeverityForCamera(state, pin.id);
       const level = levelOf(hit);
       const prev = prevLevel.get(pin.id) ?? "none";
@@ -491,7 +478,7 @@ export function mountMap(el, store, actions, opts = {}) {
         triggerPulse(pin.id);
       }
       prevLevel.set(pin.id, level);
-      g.classList.toggle("is-offline", !online);
+      g.classList.toggle("is-offline", !online); // offline or connecting
       g.classList.toggle("is-minor", level === "minor");
       g.classList.toggle("is-severe", level === "severe");
       g.classList.toggle("is-predicted", predictedId === pin.id);

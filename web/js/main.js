@@ -1,25 +1,28 @@
 /** Boot. */
 
-import { createStore } from "./store.js?v=fix7d";
-import { start } from "./transport.js?v=fix7d";
-import { createActions } from "./actions.js?v=fix7d";
-import { startRouter, getRoute, navigate } from "./router.js?v=fix7d";
-import { mountTopbar } from "./ui/topbar.js?v=fix7d";
-import { mountBanner } from "./ui/banner.js?v=fix7d";
-import { mountCameras } from "./ui/cameras.js?v=fix7d";
-import { createCameraLayout } from "./ui/cameraLayout.js?v=fix7d";
-import { mountSidebar } from "./ui/sidebar.js?v=fix7d";
-import { mountAssist } from "./ui/assist.js?v=fix7d";
-import { mountCallPage } from "./ui/callpage.js?v=fix7d";
-import { mountCallPanel } from "./ui/call.js?v=fix7d";
-import { mountDemo } from "./ui/demo.js?v=fix7d";
-import { mountDismiss } from "./ui/dismiss.js?v=fix7d";
-import { mountOperator } from "./ui/operator.js?v=fix7d";
-import { mountIncidents } from "./ui/incidents.js?v=fix7d";
-import { mountSystem } from "./ui/system.js?v=fix7d";
-import { startAutoFollow } from "./ui/autofollow.js?v=fix7d";
-import { playSplash, shouldHoldMockForSplash } from "./ui/splash.js?v=fix7d";
-import * as cameraSources from "./cameraSources.js?v=fix7d";
+import { createStore } from "./store.js?v=fix10h";
+import { start } from "./transport.js?v=fix10h";
+import { createActions } from "./actions.js?v=fix10h";
+import { startRouter, getRoute, navigate } from "./router.js?v=fix10h";
+import { mountTopbar } from "./ui/topbar.js?v=fix10h";
+import { mountBanner } from "./ui/banner.js?v=fix10h";
+import { mountCameras } from "./ui/cameras.js?v=fix10h";
+import { createCameraLayout } from "./ui/cameraLayout.js?v=fix10h";
+import { mountSidebar } from "./ui/sidebar.js?v=fix10h";
+import { mountAssist } from "./ui/assist.js?v=fix10h";
+import { mountCallPage } from "./ui/callpage.js?v=fix10h";
+import { mountCallPanel } from "./ui/call.js?v=fix10h";
+import { mountDemo } from "./ui/demo.js?v=fix10h";
+import { mountDismiss } from "./ui/dismiss.js?v=fix10h";
+import { mountOperator } from "./ui/operator.js?v=fix10h";
+import { mountIncidents } from "./ui/incidents.js?v=fix10h";
+import { mountSystem } from "./ui/system.js?v=fix10h";
+import { startAutoFollow } from "./ui/autofollow.js?v=fix10h";
+import { playSplash, shouldHoldMockForSplash } from "./ui/splash.js?v=fix10h";
+import { startModelStatus } from "./modelStatus.js?v=fix10h";
+import { noteEvent } from "./cameraStatus.js?v=fix10h";
+import { subscribeTick } from "./clock.js?v=fix10h";
+import * as cameraSources from "./cameraSources.js?v=fix10h";
 
 const store = createStore();
 const layoutCtl = createCameraLayout();
@@ -39,7 +42,10 @@ const splashDone = playSplash({
 });
 
 const transport = start(
-  (event) => store.handle(event),
+  (event) => {
+    noteEvent(event);
+    store.handle(event);
+  },
   {
     setConnection: (status) => store.setConnection(status),
     setDemo: (partial) => store.setDemo(partial),
@@ -91,6 +97,10 @@ mountIncidents(
   actions,
 );
 mountSystem(document.getElementById("system"), store);
+startModelStatus(store);
+// Camera status expires with time (10 s without frames or events), so
+// views re-evaluate once a second even when no event arrives.
+subscribeTick(() => store.touch());
 startAutoFollow(store, sidebarApi, callPanelApi, layoutCtl);
 
 function applyRoute(route) {
@@ -115,6 +125,8 @@ window.addEventListener(
   (e) => {
     if (e.key !== "Escape") return;
     if (document.getElementById("splash")) return;
+    // The header Models card closes itself on Esc.
+    if (document.getElementById("models-card")?.hidden === false) return;
     if (opApi.isOpen()) {
       opApi.close();
       e.preventDefault();

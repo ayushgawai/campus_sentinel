@@ -4,7 +4,9 @@
  * a separate floating call panel (call.js's mountCallPanel).
  */
 
-import { now, subscribeTick } from "../clock.js?v=fix7d";
+import { now, subscribeTick } from "../clock.js?v=fix10h";
+import { WALL_CAMERA_IDS } from "../site.js?v=fix10h";
+import { onlineCount } from "../cameraStatus.js?v=fix10h";
 import {
   classLabel,
   cameraLabel,
@@ -19,32 +21,32 @@ import {
   pctNumber,
   isOpenIncident,
   isDispatchSimState,
-} from "../format.js?v=fix7d";
-import { mountIncidentClip } from "./incidentClip.js?v=fix7d";
-import { clear, el, setText } from "../dom.js?v=fix7d";
-import { mountMap } from "./map.js?v=fix7d";
+} from "../format.js?v=fix10h";
+import { mountIncidentClip } from "./incidentClip.js?v=fix10h";
+import { clear, el, setText } from "../dom.js?v=fix10h";
+import { mountMap } from "./map.js?v=fix10h";
 import {
   legendMarkup,
   mountSiteCamerasList,
   mountTrackingCard,
   mountSiteOverview,
-} from "./sitePlanExtras.js?v=fix7d";
-import { findCallIncident, formatCallTimer, callElapsedMs } from "./call.js?v=fix7d";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix7d";
+} from "./sitePlanExtras.js?v=fix10h";
+import { findCallIncident, formatCallTimer, callElapsedMs } from "./call.js?v=fix10h";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix10h";
 import {
   OP_REPORT_EVENT,
   OP_STATUS_EVENT,
   actionBar,
   opButton,
   confidenceLong,
-} from "./operator.js?v=fix7d";
+} from "./operator.js?v=fix10h";
 import {
   detailHeaderCard,
   detailsCard,
   clipCard,
   timelineCard,
   emptyState,
-} from "./incidentDetail.js?v=fix7d";
+} from "./incidentDetail.js?v=fix10h";
 
 /** Same entries by identity (store replaces an incident object when it changes). */
 function sameSig(a, b) {
@@ -404,11 +406,8 @@ export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
     // Keep online subtitle in sync
     mapExtras.push({
       paint(s) {
-        let online = 0;
-        for (const id of Object.keys(s.cameras || {})) {
-          if (s.cameras[id]?.online !== false) online += 1;
-        }
-        setText(mapSub, `6 cameras · ${online} online`);
+        const online = onlineCount(s, WALL_CAMERA_IDS);
+        setText(mapSub, `${WALL_CAMERA_IDS.length} cameras · ${online} online`);
       },
       destroy() {},
     });
@@ -470,12 +469,10 @@ export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
     if (countEl) setText(countEl, "6 cameras");
     const onlineMeta = host.querySelector("[data-expand-online]");
     const syncExpandOnline = (s) => {
-      let online = 0;
-      const cams = s.cameras || {};
-      for (const id of Object.keys(cams)) {
-        if (cams[id]?.online !== false) online += 1;
+      const online = onlineCount(s, WALL_CAMERA_IDS);
+      if (onlineMeta) {
+        setText(onlineMeta, `${WALL_CAMERA_IDS.length} cameras · ${online} online`);
       }
-      if (onlineMeta) setText(onlineMeta, `6 cameras · ${online} online`);
     };
     syncExpandOnline(store.getState());
 

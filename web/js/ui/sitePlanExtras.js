@@ -3,39 +3,23 @@
  * Shared by sidebar Site plan tab and the expand modal.
  */
 
-import { WALL_CAMERA_IDS, cameraLabel } from "../site.js?v=fix7d";
-import { predictedCameraAt } from "../mock.js?v=fix7d";
+import { WALL_CAMERA_IDS, cameraLabel } from "../site.js?v=fix10h";
+import { predictedCameraAt } from "../mock.js?v=fix10h";
 import {
   classLabel,
   severityLabel,
   formatRel,
   formatElapsedPlus,
   isOpenIncident,
-} from "../format.js?v=fix7d";
-import { clear, el, setText } from "../dom.js?v=fix7d";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix7d";
-import { now, subscribeTick } from "../clock.js?v=fix7d";
+} from "../format.js?v=fix10h";
+import { clear, el, setText } from "../dom.js?v=fix10h";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix10h";
+import { now, subscribeTick } from "../clock.js?v=fix10h";
+import { activeIncidentForCamera, cameraStatus, onlineCount } from "../cameraStatus.js?v=fix10h";
 
 function activeHit(state, cameraId) {
-  for (const id of state.order) {
-    const inc = state.incidents[id];
-    if (!inc || inc.camera_id !== cameraId) continue;
-    if (!isOpenIncident(inc)) continue;
-    if (inc.severity === "SEVERE" || inc.severity === "MINOR") {
-      return { sev: inc.severity, inc };
-    }
-  }
-  return null;
-}
-
-function cameraStatus(state, cameraId) {
-  const cam = state.cameras?.[cameraId];
-  const online = cam ? Boolean(cam.online) : true;
-  const hit = activeHit(state, cameraId);
-  if (hit?.sev === "SEVERE") return { key: "severe", label: "Severe incident" };
-  if (hit?.sev === "MINOR") return { key: "minor", label: "Minor incident" };
-  if (!online) return { key: "offline", label: "Offline" };
-  return { key: "online", label: "Online" };
+  const inc = activeIncidentForCamera(state, cameraId);
+  return inc ? { sev: inc.severity, inc } : null;
 }
 
 function peopleCount(state, cameraId) {
@@ -169,7 +153,7 @@ export function mountSiteCamerasList(host, opts) {
     const hoverId = window.__map?.getHover?.() || null;
     let onlineN = 0;
     for (const id of WALL_CAMERA_IDS) {
-      if (cameraStatus(state, id).key !== "offline") onlineN += 1;
+      if (cameraStatus(state, id).online) onlineN += 1;
     }
     setText(
       onlineEl,
@@ -193,7 +177,8 @@ export function mountSiteCamerasList(host, opts) {
       row.classList.toggle("is-hover", hoverId === id);
       row.classList.toggle("is-severe", st.key === "severe");
       row.classList.toggle("is-minor", st.key === "minor");
-      row.classList.toggle("is-offline", st.key === "offline");
+      // Connecting reads muted, like offline.
+      row.classList.toggle("is-offline", !st.online);
     }
   }
 
@@ -366,8 +351,8 @@ export function mountSiteOverview(host, opts) {
     );
     const grid = el("div", { className: "site-overview__grid" });
 
-    const online = state.health?.cameras_online ?? 0;
-    const total = state.health?.cameras_total ?? WALL_CAMERA_IDS.length;
+    const online = onlineCount(state, WALL_CAMERA_IDS);
+    const total = WALL_CAMERA_IDS.length;
     let active = 0;
     let people = 0;
     let lastEsc = null;

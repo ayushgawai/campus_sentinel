@@ -1,11 +1,11 @@
 /** User actions — single place to wire REST / demo control later. */
 
-import { atIso, operatorCallRows } from "./mock.js?v=fix7d";
-import { navigate } from "./router.js?v=fix7d";
-import * as cameraSources from "./cameraSources.js?v=fix7d";
-import { routes, API_TIMEOUT_MS } from "./config.js?v=fix7d";
-import { now, mockSecondsFromIso } from "./clock.js?v=fix7d";
-import { cameraLabel } from "./site.js?v=fix7d";
+import { atIso, operatorCallRows } from "./mock.js?v=fix10h";
+import { navigate } from "./router.js?v=fix10h";
+import * as cameraSources from "./cameraSources.js?v=fix10h";
+import { routes, API_TIMEOUT_MS } from "./config.js?v=fix10h";
+import { now, mockSecondsFromIso } from "./clock.js?v=fix10h";
+import { cameraLabel } from "./site.js?v=fix10h";
 
 export const DISMISS_REASONS = [
   { id: "false_alarm", label: "False alarm" },

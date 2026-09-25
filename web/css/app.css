@@ -1098,11 +1098,7 @@ body.sidebar-open.call-open .page--live {
 }
 #incidents-list .panel,
 #incidents-detail .panel,
-#call-page .panel,
-#system .panel {
-  height: 100%;
-}
-#system .system__cams {
+#call-page .panel {
   height: 100%;
 }
 
@@ -1766,11 +1762,6 @@ body.sidebar-open.call-open .page--live {
 .cam-tile__osd--bl {
   bottom: 6px;
   left: 7px;
-}
-.cam-tile__osd--br {
-  bottom: 6px;
-  right: 7px;
-  text-align: right;
 }
 .cam-tile__osd-name {
   font-weight: 500;
@@ -2600,56 +2591,41 @@ progress.detail__conf-progress::-moz-progress-bar {
   margin-bottom: var(--sp-3);
 }
 
+/* System page: scrolls as one column of full-width sections. Row 1 is
+   Site (4/12) + System health (8/12); AI models and Cameras span 12. */
+.page--system #system {
+  overflow-y: auto;
+}
 .system-grid {
-  height: 100%;
-  min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  grid-template-rows: minmax(200px, 0.85fr) minmax(0, 1.15fr);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  /* Cameras (last row) takes whatever height is left; the page scrolls
+     only when the content is taller than the screen. */
+  grid-template-rows: auto auto 1fr;
   gap: 16px;
-  align-content: stretch;
+  min-height: 100%;
 }
-.system-grid > .panel:not(.system__cams) {
-  min-height: 0;
-  height: 100%;
-  align-self: stretch;
-  display: flex;
-  flex-direction: column;
-}
-.system-grid > .panel:not(.system__cams) .system__body {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-.system__cams {
+.system-grid > .panel {
   grid-column: 1 / -1;
-  height: 100%;
-  min-height: 0;
-  align-self: stretch;
-  display: flex;
-  flex-direction: column;
-}
-.system__cams .panel__body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding-top: 20px;
-}
-.system__cams [data-cams],
-.system__cam-grid {
-  display: flex;
-  flex-direction: column;
-  width: min(440px, 100%);
-  margin: 0 auto;
-  gap: 0;
   height: auto;
-  align-content: start;
+  overflow: visible;
 }
-.system__row {
+.system-grid > .system__site {
+  grid-column: span 4;
+}
+.system-grid > .system__health {
+  grid-column: span 8;
+}
+.system-grid .panel__body {
+  flex: 0 0 auto;
+  overflow: visible;
+}
+.system-grid > .system__cams .panel__body {
+  flex: 1 1 auto;
+}
+
+/* Site: key/value list. */
+.sys-kv__row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -2658,47 +2634,201 @@ progress.detail__conf-progress::-moz-progress-bar {
   border-bottom: 1px solid var(--line);
   font-size: var(--fs-12);
 }
-.system__k {
+.sys-kv__row:last-child {
+  border-bottom: 0;
+}
+.sys-kv__k {
   color: var(--text-3);
 }
-.system__v {
-  font-family: var(--mono);
+.sys-kv__v {
+  color: var(--text);
   text-align: right;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 65%;
 }
-.system__cam {
+
+/* System health: one row of equal stat cards. */
+.sys-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: var(--card-gap);
+  align-content: start;
+}
+.sys-stat {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   min-width: 0;
-  min-height: 44px;
-  padding: 12px 4px;
-  border-bottom: 1px solid var(--line);
-  font-size: var(--fs-12);
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
 }
-.system__cam .dot {
-  flex: 0 0 auto;
+.sys-stat__k {
+  font-size: var(--fs-12);
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sys-stat__v {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-18);
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sys-stat__v .dot {
   width: 8px;
   height: 8px;
 }
-.system__cam-name {
-  flex: 0 1 auto;
+
+/* Cameras: 3 x 2 status cards, wall order (2 columns under 1200px). */
+.sys-cams {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 16px;
+}
+.sys-cam {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   min-width: 0;
+  padding: 16px;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color var(--fast) var(--ease), background-color var(--fast) var(--ease);
+}
+.sys-cam:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-3);
+}
+.sys-cam[data-status="minor"] {
+  border-color: var(--minor-border);
+}
+.sys-cam[data-status="severe"] {
+  border-color: var(--severe);
+}
+.sys-cam:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.sys-cam__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.sys-cam__name {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.sys-cam__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-12);
+  font-weight: 500;
+  color: var(--text-2);
   white-space: nowrap;
 }
-.system__cam-meta {
-  flex: 0 0 auto;
-  margin-left: auto;
-  padding-left: 12px;
-  font-family: var(--mono);
-  font-size: var(--fs-11);
+.sys-cam__status .dot {
+  width: 8px;
+  height: 8px;
+}
+.sys-cam[data-status="minor"] .sys-cam__status {
+  color: var(--minor);
+}
+.sys-cam[data-status="severe"] .sys-cam__status {
+  color: var(--severe);
+}
+.dot--severe {
+  background: var(--severe);
+}
+/* Grows with the card to fill the section; never below 96px. */
+.sys-cam__preview {
+  position: relative;
+  display: block;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 96px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--bg);
+}
+.sys-cam__frame {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.sys-cam__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: var(--fs-12);
   color: var(--text-3);
+}
+.sys-cam__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sys-cam__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.sys-cam__k {
+  font-size: var(--fs-12);
+  color: var(--text-3);
+}
+.sys-cam__v {
+  font-size: var(--fs-13);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.sys-cam__chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: var(--fs-12);
+  font-weight: 600;
   white-space: nowrap;
+}
+.sys-cam__chip--minor {
+  color: var(--minor);
+  background: var(--minor-bg);
+  border: 1px solid var(--minor-border);
+}
+.sys-cam__chip--severe {
+  color: var(--severe);
+  background: var(--severe-bg);
+  border: 1px solid var(--severe);
+}
+@media (max-width: 1199px) {
+  .sys-cams {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* ---------- Modals ---------- */
@@ -3390,12 +3520,11 @@ body:not(.route-live) #assist-root {
     grid-template-columns: 1fr;
   }
   .system-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-rows: auto auto auto 1fr;
   }
-  .system__cams [data-cams],
-  .system__cam-grid {
-    width: min(440px, 100%);
+  .system-grid > .system__site,
+  .system-grid > .system__health {
+    grid-column: 1 / -1;
   }
 }
 
@@ -4610,4 +4739,148 @@ progress.detail__conf-progress.inc-dl__bar {
 .btn:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* ---------- AI models (Fix 10): header button, card, System page ---------- */
+/* The Models health item is a button that opens the card. */
+.hm--btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  padding: var(--sp-1) var(--sp-2);
+  margin: 0 calc(-1 * var(--sp-2));
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color var(--fast) var(--ease);
+}
+.hm--btn:hover,
+.hm--btn.is-open {
+  background: var(--header-border);
+}
+.hm--btn:focus-visible {
+  outline: 2px solid var(--header-accent);
+  outline-offset: 1px;
+}
+
+/* Anchored card under the Models button (positioned in topbar.js). */
+.mcard {
+  position: fixed;
+  z-index: 95;
+  width: 420px;
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
+  padding: 16px;
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  box-shadow: var(--card-shadow);
+}
+.mcard[hidden] {
+  display: none;
+}
+.mcard:focus {
+  outline: none;
+}
+.mcard__head {
+  margin-bottom: var(--sp-3);
+}
+.mcard__title {
+  margin: 0;
+  font-size: var(--fs-14);
+  font-weight: 600;
+  color: var(--card-text);
+}
+.mcard__sub {
+  margin: 2px 0 0;
+  font-size: var(--fs-12);
+  color: var(--card-text-2);
+}
+
+/* Shared table: Role | Model | Runtime | Status. */
+.mtable__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-12);
+  color: var(--text);
+}
+.mtable__table th,
+.mtable__table td {
+  padding: 8px 12px 8px 0;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+}
+.mtable__table th:last-child,
+.mtable__table td:last-child {
+  padding-right: 0;
+}
+.mtable__table thead th {
+  padding-top: 0;
+  font-size: var(--fs-11);
+  font-weight: 500;
+  color: var(--text-3);
+}
+.mtable__role {
+  font-weight: 500;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.mtable__model {
+  color: var(--text);
+  font-weight: 600;
+}
+.mtable__name,
+.mtable__metric {
+  display: block;
+}
+.mtable__metric {
+  margin-top: 2px;
+  font-size: var(--fs-11);
+  font-weight: 500;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.mtable__runtime {
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.mtable__runtime.is-zrt {
+  color: var(--text);
+  font-weight: 600;
+}
+.mtable__status {
+  white-space: nowrap;
+}
+.mtable__status .dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  vertical-align: 0;
+}
+.mtable__status.is-pending {
+  color: var(--text-muted);
+}
+.mtable__foot {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-12);
+  color: var(--text-2);
+}
+.mcard .mtable__table th,
+.mcard .mtable__table td {
+  border-bottom-color: var(--card-border);
+}
+.mcard .dot--ok {
+  background: var(--aqua);
+}
+
+/* System page table: full width, right after System health. */
+.mtable--page .mtable__table th,
+.mtable--page .mtable__table td {
+  padding-right: 24px;
+}
+.mtable--page .mtable__model {
+  width: 40%;
 }

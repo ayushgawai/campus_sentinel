@@ -14,12 +14,12 @@ import {
   ruleLabel,
   severityLabel,
   stateLabel,
-} from "../format.js?v=fix7d";
-import { el, setText } from "../dom.js?v=fix7d";
-import { now, subscribeTick } from "../clock.js?v=fix7d";
-import { isOperatorReported } from "../actions.js?v=fix7d";
-import * as cameraSources from "../cameraSources.js?v=fix7d";
-import { mountIncidentClip } from "./incidentClip.js?v=fix7d";
+} from "../format.js?v=fix10h";
+import { el, setText } from "../dom.js?v=fix10h";
+import { now, subscribeTick } from "../clock.js?v=fix10h";
+import { isOperatorReported } from "../actions.js?v=fix10h";
+import * as cameraSources from "../cameraSources.js?v=fix10h";
+import { mountIncidentClip } from "./incidentClip.js?v=fix10h";
 
 /** Timeline notes the UI wrote while the server had not confirmed an action. */
 const UNCONFIRMED_RE = /\s*·\s*(pending server confirmation|not confirmed by server)\s*$/i;

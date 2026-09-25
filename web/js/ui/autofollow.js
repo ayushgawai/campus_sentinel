@@ -1,7 +1,7 @@
 /** Auto-follow demo recording story for assist/sidebar layout. */
 
-import { navigate } from "../router.js?v=fix7d";
-import { findCallIncident } from "./call.js?v=fix7d";
+import { navigate } from "../router.js?v=fix10h";
+import { findCallIncident } from "./call.js?v=fix10h";
 
 /**
  * When autoFollow is on (Demo control):
