@@ -194,14 +194,34 @@
 
   /* ---------- Shell chrome ---------- */
   --sidebar-w: 440px;
+  /* Incidents panel 400 / 440 (≥1500) / 480 (≥1800); call panel 400 / 440
+     (≥1600), shrinking to its min before the camera wall drops below 560. */
   --incidents-panel-w: 400px;
-  --call-panel-w: 440px;
+  --call-panel-w: 400px;
+  --call-panel-min-w: 380px;
+  --wall-min-w: 560px;
   --assist-size: 56px;
   --assist-m: 24px;
 
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --fast: 160ms;
   --med: 200ms;
+}
+
+@media (min-width: 1500px) {
+  :root {
+    --incidents-panel-w: 440px;
+  }
+}
+@media (min-width: 1600px) {
+  :root {
+    --call-panel-w: 440px;
+  }
+}
+@media (min-width: 1800px) {
+  :root {
+    --incidents-panel-w: 480px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

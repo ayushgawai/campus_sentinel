@@ -178,6 +178,11 @@ export function start(handler, hooks = {}) {
       inject(raw) {
         safeHandle(handler, raw);
       },
+      /** Operator dispatch: replace the scripted call for `id` with `rows`. */
+      operatorDispatch(id, rows) {
+        player.operatorDispatch(id, rows);
+      },
+      getTime: () => player.getTime(),
     };
   }
 

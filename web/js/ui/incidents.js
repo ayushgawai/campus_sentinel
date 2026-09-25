@@ -17,6 +17,17 @@ import {
 } from "../format.js";
 import { clear, el, setText } from "../dom.js";
 import { mountIncidentClip } from "./incidentClip.js";
+import {
+  OP_STATUS_EVENT,
+  actionBar,
+  operatorTag,
+  confidenceShort,
+} from "./operator.js";
+
+/** Same entries by identity (store replaces an incident object when it changes). */
+function sameSig(a, b) {
+  return Boolean(a && b && a.length === b.length && a.every((x, i) => x === b[i]));
+}
 
 export function mountIncidents(listRoot, detailRoot, store, actions) {
   listRoot.innerHTML = `
@@ -101,6 +112,8 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
     if (isDispatchSimState(inc.state)) {
       head.appendChild(el("span", { className: "sim-tag", text: "SIMULATED" }));
     }
+    const opTag = operatorTag(inc);
+    if (opTag) head.appendChild(el("span", { className: "status status--info", text: opTag }));
     detailBody.appendChild(head);
 
     detailBody.appendChild(
@@ -112,7 +125,9 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
 
     const conf = el("div", { className: "detail__conf mono" });
     setText(conf, `Confidence ${formatPct(inc.fused_prob)}`);
-    detailBody.appendChild(conf);
+    // Operator reports carry no model confidence.
+    const showConf = inc.fused_prob != null || !opTag;
+    if (showConf) detailBody.appendChild(conf);
     const bar = el("progress", {
       className: "detail__conf-progress",
       attrs: {
@@ -123,7 +138,7 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
     });
     bar.max = 100;
     bar.value = Math.round(pctNumber(inc.fused_prob) || 0);
-    detailBody.appendChild(bar);
+    if (showConf) detailBody.appendChild(bar);
 
     detailBody.appendChild(
       el("h3", {
@@ -188,29 +203,9 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
     detailBody.appendChild(tl);
 
     if (isOpenIncident(inc)) {
-      const footer = el("footer", { className: "detail__footer" });
-      footer.appendChild(
-        el("button", {
-          type: "button",
-          className: "btn btn--primary",
-          text: "Confirm",
-          onClick: () => actions.confirm(inc.incident_id),
-        }),
-      );
-      footer.appendChild(
-        el("button", {
-          type: "button",
-          className: "btn btn--danger",
-          text: "Dismiss",
-          onClick: () => {
-            document.dispatchEvent(
-              new CustomEvent("sentinel:dismiss", {
-                detail: { incidentId: inc.incident_id },
-              }),
-            );
-          },
-        }),
-      );
+      // Same action bar as the incidents panel.
+      const footer = el("footer", { className: "detail__footer detail__footer--op" });
+      footer.appendChild(actionBar(inc, actions, { card: false }));
       detailBody.appendChild(footer);
     }
   }
@@ -223,8 +218,20 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
     for (const { node, iso } of agoNodes) setText(node, formatRel(iso, nowMs));
   }
 
+  let opVersion = 0;
+  let lastSig = null;
+
   function render(state) {
     if (state.route !== "incidents") return;
+    // Rebuild only when the incidents, selection, filter or an operator
+    // status changed — the store notifies every frame in mock, and a rebuild
+    // between mousedown and mouseup swallows the click.
+    const sig = [filter, state.selectedId, opVersion, ...state.order.map((id) => state.incidents[id])];
+    if (sameSig(sig, lastSig)) return;
+    lastSig = sig;
+    const focusKey = detailRoot.contains(document.activeElement)
+      ? document.activeElement.dataset.focusKey
+      : null;
     agoNodes = [];
     const ids = state.order.filter((id) => {
       const inc = state.incidents[id];
@@ -277,7 +284,7 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
       meta.appendChild(
         el("span", {
           className: "mono",
-          text: formatPct(inc.fused_prob),
+          text: confidenceShort(inc),
         }),
       );
       btn.appendChild(top);
@@ -292,14 +299,22 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
     paintDetail(
       sel && matches(sel) ? sel : ids[0] ? state.incidents[ids[0]] : null,
     );
+    if (focusKey) detailRoot.querySelector(`[data-focus-key="${focusKey}"]`)?.focus();
+  }
+
+  function onOpStatus() {
+    opVersion += 1;
+    render(store.getState());
   }
 
   render(store.getState());
   const unsub = store.subscribe(render);
   const unsubTick = subscribeTick(paintTimes);
+  document.addEventListener(OP_STATUS_EVENT, onOpStatus);
 
   return () => {
     unsub();
     unsubTick();
+    document.removeEventListener(OP_STATUS_EVENT, onOpStatus);
   };
 }

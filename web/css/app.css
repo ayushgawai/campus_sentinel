@@ -135,14 +135,13 @@ body.has-banner #banner:not([hidden]) {
 body.sidebar-open:not(.call-open) .page--live {
   grid-template-columns: minmax(0, 1fr) var(--incidents-panel-w);
 }
+/* The call track grows to its width only after the wall has its minimum,
+   so when space is short the call panel shrinks first (to its min). */
 body.sidebar-open.call-open .page--live {
-  grid-template-columns: minmax(0, 1fr) var(--call-panel-w) var(--incidents-panel-w);
-}
-@media (max-width: 1600px) {
-  :root {
-    --incidents-panel-w: 360px;
-    --call-panel-w: 400px;
-  }
+  grid-template-columns:
+    minmax(min(var(--wall-min-w), 100%), 1fr)
+    minmax(var(--call-panel-min-w), var(--call-panel-w))
+    var(--incidents-panel-w);
 }
 
 .live-stage {
@@ -3793,4 +3792,549 @@ body:not(.route-live) #assist-root {
 @keyframes splash-bg-out {
   from { opacity: 1; }
   to { opacity: 0; }
+}
+
+/* ---------- Operator actions (Fix 5) ---------- */
+.icon {
+  flex-shrink: 0;
+}
+.op-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--gap-ctrl);
+}
+.op-btn {
+  height: var(--h-md);
+}
+.op-btn.btn--sm {
+  height: var(--h-sm);
+}
+.op-btn:disabled,
+.op-pop .btn:disabled,
+.op-dialog .btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* Call for help: the one strong action in its bar. */
+.op-btn--call {
+  font-weight: 600;
+}
+.op-btn--call.op-btn--severe {
+  background: var(--severe);
+  border-color: var(--severe);
+  color: var(--carbon);
+}
+.op-btn--call.op-btn--severe:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+.op-btn--call.op-btn--minor {
+  background: var(--aqua);
+  border-color: var(--aqua);
+  color: var(--on-aqua);
+}
+.card .op-btn--call.op-btn--minor {
+  background: var(--carbon);
+  border-color: var(--carbon);
+  color: var(--on-carbon, #f2f4f7);
+}
+.op-status {
+  display: inline-flex;
+  align-items: center;
+  height: var(--h-md);
+  font-size: var(--fs-12);
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.op-note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--fs-11);
+  color: var(--text-muted);
+  text-align: right;
+}
+
+/* Incidents panel detail: review row above operator row. */
+.detail-card__actions--op {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--gap-ctrl);
+}
+
+/* Incidents page detail footer holds the shared action bar. */
+.detail__footer.detail__footer--op > .op-bar {
+  width: 100%;
+  max-width: 440px;
+  margin-left: auto;
+}
+/* The page footer orders .btn / .btn--primary and makes primary 44px;
+   the action bar keeps its own order and heights. */
+.detail__footer .op-bar .btn {
+  order: 0;
+}
+
+/* Incidents panel list toolbar. */
+.inc-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-ctrl);
+  flex-shrink: 0;
+}
+.inc-toolbar__count {
+  font-size: var(--fs-12);
+  color: var(--text-muted);
+}
+
+/* Call Console head: full-width Call for help under the meta line. */
+.call-head-card__action {
+  grid-column: 1 / -1;
+  margin-top: var(--sp-2);
+}
+.call-head-card__action[hidden] {
+  display: none;
+}
+
+/* Camera tiles: flag in the header band, left of REC (never over it). */
+.cam-flag {
+  position: absolute;
+  z-index: 4;
+  top: calc((var(--tile-header-h) - var(--h-sm)) / 2);
+  right: 46px;
+  width: var(--h-sm);
+  height: var(--h-sm);
+  color: var(--text);
+  background: var(--scrim);
+  border-color: transparent;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+.cam-flag:hover {
+  color: var(--text);
+  background: var(--scrim-strong);
+}
+.cam-slot:hover .cam-flag,
+.cam-slot:focus-within .cam-flag,
+.cam-slot--main .cam-flag {
+  opacity: 1;
+  pointer-events: auto;
+}
+.cam-slot.has-bar .cam-flag,
+.cam-slot.is-narrow:not(.cam-slot--main) .cam-flag,
+.is-edit-sources .cam-flag {
+  display: none;
+}
+.cam-inc-bar__flag--end {
+  margin-left: auto;
+}
+.cam-inc-bar__flag--end + .cam-inc-bar__details {
+  margin-left: 0;
+}
+
+/* Report popover (anchored) */
+#op-dialog.op-pop-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 85;
+}
+.op-pop {
+  position: fixed;
+  width: 300px;
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--card-pad-sm);
+  background: var(--card);
+  color: var(--card-text);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+}
+.op-pop__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap-ctrl);
+}
+.op-pop__title {
+  margin: 0;
+  font-size: var(--fs-14);
+  font-weight: 600;
+}
+.op-pop__cam {
+  font-size: var(--fs-12);
+  color: var(--card-text-2);
+}
+.op-pop__foot,
+.op-dialog__foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--gap-ctrl);
+}
+.op-pop .btn--secondary,
+.op-dialog .btn--secondary {
+  background: var(--card);
+  color: var(--card-text);
+  border-color: var(--card-border);
+}
+.op-pop .btn--secondary:hover:not(:disabled),
+.op-dialog .btn--secondary:hover:not(:disabled) {
+  background: var(--card-subtle);
+}
+.op-pop .btn--primary,
+.op-dialog .btn--primary {
+  background: var(--carbon);
+  border-color: var(--carbon);
+  color: var(--on-carbon, #f2f4f7);
+}
+.op-pop .op-note,
+.op-dialog .op-note {
+  color: var(--card-text-2);
+  text-align: left;
+}
+
+/* Chips, severity toggle, inputs (popover + dialogs, white cards) */
+.op-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.op-chip {
+  appearance: none;
+  height: var(--h-sm);
+  padding: 0 10px;
+  border-radius: var(--r-ctrl);
+  border: 1px solid var(--card-border);
+  background: var(--card-subtle);
+  color: var(--card-text);
+  font: inherit;
+  font-size: var(--fs-12);
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+.op-chip.is-on {
+  background: var(--on-card-aqua-bg);
+  border-color: var(--on-card-aqua-border);
+  color: var(--on-card-aqua-text);
+  font-weight: 600;
+}
+.op-chip:focus-visible,
+.op-input:focus-visible,
+.op-select:focus-visible {
+  outline: 2px solid var(--aqua);
+  outline-offset: 1px;
+}
+.op-chips--presets .op-chip {
+  height: auto;
+  min-height: var(--h-sm);
+  padding: 6px 10px;
+  line-height: 1.3;
+  text-align: left;
+  white-space: normal;
+}
+.op-seg {
+  display: flex;
+}
+.op-seg .op-chip {
+  flex: 1;
+  border-radius: 0;
+}
+.op-seg .op-chip:first-child {
+  border-radius: var(--r-ctrl) 0 0 var(--r-ctrl);
+}
+.op-seg .op-chip:last-child {
+  border-radius: 0 var(--r-ctrl) var(--r-ctrl) 0;
+  margin-left: -1px;
+}
+.op-input,
+.op-select {
+  width: 100%;
+  box-sizing: border-box;
+  height: var(--h-md);
+  padding: 0 10px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--r-ctrl);
+  background: var(--card);
+  color: var(--card-text);
+  font: inherit;
+  font-size: var(--fs-13);
+}
+.op-textarea {
+  height: auto;
+  min-height: 72px;
+  padding: 8px 10px;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+/* Call for help / Broadcast dialogs (dismiss-style modal) */
+.op-dialog--wide {
+  width: min(480px, 100%);
+}
+.op-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.op-dialog__q {
+  margin: 0;
+  font-size: var(--fs-14);
+  font-weight: 600;
+  color: var(--card-text);
+}
+.op-label {
+  margin: 2px 0 0;
+  font-size: var(--fs-11);
+  font-weight: 600;
+  color: var(--card-text-3);
+}
+.op-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.op-preview {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--fs-12);
+  color: var(--card-text-2);
+  overflow-wrap: anywhere;
+}
+.op-counter {
+  flex-shrink: 0;
+  font-size: var(--fs-11);
+  color: var(--card-text-3);
+}
+.op-dialog .op-note--result {
+  font-size: var(--fs-13);
+  font-weight: 600;
+  color: var(--card-text);
+}
+
+/* ---------- Incident detail (Fix 5b) ---------- */
+.inc-detail > .card {
+  flex-shrink: 0;
+}
+.inc-head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.inc-head__back {
+  appearance: none;
+  align-self: flex-start;
+  border: 0;
+  background: transparent;
+  padding: 2px 0;
+  font: inherit;
+  font-size: var(--fs-14);
+  font-weight: 500;
+  color: var(--card-text);
+  cursor: pointer;
+  border-radius: var(--r-ctrl);
+}
+.inc-head__back:hover {
+  text-decoration: underline;
+}
+.inc-head__back:focus-visible {
+  outline: 2px solid var(--aqua);
+  outline-offset: 2px;
+}
+/* Title and chip group; the group wraps to the next line as a unit. */
+.inc-head__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  min-width: 0;
+}
+.inc-head__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: var(--h-sm);
+  color: var(--card-text);
+}
+.inc-head__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.inc-head__meta {
+  margin: 0;
+  font-size: var(--fs-13);
+  color: var(--card-text-2);
+}
+.op-unconfirmed {
+  color: var(--on-card-minor-text);
+  font-weight: 600;
+}
+.inc-tl__note .op-unconfirmed {
+  display: inline-block;
+  padding: 0 5px;
+  font-size: var(--fs-11);
+  line-height: 16px;
+  border: 1px solid var(--on-card-minor-border);
+  border-radius: var(--r-ctrl);
+  background: var(--on-card-minor-bg);
+  white-space: nowrap;
+}
+.inc-section-title {
+  margin: 0 0 8px;
+  font-size: var(--fs-13);
+  font-weight: 600;
+  color: var(--card-text);
+}
+
+/* Details: two-column definition list with hairlines. */
+.inc-dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 16px;
+  margin: 0;
+}
+.inc-dl > dt,
+.inc-dl > dd {
+  margin: 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--card-border);
+  line-height: 20px;
+}
+.inc-dl > dt:first-child,
+.inc-dl > dt:first-child + dd {
+  border-top: 0;
+  padding-top: 0;
+}
+.inc-dl > :nth-last-child(-n + 2) {
+  padding-bottom: 0;
+}
+.inc-dl > dt {
+  font-size: var(--fs-12);
+  color: var(--card-text-3);
+}
+.inc-dl > dd {
+  min-width: 0;
+  font-size: var(--fs-14);
+  color: var(--card-text);
+  overflow-wrap: anywhere;
+}
+.inc-dl__conf {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+progress.detail__conf-progress.inc-dl__bar {
+  flex: 1;
+  max-width: 160px;
+  margin: 0;
+}
+.inc-dl__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Timeline: time | state | note, notes share one column (hanging indent). */
+.inc-tl {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: max-content max-content minmax(0, 1fr);
+  column-gap: 10px;
+  row-gap: 8px;
+  align-items: start;
+}
+.inc-tl__row {
+  display: contents;
+}
+.inc-tl__time {
+  font-size: var(--fs-12);
+  line-height: 20px;
+  color: var(--card-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.card-chip.inc-tl__state {
+  height: 20px;
+  padding: 0 6px;
+  font-size: var(--fs-11);
+}
+.inc-tl__note {
+  min-width: 0;
+  font-size: var(--fs-13);
+  line-height: 20px;
+  color: var(--card-text);
+  overflow-wrap: anywhere;
+}
+
+/* Action bar: full-width Call for help (or status), then three equal buttons. */
+.op-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.inc-detail > .op-bar {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  z-index: 1;
+}
+.op-bar .btn.op-bar__primary {
+  width: 100%;
+  height: 40px;
+}
+.op-bar__status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: var(--r-ctrl);
+  background: var(--surface-3);
+  color: var(--text-muted);
+  font-size: var(--fs-13);
+  font-variant-numeric: tabular-nums;
+}
+.card .op-bar__status {
+  background: var(--card-subtle);
+}
+.op-bar__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dispatch, var(--severe));
+  animation: rec-blink 1.2s steps(1) infinite;
+}
+.op-bar__note {
+  margin: 0;
+  font-size: var(--fs-11);
+  color: var(--minor);
+  text-align: center;
+}
+.op-bar__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.op-bar__grid .btn {
+  width: 100%;
+  min-width: 0;
+  height: var(--h-md);
+  padding: 0 8px;
+  white-space: nowrap;
+}
+.op-bar .btn > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

@@ -18,6 +18,8 @@ import { createCameraLayout } from "./cameraLayout.js";
 import { themeColors } from "../theme.js";
 import * as cameraSources from "../cameraSources.js";
 import { cameraStream } from "../transport.js";
+import { icon } from "../icons.js";
+import { OP_REPORT_EVENT, confidenceShort } from "./operator.js";
 
 export const FOCUS_CAMERA_EVENT = "sentinel:focus-camera";
 export const OPEN_SIDEBAR_EVENT = "sentinel:open-sidebar";
@@ -280,8 +282,25 @@ export function mountCameras(root, store, actions, layout) {
     tile.appendChild(chip);
     tile.appendChild(leftNote);
 
+    // Report flag: a sibling of the tile (a button cannot hold a button),
+    // in the tile header band just left of REC. Shown on hover or focus;
+    // always on a main camera without an incident bar.
+    const flag = document.createElement("button");
+    flag.type = "button";
+    flag.className = "btn btn--ghost btn--icon btn--sm cam-flag";
+    flag.setAttribute("aria-label", `Report incident on ${cameraLabel(id)}`);
+    flag.title = `Report incident on ${cameraLabel(id)}`;
+    flag.appendChild(icon("flag"));
+    flag.addEventListener("click", (e) => {
+      e.stopPropagation();
+      document.dispatchEvent(
+        new CustomEvent(OP_REPORT_EVENT, { detail: { cameraId: id, anchor: flag } }),
+      );
+    });
+
     wrap.appendChild(header);
     wrap.appendChild(tile);
+    wrap.appendChild(flag);
     stage.appendChild(wrap);
 
     tiles.set(id, {
@@ -585,21 +604,52 @@ export function mountCameras(root, store, actions, layout) {
     });
   }
 
+  /** Always-visible report flag for a main camera's incident bar. */
+  function barFlag(cameraId) {
+    const b = el("button", {
+      type: "button",
+      className: "btn btn--ghost btn--icon btn--sm cam-inc-bar__flag",
+      attrs: {
+        "aria-label": `Report incident on ${cameraLabel(cameraId)}`,
+        title: `Report incident on ${cameraLabel(cameraId)}`,
+      },
+      onClick: (e) => {
+        e.stopPropagation();
+        document.dispatchEvent(
+          new CustomEvent(OP_REPORT_EVENT, { detail: { cameraId, anchor: b } }),
+        );
+      },
+    });
+    b.appendChild(icon("flag"));
+    return b;
+  }
+
+  /** cameraId → [hold, incident] last painted; applyLayout runs every notify. */
+  const headerSig = new Map();
+
   function paintHeader(cameraId, mainMeta, state) {
     const header = headers.get(cameraId);
     if (!header) return;
+    const wrap = tiles.get(cameraId)?.wrap;
+    const inc = mainMeta?.incidentId ? state.incidents[mainMeta.incidentId] : null;
+    const sig = mainMeta ? [mainMeta.hold || "", inc] : null;
+    const prev = headerSig.get(cameraId);
+    // Rebuilding every frame would swallow clicks on Details and the flag.
+    if (sig && prev && sig[0] === prev[0] && sig[1] === prev[1]) return;
+    if (!sig && !prev) return;
+    headerSig.set(cameraId, sig);
+
     if (!mainMeta) {
       header.hidden = true;
+      wrap?.classList.remove("has-bar");
       clear(header);
       headerAgo.delete(cameraId);
       return;
     }
     header.hidden = false;
+    wrap?.classList.add("has-bar");
     clear(header);
     headerAgo.delete(cameraId);
-    const inc = mainMeta.incidentId
-      ? state.incidents[mainMeta.incidentId]
-      : null;
 
     if (mainMeta.hold) {
       header.appendChild(
@@ -608,10 +658,14 @@ export function mountCameras(root, store, actions, layout) {
           text: mainMeta.hold === "RESOLVED" ? "Resolved" : "Dismissed",
         }),
       );
+      const flag = barFlag(cameraId);
+      flag.classList.add("cam-inc-bar__flag--end");
+      header.appendChild(flag);
       return;
     }
     if (!inc) {
       header.hidden = true;
+      wrap?.classList.remove("has-bar");
       return;
     }
 
@@ -648,6 +702,9 @@ export function mountCameras(root, store, actions, layout) {
     setText(agoEl, formatRel(agoIso, now()));
     headerAgo.set(cameraId, { node: agoEl, iso: agoIso });
     header.appendChild(agoEl);
+    const flag = barFlag(cameraId);
+    flag.classList.add("cam-inc-bar__flag--end");
+    header.appendChild(flag);
     header.appendChild(
       el("button", {
         type: "button",
@@ -701,6 +758,8 @@ export function mountCameras(root, store, actions, layout) {
       wrap.classList.toggle("cam-slot--main", r.role === "main");
       wrap.classList.toggle("cam-slot--thumb", r.role === "thumb");
       wrap.classList.toggle("cam-slot--grid", r.role === "grid");
+      // Too narrow for "Camera N", the flag and REC side by side.
+      wrap.classList.toggle("is-narrow", r.w < 200);
       tile.tile.classList.toggle("is-thumb", r.role === "thumb");
       paintHeader(id, mainByCam.get(id) || null, state);
       tile.dirty = true;
@@ -814,7 +873,7 @@ export function mountCameras(root, store, actions, layout) {
         tile.chipEl.hidden = false;
         setText(
           tile.chipEl,
-          `${classLabel(inc.class_token)} ${formatPct(inc.fused_prob)}`,
+          `${classLabel(inc.class_token)} ${confidenceShort(inc)}`,
         );
         tile.chipEl.className = "cam-tile__chip cam-tile__chip--severe";
         tile.dirty = true;
@@ -825,7 +884,7 @@ export function mountCameras(root, store, actions, layout) {
         tile.chipEl.hidden = false;
         setText(
           tile.chipEl,
-          `${classLabel(inc.class_token)} ${formatPct(inc.fused_prob)}`,
+          `${classLabel(inc.class_token)} ${confidenceShort(inc)}`,
         );
         tile.chipEl.className = "cam-tile__chip cam-tile__chip--minor";
         tile.dirty = true;

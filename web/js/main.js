@@ -14,6 +14,7 @@ import { mountCallPage } from "./ui/callpage.js";
 import { mountCallPanel } from "./ui/call.js";
 import { mountDemo } from "./ui/demo.js";
 import { mountDismiss } from "./ui/dismiss.js";
+import { mountOperator } from "./ui/operator.js";
 import { mountIncidents } from "./ui/incidents.js";
 import { mountSystem } from "./ui/system.js";
 import { startAutoFollow } from "./ui/autofollow.js";
@@ -54,7 +55,8 @@ mountTopbar(document.getElementById("topbar"), store, actions, layoutCtl);
 mountBanner(document.getElementById("banner"), store, actions, layoutCtl);
 mountCameras(document.getElementById("cameras"), store, actions, layoutCtl);
 
-const callPanelApi = mountCallPanel(document.getElementById("call-float"), store);
+const opApi = mountOperator(document.getElementById("op-dialog"), store, actions);
+const callPanelApi = mountCallPanel(document.getElementById("call-float"), store, actions);
 
 const sidebarApi = mountSidebar(
   document.getElementById("sidebar"),
@@ -67,7 +69,7 @@ mountAssist(document.getElementById("assist-root"), store, sidebarApi);
 
 document.addEventListener("sentinel:open-call-panel", () => callPanelApi.open());
 
-mountCallPage(document.getElementById("call-page"), store);
+mountCallPage(document.getElementById("call-page"), store, actions);
 
 async function replayIntro() {
   document.getElementById("demo")?._demoApi?.close?.();
@@ -124,6 +126,12 @@ window.addEventListener(
   (e) => {
     if (e.key !== "Escape") return;
     if (document.getElementById("splash")) return;
+    if (opApi.isOpen()) {
+      opApi.close();
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     const expand = document.getElementById("map-expand");
     if (expand && !expand.hidden) {
       expand._close?.();
@@ -175,6 +183,8 @@ window.addEventListener(
 window.addEventListener("keydown", (e) => {
   if (!["ArrowUp", "ArrowDown", "Enter"].includes(e.key)) return;
   if (document.getElementById("splash")) return;
+  // Dialogs own Enter (confirm) and arrow keys.
+  if (opApi.isOpen() || e.target?.closest?.('[role="dialog"]')) return;
   const tag = e.target?.tagName;
   if (tag && ["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
   if (store.getState().route !== "live" && store.getState().route !== "incidents")

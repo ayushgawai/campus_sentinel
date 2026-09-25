@@ -31,6 +31,19 @@ import {
 } from "./sitePlanExtras.js";
 import { findCallIncident, formatCallTimer, callElapsedMs } from "./call.js";
 import { FOCUS_CAMERA_EVENT } from "./cameras.js";
+import {
+  OP_REPORT_EVENT,
+  OP_STATUS_EVENT,
+  actionBar,
+  opButton,
+  confidenceLong,
+} from "./operator.js";
+import { detailHeaderCard, detailsCard, clipCard, timelineCard } from "./incidentDetail.js";
+
+/** Same entries by identity (store replaces an incident object when it changes). */
+function sameSig(a, b) {
+  return Boolean(a && b && a.length === b.length && a.every((x, i) => x === b[i]));
+}
 
 export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
   let open = false;
@@ -152,7 +165,7 @@ export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
   function paintAgoLine({ node, inc }, nowMs) {
     setText(
       node,
-      `${cameraLabel(inc.camera_id)} · ${formatRel(inc.created_at || inc.peak_ts, nowMs)} · ${formatPct(inc.fused_prob)} confidence`,
+      `${cameraLabel(inc.camera_id)} · ${formatRel(inc.created_at || inc.peak_ts, nowMs)} · ${confidenceLong(inc)}`,
     );
   }
 
@@ -162,171 +175,81 @@ export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
     for (const entry of agoLines) paintAgoLine(entry, nowMs);
   }
 
+  /** Operator status changes (pending, not confirmed) force a repaint. */
+  let opVersion = 0;
+  let lastSig = null;
+
+  function incidentsSig(state) {
+    if (detailId && state.incidents[detailId]) {
+      return ["detail", detailId, state.incidents[detailId], opVersion];
+    }
+    return ["list", state.selectedId, opVersion, ...state.order.map((id) => state.incidents[id])];
+  }
+
   function paintIncidents(state) {
+    // The store notifies every frame (mock clock) and on every overlay; only
+    // rebuild when what this panel shows changed, so buttons keep their
+    // clicks and keyboard focus.
+    const sig = incidentsSig(state);
+    if (sameSig(sig, lastSig)) return;
+    lastSig = sig;
+
     const panel = panels.incidents;
+    const hadFocus = panel.contains(document.activeElement)
+      ? document.activeElement.dataset.focusKey
+      : null;
     clear(panel);
     agoLines = [];
     const nowMs = now();
+    paintIncidentsBody(state, panel, nowMs);
+    if (hadFocus) panel.querySelector(`[data-focus-key="${hadFocus}"]`)?.focus();
+  }
 
+  function reportToolbar(state) {
+    const openCount = state.order.filter((id) => isOpenIncident(state.incidents[id])).length;
+    const bar = el("div", { className: "inc-toolbar" });
+    bar.appendChild(
+      el("span", {
+        className: "inc-toolbar__count",
+        text: openCount === 1 ? "1 open" : `${openCount} open`,
+      }),
+    );
+    const btn = opButton({
+      className: "btn btn--secondary btn--sm op-btn",
+      iconName: "flag",
+      text: "Report",
+      attrs: { "aria-label": "Report incident", title: "Report incident", "data-focus-key": "report" },
+      onClick: () =>
+        document.dispatchEvent(new CustomEvent(OP_REPORT_EVENT, { detail: { anchor: btn } })),
+    });
+    bar.appendChild(btn);
+    return bar;
+  }
+
+  function paintIncidentsBody(state, panel, nowMs) {
     if (detailId && state.incidents[detailId]) {
       const inc = state.incidents[detailId];
-      const stack = el("div", { className: "sidebar-stack sidebar-stack--scroll" });
-
+      const stack = el("div", { className: "sidebar-stack sidebar-stack--scroll inc-detail" });
       stack.appendChild(
-        el("button", {
-          type: "button",
-          className: "btn btn--ghost card",
-          text: "← Incidents",
-          onClick: () => {
+        detailHeaderCard(inc, {
+          onBack: () => {
             detailId = null;
             paint();
           },
         }),
       );
-
-      const headCard = el("div", { className: "card detail-card" });
-      const head = el("header", { className: "inc-card__row1" });
-      head.appendChild(
-        el("h2", {
-          className: "inc-card__type",
-          text: classLabel(inc.class_token),
-        }),
-      );
-      const chips = el("div", { className: "inc-card__chips" });
-      chips.appendChild(
-        el("span", {
-          className: `card-chip card-chip--${inc.severity === "SEVERE" ? "severe" : "minor"}`,
-          text: severityLabel(inc.severity),
-        }),
-      );
-      chips.appendChild(
-        el("span", { className: "card-chip", text: stateLabel(inc.state) }),
-      );
-      if (isDispatchSimState(inc.state)) {
-        chips.appendChild(
-          el("span", {
-            className: "card-chip card-chip--dispatch",
-            text: "SIMULATED",
-          }),
-        );
-      }
-      head.appendChild(chips);
-      headCard.appendChild(head);
-      headCard.appendChild(agoLine("p", inc, nowMs));
-      stack.appendChild(headCard);
-
-      const confCard = el("div", { className: "card detail-card" });
-      confCard.appendChild(el("h3", { className: "card__title", text: "Confidence" }));
-      confCard.appendChild(
-        el("p", { className: "detail__conf mono", text: formatPct(inc.fused_prob) }),
-      );
-      const bar = el("progress", {
-        className: "detail__conf-progress",
-        attrs: {
-          max: "100",
-          value: String(Math.round(pctNumber(inc.fused_prob) || 0)),
-        },
-      });
-      bar.max = 100;
-      bar.value = Math.round(pctNumber(inc.fused_prob) || 0);
-      confCard.appendChild(bar);
-      stack.appendChild(confCard);
-
-      const obsCard = el("div", { className: "card detail-card" });
-      obsCard.appendChild(
-        el("h3", { className: "card__title", text: "What the model saw" }),
-      );
-      obsCard.appendChild(
-        el("blockquote", {
-          className: "detail__quote",
-          text: textOr(inc.description, notReported()),
-        }),
-      );
-      stack.appendChild(obsCard);
-
-      const personCard = el("div", { className: "card detail-card" });
-      personCard.appendChild(el("h3", { className: "card__title", text: "Person" }));
-      personCard.appendChild(
-        el("p", {
-          className: "card__body",
-          text: textOr(inc.person_description, notReported()),
-        }),
-      );
-      stack.appendChild(personCard);
-
-      const clipCard = el("div", { className: "card detail-card" });
-      clipCard.appendChild(el("h3", { className: "card__title", text: "Clip" }));
-      const clipHost = el("div", { className: "detail__clip-host" });
-      clipCard.appendChild(clipHost);
-      if ((window.__transport?.mode || "MOCK") === "MOCK") {
-        mountIncidentClip(clipHost, {
-          cameraId: inc.camera_id,
-          endTs: inc.peak_ts || inc.created_at,
-        });
-      } else if (inc.clip_uri) {
-        clipCard.appendChild(
-          el("p", { className: "card__meta mono", text: String(inc.clip_uri) }),
-        );
-      }
-      stack.appendChild(clipCard);
-
-      const rules = Array.isArray(inc.rules_fired) ? inc.rules_fired : [];
-      const rulesCard = el("div", { className: "card detail-card" });
-      rulesCard.appendChild(el("h3", { className: "card__title", text: "Rules fired" }));
-      rulesCard.appendChild(
-        el("p", {
-          className: "card__meta mono",
-          text: rules.length ? rules.map(String).join(" · ") : "None",
-        }),
-      );
-      stack.appendChild(rulesCard);
-
-      const tlCard = el("div", { className: "card detail-card" });
-      tlCard.appendChild(el("h3", { className: "card__title", text: "Timeline" }));
-      const tl = el("ol", { className: "detail__timeline" });
-      for (const ev of Array.isArray(inc.timeline) ? inc.timeline : []) {
-        const li = el("li", { className: "card__meta mono" });
-        setText(
-          li,
-          `${formatTimeLocal(ev.ts)} · ${stateLabel(ev.state)}${ev.note ? ` · ${ev.note}` : ""}`,
-        );
-        tl.appendChild(li);
-      }
-      tlCard.appendChild(tl);
-      stack.appendChild(tlCard);
-
-      if (isOpenIncident(inc)) {
-        const footer = el("footer", {
-          className: "card detail-card detail-card__actions",
-        });
-        footer.appendChild(
-          el("button", {
-            type: "button",
-            className: "btn btn--ghost",
-            text: "Dismiss",
-            onClick: () => {
-              document.dispatchEvent(
-                new CustomEvent("sentinel:dismiss", {
-                  detail: { incidentId: inc.incident_id },
-                }),
-              );
-            },
-          }),
-        );
-        footer.appendChild(
-          el("button", {
-            type: "button",
-            className: "btn btn--primary",
-            text: "Confirm",
-            onClick: () => actions.confirm(inc.incident_id),
-          }),
-        );
-        stack.appendChild(footer);
-      }
-
+      stack.appendChild(detailsCard(inc));
+      const clip = clipCard(inc);
+      if (clip) stack.appendChild(clip);
+      stack.appendChild(timelineCard(inc));
+      // Sticky at the bottom of the same scroll area, so its edges line up
+      // with the cards above even when a scrollbar is showing.
+      if (isOpenIncident(inc)) stack.appendChild(actionBar(inc, actions));
       panel.appendChild(stack);
       return;
     }
+
+    panel.appendChild(reportToolbar(state));
 
     const ids = state.order.filter((id) => {
       const inc = state.incidents[id];
@@ -637,6 +560,10 @@ export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
 
   store.subscribe(render);
   subscribeTick((nowMs) => paintTimes(nowMs));
+  document.addEventListener(OP_STATUS_EVENT, () => {
+    opVersion += 1;
+    paint();
+  });
 
   window.__sidebar = api;
   return api;

@@ -15,9 +15,13 @@ import {
   toolNameLabel,
   LOCATION_TOOL_KEYS,
   HIDDEN_TOOL_KEYS,
+  isOpenIncident,
+  severityLabel,
 } from "../format.js";
 import { redactPlaces } from "../site.js";
 import { clear, el, setText } from "../dom.js";
+import { OP_STATUS_EVENT, operatorActions, actionBar } from "./operator.js";
+import { isDispatchedOrLater } from "../actions.js";
 
 const STREAM_MERGE_MS = 700;
 const CALL_STATES = new Set([
@@ -185,7 +189,7 @@ function appendDl(parent, obj, rawHost) {
 /**
  * Full Call Console page — white cards on dotted carbon (matches Call tab).
  */
-export function mountCallHost(host, store) {
+export function mountCallHost(host, store, actions) {
   host.innerHTML = `
     <div class="call-console">
       <header class="card call-head-card" data-head>
@@ -195,6 +199,7 @@ export function mountCallHost(host, store) {
         </div>
         <span class="call-head-card__timer mono" data-timer>00:00</span>
         <p class="call-head-card__meta" data-meta></p>
+        <div class="call-head-card__action" data-action hidden></div>
       </header>
 
       <div class="call-console__grid">
@@ -213,9 +218,34 @@ export function mountCallHost(host, store) {
   const timerEl = host.querySelector("[data-timer]");
   const chatScroll = host.querySelector("[data-chat]");
   const toolsHost = host.querySelector("[data-tools]");
+  const actionEl = host.querySelector("[data-action]");
 
   let lastThreadLen = -1;
   let lastToolCount = -1;
+  let actionKey = "";
+  let opVersion = 0;
+
+  /** No call yet: the selected open incident, if it can still be dispatched. */
+  function callCandidate(state) {
+    const inc = state.selectedId ? state.incidents[state.selectedId] : null;
+    return inc && isOpenIncident(inc) && !isDispatchedOrLater(inc) ? inc : null;
+  }
+
+  function paintAction(cand) {
+    const key = cand && actions ? `${cand.incident_id}|${cand.severity}|${opVersion}` : "";
+    timerEl.hidden = Boolean(key);
+    actionEl.hidden = !key;
+    if (key === actionKey) return;
+    actionKey = key;
+    clear(actionEl);
+    if (!key) return;
+    actionEl.appendChild(actionBar(cand, actions, { review: false, card: false }));
+  }
+
+  document.addEventListener(OP_STATUS_EVENT, () => {
+    opVersion += 1;
+    render(store.getState());
+  });
   let stickChat = true;
   let stickTools = true;
 
@@ -317,7 +347,13 @@ export function mountCallHost(host, store) {
     const inc = findCallIncident(state);
     setText(timerEl, callTimerText(inc, state, nowMs));
     if (!inc) {
-      setText(metaEl, "");
+      const cand = callCandidate(state);
+      setText(
+        metaEl,
+        cand
+          ? `${cameraLabel(cand.camera_id)} · ${severityLabel(cand.severity)} · ${stateLabel(cand.state)} · ${formatRel(cand.created_at || cand.peak_ts, nowMs)}`
+          : "",
+      );
       return;
     }
     const started = formatRel(
@@ -330,8 +366,10 @@ export function mountCallHost(host, store) {
   function render(state) {
     const inc = findCallIncident(state);
     paintTimes(state);
+    const cand = inc ? null : callCandidate(state);
+    paintAction(cand);
     if (!inc) {
-      setText(classEl, "No active call");
+      setText(classEl, cand ? classLabel(cand.class_token) : "No active call");
       simEl.hidden = true;
       if (lastThreadLen !== 0) {
         renderChat([]);
@@ -383,8 +421,8 @@ export function mountCall() {
   return () => {};
 }
 
-export function mountCallPage(el, store) {
-  return mountCallHost(el, store);
+export function mountCallPage(el, store, actions) {
+  return mountCallHost(el, store, actions);
 }
 
 /**
@@ -394,7 +432,7 @@ export function mountCallPage(el, store) {
  * .card, .chat-card, .tool-card). Uses "callpanel-*" for its own bits
  * (brief row, ended state, footer) to avoid the legacy call-page CSS.
  */
-export function mountCallPanel(root, store) {
+export function mountCallPanel(root, store, actions) {
   let open = false;
 
   root.innerHTML = `
@@ -452,11 +490,32 @@ export function mountCallPanel(root, store) {
   const endedEl = root.querySelector("[data-ended]");
   const chatHost = root.querySelector("[data-chat]");
   const toolsHost = root.querySelector("[data-tools]");
+  const footerEl = root.querySelector("[data-footer]");
   const scrollEl = root.querySelector(".sidebar-stack--scroll");
 
   let lastThreadLen = -1;
   let lastToolId = null;
   let stickBottom = true;
+  let footerKey = "";
+  let opVersion = 0;
+
+  /** Broadcast for the live call; rebuilt only when its inputs change. */
+  function paintFooter(inc) {
+    const live = Boolean(inc && actions && !ENDED_CALL_STATES.has(inc.state));
+    const key = live ? `${inc.incident_id}|${opVersion}` : "";
+    if (key === footerKey) return;
+    footerKey = key;
+    clear(footerEl);
+    if (!live) return;
+    const op = operatorActions(inc, actions, { call: false });
+    footerEl.appendChild(op.row);
+    footerEl.appendChild(op.note);
+  }
+
+  document.addEventListener(OP_STATUS_EVENT, () => {
+    opVersion += 1;
+    if (open) paintFooter(findCallIncident(store.getState()));
+  });
 
   scrollEl.addEventListener("scroll", () => {
     const gap = scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight;
@@ -542,6 +601,7 @@ export function mountCallPanel(root, store) {
     if (!open) return;
     const inc = findCallIncident(state);
     paintTimes(state);
+    paintFooter(inc);
 
     if (!inc) {
       setText(classEl, "No active call");

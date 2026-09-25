@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-25 06:31 UTC - web fixes 1-4: map highlight, all cameras, live clock, incidents + call panels (manav)
+Last updated: 2026-09-25 07:25 UTC - web fix 5/5b: operator actions + cleaner incident detail panel (manav)
 
 ## HARD RULES
 1. `git pull --rebase origin main` before every push. Work on **main**.
@@ -67,6 +67,7 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - web: All cameras button, Esc and 5 s auto return to grid (fix 2)
 - web: live clock, one shared ticker, real time in live and mock (fix 3)
 - web: floating incidents panel with a second call panel beside it, autofollow keeps map and call visible during tracking (fix 4)
+- web: operator actions (report incident, call for help, broadcast) with local fallback until api routes exist; cleaner incident detail panel (wider, merged details card, aligned action bar); fixed swallowed clicks (fix 5, 5b)
 
 ## Pending (owners)
 | Who | What |
@@ -77,6 +78,7 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 | **Ayush / open** | OSNet weights · temp calibration · MediaMTX optional |
 | **Ayush / api** | REST routes: confirm, dismiss (demo reset is already WS) |
 | **Ayush / api** | CallBrief event (when available) |
+| **Ayush / api** | POST /api/incidents/manual, /api/incidents/{id}/dispatch, /api/broadcast, /confirm, /dismiss; CORS allow POST from :8090; rules_fired ['operator_report'] on manual incidents (blocks web fix 5 live path) |
 
 ## Decisions made since the playbook
 - UI branded **Sentinel**; cameras only as Camera 1–6; no place names in UI or mock (public video). (manav)

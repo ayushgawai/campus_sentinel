@@ -587,6 +587,84 @@ function pushCallExchange(script, severeAt) {
   });
 }
 
+function elapsedWords(seconds) {
+  const s = Math.max(0, Math.round(seconds));
+  if (s < 60) return `${s} second${s === 1 ? "" : "s"}`;
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m} minute${m === 1 ? "" : "s"} ${r} second${r === 1 ? "" : "s"}`;
+}
+
+/**
+ * Operator "Call for help" in mock: the same scripted exchange as the
+ * severe demo call (location, person, elapsed), rebased to `at` and
+ * rewritten for the chosen incident. Starts with its DISPATCHED step.
+ * @param {{ id: string, cameraId: string, person: string, peakAt: number, at: number }} opts
+ */
+export function operatorCallRows({ id, cameraId, person, peakAt, at }) {
+  /** @type {{ at: number, event: object }[]} */
+  const rows = [];
+  const say = (offset, speaker, text) => {
+    if (speaker === "dispatcher") {
+      rows.push({
+        at: at + offset,
+        event: mkTranscript({ incident_id: id, speaker, text, at: at + offset }),
+      });
+    } else {
+      pushStream(rows, { incident_id: id, speaker, at: at + offset, text });
+    }
+  };
+  const tool = (offset, name, result) =>
+    rows.push({
+      at: at + offset,
+      event: mkTool({
+        incident_id: id,
+        tool: name,
+        args: { incident_id: id },
+        result,
+        at: at + offset,
+      }),
+    });
+
+  rows.push({
+    at,
+    event: mkStateChange({
+      incident_id: id,
+      state: "DISPATCHED",
+      severity: "SEVERE",
+      note: "Outbound call started",
+      at,
+    }),
+  });
+
+  say(0.6, "dispatcher", "Where did it start?");
+  tool(1.2, "lookup_location", { camera_id: cameraId });
+  say(
+    1.6,
+    "sentinel",
+    `The incident started on ${cameraLabel(cameraId)}, ${elapsedWords(at + 1.6 - peakAt)} ago.`,
+  );
+
+  say(5.0, "dispatcher", "Describe the person involved.");
+  tool(5.5, "get_person_description", { person_description: person || null });
+  say(
+    5.9,
+    "sentinel",
+    person
+      ? `Appearance only: ${person}`
+      : "No person description is available yet.",
+  );
+
+  say(9.2, "dispatcher", "How long since the incident started?");
+  tool(9.6, "get_elapsed_time", {
+    elapsed_seconds: Math.max(0, Math.round(at + 9.6 - peakAt)),
+    peak_ts: atIso(peakAt),
+  });
+  say(10.0, "sentinel", `The incident started ${elapsedWords(at + 10.0 - peakAt)} ago.`);
+
+  return rows;
+}
+
 /**
  * Mock-only predicted next camera schedule (no contract field).
  * highlight from (at - lead) until at, then clear on arrival.
@@ -760,6 +838,30 @@ export function createMockPlayer({ onEvent, onTick, scenarioId = "full" }) {
     reset();
   }
 
+  /**
+   * Operator took over dispatch for `id`: drop the rest of the scripted
+   * dispatch, state changes and call for that incident (so nothing runs
+   * twice) and schedule `rows` in their place. Pursuit (TRACKING and camera
+   * handoffs) still plays; handoff upserts lose their scripted timeline so
+   * the store keeps the operator's.
+   */
+  function operatorDispatch(id, rows) {
+    const rest = [];
+    for (const row of SCRIPT.slice(idx)) {
+      const ev = row.event;
+      const mine = ev.incident_id === id || ev.incident?.incident_id === id;
+      if (!mine) rest.push(row);
+      else if (ev.type === "incident.upsert") {
+        rest.push({ at: row.at, event: { ...ev, incident: { ...ev.incident, timeline: [] } } });
+      } else if (ev.type === "incident.state_change" && ev.state === "TRACKING") {
+        rest.push(row);
+      }
+    }
+    for (const row of rows) rest.push({ ...row, at: Math.max(row.at, t) });
+    rest.sort((a, b) => a.at - b.at);
+    SCRIPT = SCRIPT.slice(0, idx).concat(rest);
+  }
+
   return {
     play,
     pause,
@@ -767,6 +869,7 @@ export function createMockPlayer({ onEvent, onTick, scenarioId = "full" }) {
     setSpeed,
     seek,
     loadScenario,
+    operatorDispatch,
     getTime: () => t,
     isRunning: () => running,
     getSpeed: () => speed,
