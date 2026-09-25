@@ -206,7 +206,7 @@ class DemoHub:
     async def answer_dispatcher(self, incident_id: str, question: str) -> str:
         return await self._voice_agent().answer_dispatcher(incident_id, question)
 
-    async def seed(self, *, force: bool = False, run_scenario: bool = True) -> None:
+    async def seed(self, *, force: bool = False, run_scenario: bool = False) -> None:
         if self._seeded and not force:
             return
         self._seeded = True

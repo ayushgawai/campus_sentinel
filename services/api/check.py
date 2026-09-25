@@ -87,6 +87,10 @@ async def _http_json(
 
 
 async def main() -> None:
+    startup = ApiServer(host="127.0.0.1", port=0)
+    await startup.hub.seed()
+    assert not startup.hub._incidents, "startup seed must never create a dispatchable incident"
+
     srv = ApiServer(host="127.0.0.1", port=0)
 
     # The known demo subject reaches three cameras, but only the first may use Qwen.
