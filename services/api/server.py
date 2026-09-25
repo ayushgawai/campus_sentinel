@@ -1,7 +1,8 @@
-"""stdlib asyncio API on :8080 — /health, /ws, /mjpeg and /media.
+"""stdlib asyncio API on :8080 — /health, /ws, /mjpeg, /media, /twilio/voice, /twilio/media.
 
 No third-party deps. WebSocket is a minimal RFC6455 server sufficient for
-one JSON object per text frame (contracts/events.py envelopes).
+one JSON object per text frame (contracts/events.py envelopes) — and, on
+/twilio/media, for Twilio's own Media Streams JSON protocol instead.
 """
 
 from __future__ import annotations
@@ -127,6 +128,24 @@ class ApiServer:
         self.clients: set[WsClient] = set()
         self.hub = DemoHub(broadcast=self.broadcast)
         self.vision = VisionBridge(self.hub) if vision_enabled() else None
+        # incident_id -> live Twilio Media Stream listeners (one per real phone
+        # call in progress). Fed by broadcast() below; nothing here changes
+        # dashboard behaviour, it's a side-channel for services/voice/media_bridge.py
+        # so a real call can voice the same call.transcript_delta lines the
+        # dashboard already shows, without the bridge polling or duplicating state.
+        self._voice_subs: dict[str, list[asyncio.Queue]] = {}
+
+    def _voice_subscribe(self, incident_id: str) -> "asyncio.Queue[dict[str, Any]]":
+        q: "asyncio.Queue[dict[str, Any]]" = asyncio.Queue()
+        self._voice_subs.setdefault(incident_id, []).append(q)
+        return q
+
+    def _voice_unsubscribe(self, incident_id: str, q: "asyncio.Queue[dict[str, Any]]") -> None:
+        lst = self._voice_subs.get(incident_id)
+        if lst and q in lst:
+            lst.remove(q)
+            if not lst:
+                self._voice_subs.pop(incident_id, None)
 
     async def broadcast(self, envelope: dict[str, Any]) -> None:
         blob = dumps(envelope)
@@ -139,6 +158,10 @@ class ApiServer:
         for c in dead:
             self.clients.discard(c)
             c.close()
+        incident_id = envelope.get("incident_id")
+        if incident_id:
+            for q in list(self._voice_subs.get(incident_id, [])):
+                q.put_nowait(envelope)
 
     async def handle(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
@@ -209,6 +232,13 @@ class ApiServer:
                 xml.encode(),
                 extra={"Content-Type": "application/xml"},
             )
+            return
+        if method == "GET" and path.startswith("/twilio/media"):
+            from urllib.parse import parse_qs, urlparse
+
+            qs = parse_qs(urlparse(path).query)
+            incident_id = (qs.get("incident_id") or [""])[0]
+            await self._twilio_media(reader, writer, headers, incident_id)
             return
         if method == "GET" and path.startswith("/mjpeg/"):
             cam = unquote(path[len("/mjpeg/") :].split("?")[0])
@@ -305,6 +335,57 @@ class ApiServer:
             if not self.clients:
                 await self.hub.stop_loops()
                 # keep vision bridge running across reconnects
+
+    async def _twilio_media(
+        self,
+        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter,
+        headers: dict[str, str],
+        incident_id: str,
+    ) -> None:
+        """Twilio Media Streams WebSocket — the real audio leg of a SEVERE call.
+
+        The actual bridging logic (speak the live transcript, decode inbound
+        audio) lives in services/voice/media_bridge.py; this is just the WS
+        handshake + route glue, matching how /ws is handled above.
+        """
+        key = headers.get("sec-websocket-key", "")
+        if not key:
+            await self._http_raw(writer, 400, b"missing websocket key\n")
+            return
+        accept = base64.b64encode(
+            hashlib.sha1(
+                (key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()
+            ).digest()
+        ).decode()
+        writer.write(
+            (
+                "HTTP/1.1 101 Switching Protocols\r\n"
+                "Upgrade: websocket\r\n"
+                "Connection: Upgrade\r\n"
+                f"Sec-WebSocket-Accept: {accept}\r\n\r\n"
+            ).encode()
+        )
+        await writer.drain()
+
+        client = WsClient(reader, writer)
+        from services.voice.media_bridge import MediaStreamBridge
+
+        bridge = MediaStreamBridge(
+            incident_id=incident_id,
+            send=lambda text: client.send_text(text.encode("utf-8")),
+            recv=client.recv_text,
+            subscribe=self._voice_subscribe,
+            unsubscribe=self._voice_unsubscribe,
+            replay=self.hub.replay_events,
+            publish=self.hub.publish,
+        )
+        try:
+            await bridge.run()
+        except (asyncio.IncompleteReadError, ConnectionResetError, BrokenPipeError):
+            pass
+        finally:
+            client.close()
 
     async def _mjpeg(self, writer: asyncio.StreamWriter, camera_id: str) -> None:
         entry = CLIP_BY_CAM.get(camera_id)
@@ -480,7 +561,11 @@ class ApiServer:
             print("[api] CS_VISION_SEVILLE bridge starting", flush=True)
         server = await asyncio.start_server(self.handle, self.host, self.port)
         addrs = ", ".join(str(s.getsockname()) for s in server.sockets or [])
-        print(f"api listening on {addrs}  (/health /ws /mjpeg/{{cam}} /media/{{cam}})", flush=True)
+        print(
+            f"api listening on {addrs}  "
+            "(/health /ws /mjpeg/{cam} /media/{cam} /twilio/voice /twilio/media)",
+            flush=True,
+        )
         async with server:
             await server.serve_forever()
 
