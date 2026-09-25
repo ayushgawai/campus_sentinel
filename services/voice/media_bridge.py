@@ -10,8 +10,10 @@ This bridge never invents anything to say. It subscribes to the same
 call.transcript_delta envelopes the dashboard already renders (via
 ApiServer's per-incident fan-out) and voices every speaker=="sentinel" line
 verbatim — the phone hears exactly what the transcript panel shows, nothing
-more. Outbound TTS is ElevenLabs (CS_TTS_PROVIDER=elevenlabs, ulaw_8000) with
-Kokoro fallback, else Kokoro; if neither gives audio (unconfigured
+more. Outbound TTS is ElevenLabs (CS_TTS_PROVIDER=elevenlabs, ulaw_8000,
+streamed frame-by-frame over a per-call keep-alive connection) with a per-line
+Kokoro fallback when no first chunk arrives in time, else Kokoro; if neither
+gives audio (unconfigured
 CS_KOKORO_URL), we play a short synthesized tone instead of dead air, so the
 audio pipe itself is provably working even without real TTS.
 
@@ -32,6 +34,7 @@ import base64
 import json
 import math
 import struct
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable
@@ -44,7 +47,7 @@ except ImportError:  # pragma: no cover — degrade to silent rather than crash
 from contracts import CallTranscriptDelta, utcnow
 from services.brain.guardrails import Guardrails
 
-from .elevenlabs import get_phone_tts
+from .elevenlabs import first_chunk_timeout_s, get_phone_tts
 from .parakeet import get_asr
 
 SendFn = Callable[[str], Awaitable[None]]
@@ -129,6 +132,7 @@ class MediaStreamBridge:
     _queue: "asyncio.Queue[dict[str, Any]] | None" = field(default=None, repr=False)
     _spoken: set[str] = field(default_factory=set, repr=False)
     _tts: Any = field(default=None, repr=False)
+    _remote: Any = field(default=None, repr=False)  # per-call keep-alive ElevenLabs stream
     _asr: Any = field(default=None, repr=False)
     _inbound_buf: bytearray = field(default_factory=bytearray, repr=False)
     # ponytail: one live call makes this queue safe; add backpressure if concurrency grows.
@@ -150,6 +154,11 @@ class MediaStreamBridge:
             return
         self._tts = get_phone_tts()
         self._asr = get_asr()
+        self._remote = self._tts.new_remote()
+        # TLS handshake now, not on the first spoken line.
+        warm = asyncio.create_task(
+            asyncio.to_thread(self._remote.warm) if self._remote is not None else asyncio.sleep(0)
+        )
         prewarm = asyncio.create_task(
             asyncio.to_thread(self._tts.prewarm, _FILLERS + (_REPEAT_PROMPT,))
         )
@@ -169,6 +178,9 @@ class MediaStreamBridge:
             if self._asr_task is not None:
                 await self._asr_task
             await prewarm
+            await warm
+            if self._remote is not None:
+                await asyncio.to_thread(self._remote.close)
             self.unsubscribe(self.incident_id, self._queue)
 
     async def _await_start(self) -> bool:
@@ -330,7 +342,11 @@ class MediaStreamBridge:
             except asyncio.QueueEmpty:
                 break
         try:
-            if hasattr(self._tts, "synthesize_mulaw"):
+            if self._remote is not None and hasattr(self._tts, "stream_remote"):
+                if await self._speak_streamed(text):
+                    return
+                audio = await asyncio.to_thread(self._tts.kokoro_mulaw, text)
+            elif hasattr(self._tts, "synthesize_mulaw"):
                 audio = await asyncio.to_thread(self._tts.synthesize_mulaw, text)
             else:
                 pcm16 = await asyncio.to_thread(self._tts.synthesize, text)
@@ -342,18 +358,63 @@ class MediaStreamBridge:
             self._speaking = False
             self._ignore_inbound_until = time.monotonic() + 0.5
 
+    async def _speak_streamed(self, text: str) -> bool:
+        """Play ElevenLabs audio frame-by-frame as chunks arrive. False (nothing
+        played) if no first chunk within the timeout — caller uses Kokoro."""
+        loop = asyncio.get_running_loop()
+        chunks: "asyncio.Queue[bytes | None]" = asyncio.Queue()
+        abandoned = threading.Event()
+
+        def on_chunk(chunk: bytes) -> bool:
+            if abandoned.is_set():
+                return False
+            loop.call_soon_threadsafe(chunks.put_nowait, chunk)
+            return True
+
+        worker = asyncio.ensure_future(
+            asyncio.to_thread(self._tts.stream_remote, text, self._remote, on_chunk)
+        )
+        worker.add_done_callback(lambda _f: chunks.put_nowait(None))
+        try:
+            try:
+                first = await asyncio.wait_for(chunks.get(), first_chunk_timeout_s())
+            except asyncio.TimeoutError:
+                first = None
+            if first is None:
+                return False
+            pending = bytearray(first)
+            while True:
+                while len(pending) >= _FRAME_BYTES:
+                    await self._send_frame(bytes(pending[:_FRAME_BYTES]))
+                    del pending[:_FRAME_BYTES]
+                chunk = await chunks.get()
+                if chunk is None:
+                    break
+                pending.extend(chunk)
+            if pending:
+                await self._send_frame(bytes(pending))
+            return True
+        finally:
+            if not worker.done():
+                # Timed out or cancelled mid-line: drop late chunks and unblock recv.
+                abandoned.set()
+                self._remote.abort()
+
     async def _send_media(self, mulaw_bytes: bytes) -> None:
-        if not mulaw_bytes or not self._stream_sid:
-            return
         for chunk in _chunks(mulaw_bytes, _FRAME_BYTES):
-            payload = base64.b64encode(chunk).decode("ascii")
-            await self.send(
-                json.dumps(
-                    {
-                        "event": "media",
-                        "streamSid": self._stream_sid,
-                        "media": {"payload": payload},
-                    }
-                )
+            await self._send_frame(chunk)
+
+    async def _send_frame(self, chunk: bytes) -> None:
+        if not chunk or not self._stream_sid:
+            return
+        payload = base64.b64encode(chunk).decode("ascii")
+        await self.send(
+            json.dumps(
+                {
+                    "event": "media",
+                    "streamSid": self._stream_sid,
+                    "media": {"payload": payload},
+                }
             )
-            await asyncio.sleep(_FRAME_S * 0.9)  # pace to real time, small headroom
+        )
+        await asyncio.sleep(_FRAME_S * 0.9)  # pace to real time, small headroom

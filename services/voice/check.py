@@ -372,11 +372,11 @@ async def _main() -> None:
     assert bridge._asr_task is not None
     await bridge._asr_task
     assert asked[-1] == (rec.incident_id, "Is anyone hurt?")
-    _check_phone_tts()
+    await _check_phone_tts()
     print("voice self-check OK")
 
 
-def _check_phone_tts() -> None:
+async def _check_phone_tts() -> None:
     """ElevenLabs is mocked: no network, no characters billed."""
     import os
     import urllib.error
@@ -434,6 +434,10 @@ def _check_phone_tts() -> None:
         before = remote.calls
         tts.synthesize_mulaw("Parked, so this must not reach the remote.")
         assert remote.calls == before and tts.last_provider == "kokoro"
+        elevenlabs._state["parked_until"] = 0.0
+
+        await _check_streaming(elevenlabs, tts, kokoro)
+        _check_keepalive(elevenlabs)
     finally:
         elevenlabs._state["parked_until"] = 0.0
         for k, v in saved.items():
@@ -441,6 +445,197 @@ def _check_phone_tts() -> None:
                 os.environ.pop(k, None)
             else:
                 os.environ[k] = v
+
+
+async def _check_streaming(elevenlabs, tts, kokoro) -> None:
+    """Streamed lines hit the wire chunk-by-chunk; a slow first chunk falls
+    back to Kokoro for that line only. Mocked: no network."""
+    import os
+    import urllib.error
+
+    from services.voice.media_bridge import MediaStreamBridge
+
+    class _StreamRemote:
+        def __init__(self, chunks, first_delay=0.0):
+            self.chunks, self.first_delay = chunks, first_delay
+            self.calls = self.aborts = 0
+            self.fail: Exception | None = None
+            self.gate: threading.Event | None = None
+
+        def stream(self, _text, on_chunk):
+            self.calls += 1
+            if self.fail is not None:
+                raise self.fail
+            time.sleep(self.first_delay)
+            for i, chunk in enumerate(self.chunks):
+                if not on_chunk(chunk):
+                    return False
+                if i == 0 and self.gate is not None:
+                    # The rest only "arrives" once chunk 1 is already on the wire.
+                    assert self.gate.wait(1), "first chunk was not played before the rest"
+            return True
+
+        def abort(self):
+            self.aborts += 1
+
+    sent: list[bytes] = []
+    speaking_while_sent: list[bool] = []
+
+    async def send(raw: str) -> None:
+        msg = __import__("json").loads(raw)
+        sent.append(base64.b64decode(msg["media"]["payload"]))
+        speaking_while_sent.append(bridge._speaking)
+        if remote.gate is not None:
+            remote.gate.set()
+
+    def fresh_bridge() -> MediaStreamBridge:
+        b = MediaStreamBridge(
+            incident_id="inc-stream",
+            send=send,
+            recv=lambda: asyncio.sleep(0, result=None),
+            subscribe=lambda _id: asyncio.Queue(),
+            unsubscribe=lambda _id, _q: None,
+        )
+        b._stream_sid = "MZ-test"
+        b._tts = tts
+        return b
+
+    saved_first = os.environ.get("CS_ELEVENLABS_FIRST_CHUNK_S")
+    os.environ["CS_ELEVENLABS_FIRST_CHUNK_S"] = "0.2"
+    try:
+        # 1) Uneven network chunks are re-framed to 160 bytes and the first
+        #    frame is sent before the remote delivers anything else.
+        remote = _StreamRemote([b"\x01" * 200, b"\x02" * 300, b"\x03" * 50])
+        remote.gate = threading.Event()
+        tts._remote_factory = lambda: remote
+        assert tts.new_remote() is remote
+        bridge = fresh_bridge()
+        bridge._remote = remote
+        line = "A streamed sentence that is far too long to be cached."
+        await bridge._speak(line)
+        assert b"".join(sent) == b"\x01" * 200 + b"\x02" * 300 + b"\x03" * 50
+        assert [len(f) for f in sent] == [160, 160, 160, 70]
+        assert all(speaking_while_sent) and bridge._speaking is False
+        assert bridge._ignore_inbound_until > time.monotonic()  # echo guard after line
+        assert tts.last_provider == "elevenlabs" and tts.last_error == "" and remote.aborts == 0
+
+        # 2) Short lines are cached after a complete stream: replay is free.
+        sent.clear()
+        remote.gate = None
+        await bridge._speak("Units en route.")
+        await bridge._speak("Units en route.")
+        assert remote.calls == 2
+        assert len(b"".join(sent)) == 2 * 550
+
+        # 3) First chunk too slow: Kokoro speaks the line, late chunks dropped.
+        kokoro_line = tts.kokoro_mulaw("x")
+        sent.clear()
+        kokoro.calls = 0
+        remote.first_delay = 0.5
+        await bridge._speak("Slow network sentence that will not be cached ever.")
+        assert kokoro.calls == 1 and remote.aborts == 1
+        assert b"".join(sent) == kokoro_line  # only Kokoro, never both
+        assert tts.last_provider == "kokoro"
+        await asyncio.sleep(0.4)  # abandoned worker sees the drop
+        assert b"".join(sent) == kokoro_line
+
+        # 4) Error before audio (quota): Kokoro for this line, ElevenLabs parked.
+        sent.clear()
+        kokoro.calls = 0
+        remote.first_delay = 0.0
+        remote.fail = urllib.error.HTTPError("u", 402, "quota_exceeded", {}, None)
+        await bridge._speak("Quota path sentence that is long enough to skip cache.")
+        assert kokoro.calls == 1 and tts.last_error == "http_402"
+        assert elevenlabs.status()["parked_s"] > 0
+        before = remote.calls
+        await bridge._speak("Parked sentence that must not reach the remote at all.")
+        assert remote.calls == before and kokoro.calls == 2
+    finally:
+        elevenlabs._state["parked_until"] = 0.0
+        tts._remote_factory = elevenlabs.ElevenLabsTts
+        if saved_first is None:
+            os.environ.pop("CS_ELEVENLABS_FIRST_CHUNK_S", None)
+        else:
+            os.environ["CS_ELEVENLABS_FIRST_CHUNK_S"] = saved_first
+
+
+def _check_keepalive(elevenlabs) -> None:
+    """ElevenLabsTts over a fake HTTPSConnection: one connection reused, a
+    stale keep-alive is reconnected once, errors surface as HTTPError."""
+    import http.client
+    import urllib.error
+
+    class _Resp:
+        def __init__(self, status, body):
+            self.status, self.reason, self.headers = status, "x", {}
+            self._body = [body[i : i + 3] for i in range(0, len(body), 3)]
+
+        def read1(self, _n):
+            return self._body.pop(0) if self._body else b""
+
+        def read(self):
+            self._body = []
+            return b""
+
+    class _Conn:
+        made = 0
+        plan: list = []
+        paths: list[str] = []
+
+        def __init__(self, host, timeout):
+            assert host == "api.elevenlabs.io"
+            type(self).made += 1
+            self.sock = None
+
+        def connect(self):
+            self.sock = object()
+
+        def request(self, _method, path, body, headers):
+            assert headers["xi-api-key"] and b"eleven_flash_v2_5" in body
+            self.paths.append(path)
+            self.sock = self.sock or object()
+            step = self.plan.pop(0)
+            if isinstance(step, Exception):
+                raise step
+            self._resp = step
+
+        def getresponse(self):
+            return self._resp
+
+        def close(self):
+            self.sock = None
+
+    saved = elevenlabs.http.client.HTTPSConnection
+    elevenlabs.http.client.HTTPSConnection = _Conn
+    try:
+        client = elevenlabs.ElevenLabsTts()
+        client.warm()
+        assert _Conn.made == 1 and client._conn.sock is not None
+        _Conn.plan = [_Resp(200, b"abcdefg"), _Resp(200, b"hij")]
+        got: list[bytes] = []
+        assert client.stream("hi", lambda c: got.append(c) is None)
+        assert got == [b"abc", b"def", b"g"]
+        assert client.synthesize_mulaw("again") == b"hij" and _Conn.made == 1
+        assert "optimize_streaming_latency=3" in _Conn.paths[0]
+        assert "output_format=ulaw_8000" in _Conn.paths[0] and "/stream?" in _Conn.paths[0]
+
+        _Conn.plan = [http.client.RemoteDisconnected("stale"), _Resp(200, b"ok")]
+        assert client.synthesize_mulaw("after idle") == b"ok" and _Conn.made == 2
+
+        _Conn.plan = [_Resp(401, b"")]
+        try:
+            client.synthesize_mulaw("bad key")
+            raise AssertionError("expected HTTPError")
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 401
+        assert _Conn.made == 2 and client._conn is not None  # drained error keeps it
+
+        _Conn.plan = [_Resp(200, b"abcdef")]
+        assert client.stream("stop early", lambda _c: False) is False
+        assert client._conn is None  # undrained body is never reused
+        client.close()
+    finally:
+        elevenlabs.http.client.HTTPSConnection = saved
 
 
 if __name__ == "__main__":
