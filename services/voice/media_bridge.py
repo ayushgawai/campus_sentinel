@@ -1,11 +1,10 @@
-"""Twilio Media Streams bridge — the real audio leg of a SEVERE call.
+"""Compatibility media stream bridge — the real audio leg of a SEVERE call.
 
 Protocol: https://www.twilio.com/docs/voice/twiml/stream
-Twilio opens a WSS connection to `/twilio/media?incident_id=...` (see
-services/api/server.py's /twilio/voice TwiML) and sends JSON text frames:
+SignalWire opens WSS `/signalwire/media?incident_id=...` and sends JSON frames:
   connected -> start (carries streamSid) -> media* (mulaw/8k, base64) -> stop
 We speak by sending back {"event":"media", streamSid, media:{payload}} frames,
-chunked to Twilio's own ~20ms/160-byte cadence.
+chunked to the provider's ~20ms/160-byte cadence.
 
 This bridge never invents anything to say. It subscribes to the same
 call.transcript_delta envelopes the dashboard already renders (via
@@ -54,7 +53,7 @@ UnsubscribeFn = Callable[[str, "asyncio.Queue[dict[str, Any]]"], None]
 ReplayFn = Callable[[], "list[dict[str, Any]]"]
 PublishFn = Callable[[Any], Awaitable[None]]
 
-# Twilio's own Media Streams cadence: 20ms frames of 8kHz mono mulaw = 160 bytes.
+# Compatibility stream cadence: 20ms frames of 8kHz mono mulaw = 160 bytes.
 _FRAME_BYTES = 160
 _FRAME_S = 0.02
 # ~2s of 16kHz PCM16 mono per ASR call. No VAD/silence detection — a fixed
@@ -101,7 +100,7 @@ def _chunks(payload: bytes, n: int):
 
 @dataclass
 class MediaStreamBridge:
-    """One instance per live Twilio Media Stream connection (one phone call)."""
+    """One instance per live media stream connection (one phone call)."""
 
     incident_id: str
     send: SendFn

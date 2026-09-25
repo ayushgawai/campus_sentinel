@@ -140,16 +140,16 @@ class DemoHub:
             )
         )
         await self._voice_agent().start_call(rec, brief)
-        # Optional real phone — no-op until Naman sets CS_TWILIO_ENABLED + keys.
+        # Optional real phone — no-op until SignalWire is configured.
         try:
-            from services.voice.twilio_bridge import place_call
+            from services.voice.signalwire_bridge import place_call
 
             result = await asyncio.to_thread(place_call, rec.incident_id)
             if result.get("ok"):
                 await self.publish(
                     DemoControl(
                         action="scenario",
-                        scenario_id=f"twilio_call:{result.get('call_sid')}",
+                        scenario_id=f"signalwire_call:{result.get('call_sid')}",
                         ts=_utcnow(),
                     )
                 )
@@ -157,15 +157,15 @@ class DemoHub:
                 await self.publish(
                     DemoControl(
                         action="scenario",
-                        scenario_id=f"twilio_fail:{result.get('reason')}",
+                        scenario_id=f"signalwire_fail:{result.get('reason')}",
                         ts=_utcnow(),
                     )
                 )
-        except Exception as exc:  # noqa: BLE001 — never break voice script on Twilio
+        except Exception as exc:  # noqa: BLE001 — never break the voice script
             await self.publish(
                 DemoControl(
                     action="scenario",
-                    scenario_id=f"twilio_error:{type(exc).__name__}",
+                    scenario_id=f"signalwire_error:{type(exc).__name__}",
                     ts=_utcnow(),
                 )
             )

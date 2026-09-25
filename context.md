@@ -1,5 +1,5 @@
 # context.md
-Last updated: 2026-09-25 10:08 UTC - web fix 9b: real SJSU site map with camera placement (manav)
+Last updated: 2026-09-25 - SignalWire outbound-call wiring and model test path
 
 ## HARD RULES
 1. `git pull --rebase origin main` before every push. Work on **main**.
@@ -44,16 +44,14 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - **cam-01..03:** locked Seville chase (WEAPON). No 12-clip pack.
 - **cam-04..06:** Naman `feeds/naman/demo_clips` — VLM-assigned. See `docs/NAMAN_CLIPS.md`.
 
-## Voice / Twilio
-- Spec: `docs/HANDOFF_VOICE_TWILIO.md` · scaffold: `twilio_bridge` / `parakeet` / `kokoro`
-- SID + token on ZGX **`.env` only** (gitignored). Parakeet/Kokoro = local stubs, no cloud keys.
-- **Trial setup:** Console screenshot shows a trial Voice number and one selectable destination, while the standard Twilio REST inventory still reports 0 owned numbers and 0 verified caller IDs. ZGX `.env` lacks `TWILIO_FROM`, `CS_DEMO_TO_NUMBER`, and `CS_PUBLIC_BASE`. Confirm/verify the intended destination because it differs from the earlier demo number. Tailscale is installed but Funnel is not enabled.
-- Check: `bash scripts/check_twilio_env.sh` · `GET /voice/status`
-- **`/twilio/media` Media Streams bridge landed** (`services/voice/media_bridge.py` + `services/api/server.py` `_twilio_media`/voice-subscriber fan-out on `broadcast()`). Voices every live `call.transcript_delta` `speaker=="sentinel"` line over the real call via Kokoro (falls back to a short tone if Kokoro has nothing, never dead air). Replays already-said sentinel lines from `hub.replay_events()` on connect (script starts on dispatch, phone may answer seconds later). Inbound caller audio → Parakeet → published back as `CallTranscriptDelta(speaker="dispatcher", ...)` in ~2s batches (no VAD, that's the accepted demo shortcut per the handoff doc). Respects `CS_KILL_SWITCH`.
-- **Kokoro + Parakeet are both serving now**, CPU-only, isolated venv (`services/voice/.venv` — never `services/vision/.venv`, so none of this touches the live process's deps): `scripts/serve_kokoro.py` (real Kokoro-82M) and `scripts/serve_parakeet.py` (**faster-whisper**, not NeMo Parakeet). They listen on 8092/8093; the API now sources `.env`, and `/voice/status` sees both. Move both speech processes into tmux for demo-day reliability.
-- Full round-trip tested for real: Kokoro synthesizes a script line → mulaw over a fake Twilio socket → decoded back → Parakeet transcribes it → near-exact match. Inbound path tested the same way in reverse (simulated caller audio → transcribed → published as a dispatcher line). Not yet tested against an actual Twilio call — account still has no number/verified caller ID.
+## Voice / SignalWire
+- Active provider: SignalWire Compatibility API (`signalwire_bridge`); legacy `twilio_bridge` remains inactive only for rollback. Credentials live in ZGX **`.env` only** (gitignored).
+- Outbound calls use `/signalwire/voice`; bidirectional audio uses `/signalwire/media`. `GET /voice/status` reports configuration without returning secrets. `CS_KILL_SWITCH=1` blocks calling.
+- The media bridge voices live `speaker=="sentinel"` transcript lines via Kokoro and sends inbound caller audio through Parakeet in ~2 s batches. SignalWire's live stream event compatibility still requires one real-call validation.
+- Kokoro/Parakeet endpoints are configured for ports 8092/8093, but neither speech process is currently listening. Start them in tmux before the real audio test; their isolated `services/voice/.venv` does not touch the live vision environment.
+- Local round-trip tested: Kokoro → mulaw compatibility stream → Parakeet → near-exact transcript. Provider transport is pending the first SignalWire call.
 - Stub docstrings say Parakeet/Kokoro land with **Naman**, ownership table says **Pratham** owns `voice/` — Naman is doing it now, table should be updated.
-- The current WEAPON demo is promoted to SEVERE, transitions to DISPATCHED, and starts a **simulated** call transcript labeled for `4083872138` (hardcoded display text in `agent.py:190`, not read from `CS_DEMO_TO_NUMBER` — fix before relying on it once a real number is set). It does not place a real phone call today.
+- The WEAPON demo promotes to SEVERE, transitions to DISPATCHED, starts the scripted transcript, and places a SignalWire call when enabled. Qwen adjudicates the visual event; live dispatcher answers remain scripted until a grounded conversational loop is explicitly added.
 
 ## Done
 - Live C→D→E + Completion B + guardrails + AUDIT.md
@@ -77,7 +75,7 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 | Who | What |
 |-----|------|
 | **Naman** | Ambient clips done. Optional more later |
-| **Voice / Ayush** | Verify phone → buy FROM → set TO + public HTTPS |
+| **Voice / Ayush** | Validate SignalWire media events on one real call |
 | **Indraneel** | Officer F1 polish |
 | **Ayush / open** | OSNet weights · temp calibration · MediaMTX optional |
 | **Ayush / api** | REST routes: confirm, dismiss (demo reset is already WS) |

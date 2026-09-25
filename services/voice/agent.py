@@ -1,12 +1,13 @@
 """Voice service — officer-driven 911 script + tool lookups (demo).
 
-Real Parakeet ASR / Kokoro TTS / Twilio Media Streams: see docs/HANDOFF_VOICE_TWILIO.md.
+Real Parakeet ASR / Kokoro TTS / SignalWire stream transport is wired separately.
 Until then this agent simulates the dispatcher and keeps whereabouts up to date.
 """
 
 from __future__ import annotations
 
 import asyncio
+import os
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
@@ -187,7 +188,10 @@ class VoiceAgent:
                 CallTranscriptDelta(
                     incident_id=rec.incident_id,
                     speaker="sentinel",
-                    text="Simulated 911 demo call to 4083872138 started.",
+                    text=(
+                        "Simulated 911 demo call to "
+                        f"{os.environ.get('CS_DEMO_TO_NUMBER', 'configured demo phone')} started."
+                    ),
                     ts=utcnow(),
                 )
             )

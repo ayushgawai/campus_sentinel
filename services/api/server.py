@@ -1,8 +1,8 @@
-"""stdlib asyncio API on :8080 — /health, /ws, /mjpeg, /media, /twilio/voice, /twilio/media.
+"""stdlib asyncio API on :8080 — /health, /ws, /mjpeg, /media, and SignalWire voice.
 
 No third-party deps. WebSocket is a minimal RFC6455 server sufficient for
 one JSON object per text frame (contracts/events.py envelopes) — and, on
-/twilio/media, for Twilio's own Media Streams JSON protocol instead.
+/signalwire/media, for SignalWire's Compatibility API stream protocol instead.
 """
 
 from __future__ import annotations
@@ -128,7 +128,7 @@ class ApiServer:
         self.clients: set[WsClient] = set()
         self.hub = DemoHub(broadcast=self.broadcast)
         self.vision = VisionBridge(self.hub) if vision_enabled() else None
-        # incident_id -> live Twilio Media Stream listeners (one per real phone
+        # incident_id -> live SignalWire stream listeners (one per real phone
         # call in progress). Fed by broadcast() below; nothing here changes
         # dashboard behaviour, it's a side-channel for services/voice/media_bridge.py
         # so a real call can voice the same call.transcript_delta lines the
@@ -192,24 +192,23 @@ class ApiServer:
             await self._http_json(writer, 200, {"ok": True, "service": "api"})
             return
         if method == "GET" and (path == "/voice/status" or path.startswith("/voice/status?")):
-            from services.voice.twilio_bridge import status as twilio_status
+            from services.voice.signalwire_bridge import status as signalwire_status
 
             await self._http_json(
                 writer,
                 200,
                 {
                     "ok": True,
-                    "twilio": twilio_status(),
+                    "signalwire": signalwire_status(),
                     "parakeet": bool(os.environ.get("CS_PARAKEET_URL")),
                     "kokoro": bool(os.environ.get("CS_KOKORO_URL")),
                     "scripted_voice": True,
                 },
             )
             return
-        if method == "POST" and path.startswith("/twilio/voice"):
-            # TwiML for Media Streams — keys optional; returns connect stream.
-            from services.voice.twilio_bridge import load_config, twiml_connect_stream
-            from urllib.parse import parse_qs, urlparse
+        if method == "POST" and path.startswith("/signalwire/voice"):
+            from services.voice.signalwire_bridge import cxml_connect_stream, load_config
+            from urllib.parse import parse_qs, urlencode, urlparse
 
             cfg = load_config()
             qs = parse_qs(urlparse(path).query)
@@ -224,8 +223,8 @@ class ApiServer:
                 # Media Stream WS must be wss public.
                 stream = cfg.public_base.replace("https://", "wss://").replace(
                     "http://", "ws://"
-                ) + f"/twilio/media?incident_id={incident_id}"
-                xml = twiml_connect_stream(stream)
+                ) + f"/signalwire/media?{urlencode({'incident_id': incident_id})}"
+                xml = cxml_connect_stream(stream)
             await self._http_raw(
                 writer,
                 200,
@@ -233,12 +232,12 @@ class ApiServer:
                 extra={"Content-Type": "application/xml"},
             )
             return
-        if method == "GET" and path.startswith("/twilio/media"):
+        if method == "GET" and path.startswith("/signalwire/media"):
             from urllib.parse import parse_qs, urlparse
 
             qs = parse_qs(urlparse(path).query)
             incident_id = (qs.get("incident_id") or [""])[0]
-            await self._twilio_media(reader, writer, headers, incident_id)
+            await self._signalwire_media(reader, writer, headers, incident_id)
             return
         if method == "GET" and path.startswith("/mjpeg/"):
             cam = unquote(path[len("/mjpeg/") :].split("?")[0])
@@ -256,7 +255,7 @@ class ApiServer:
                 extra={
                     "Access-Control-Allow-Origin": "*",
                     "Access-Control-Allow-Headers": "*",
-                    "Access-Control-Allow-Methods": "GET,OPTIONS",
+                    "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
                 },
             )
             return
@@ -336,14 +335,14 @@ class ApiServer:
                 await self.hub.stop_loops()
                 # keep vision bridge running across reconnects
 
-    async def _twilio_media(
+    async def _signalwire_media(
         self,
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
         headers: dict[str, str],
         incident_id: str,
     ) -> None:
-        """Twilio Media Streams WebSocket — the real audio leg of a SEVERE call.
+        """SignalWire media WebSocket — the real audio leg of a SEVERE call.
 
         The actual bridging logic (speak the live transcript, decode inbound
         audio) lives in services/voice/media_bridge.py; this is just the WS
@@ -563,7 +562,7 @@ class ApiServer:
         addrs = ", ".join(str(s.getsockname()) for s in server.sockets or [])
         print(
             f"api listening on {addrs}  "
-            "(/health /ws /mjpeg/{cam} /media/{cam} /twilio/voice /twilio/media)",
+            "(/health /ws /mjpeg/{cam} /media/{cam} /signalwire/voice /signalwire/media)",
             flush=True,
         )
         async with server:

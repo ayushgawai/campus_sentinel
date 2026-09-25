@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import sys
 from pathlib import Path
+from urllib.parse import parse_qs
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -17,7 +19,35 @@ from services.voice.agent import VoiceAgent  # noqa: E402
 from services.voice import agent as agent_mod  # noqa: E402
 
 
+def _check_signalwire_request() -> None:
+    from services.voice.signalwire_bridge import SignalWireConfig, build_call_request
+
+    cfg = SignalWireConfig(
+        space="example.signalwire.com",
+        project_id="project-id",
+        api_token="secret-token",
+        from_number="+12025550123",
+        to_number="+14085550123",
+        public_base="https://demo.example.com",
+        enabled=True,
+    )
+    req = build_call_request(cfg, "inc 1")
+    assert req.full_url == (
+        "https://example.signalwire.com/api/laml/2010-04-01/Accounts/"
+        "project-id/Calls.json"
+    )
+    assert parse_qs(req.data.decode()) == {
+        "To": ["+14085550123"],
+        "From": ["+12025550123"],
+        "Url": ["https://demo.example.com/signalwire/voice?incident_id=inc+1"],
+        "Method": ["POST"],
+    }
+    auth = req.get_header("Authorization")
+    assert auth == "Basic " + base64.b64encode(b"project-id:secret-token").decode()
+
+
 async def _main() -> None:
+    _check_signalwire_request()
     events: list[object] = []
 
     async def pub(ev: object) -> None:
@@ -62,7 +92,7 @@ async def _main() -> None:
     assert "call.transcript_delta" in types
     assert "tool.call_live" in types
     assert any("simulated" in getattr(e, "text", "") for e in events)
-    assert any("4083872138" in getattr(e, "text", "") for e in events)
+    assert any("demo call" in getattr(e, "text", "") for e in events)
     assert any("cam-02" in getattr(e, "text", "") for e in events)
     assert any(
         getattr(e, "scenario_id", "").startswith("security_alert:") for e in events
