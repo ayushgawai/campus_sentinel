@@ -1,350 +1,382 @@
-/* Single in-memory store.
- *
- * Subscribers receive (state, changeKind) so high-frequency overlay ticks
- * never force the queue or detail panel to re-render.
- */
+/** Single app state + event reducers. Mirrors contracts/events.py + incident.py. */
 
-import { STATE_LABEL, isOpen, isAlerting } from './contracts.js';
+import { compareIncidents, isOpenIncident, preferredIncidentId } from "./format.js";
+import { isConfiguredCamera, redactPlaces } from "./site.js";
 
-export const Change = {
-  INCIDENTS: 'incidents',
-  HEALTH: 'health',
-  OVERLAYS: 'overlays',
-  CAMERAS: 'cameras',
-  SELECTION: 'selection',
-  FILTER: 'filter',
-  WALL: 'wall',
-  NOTIFICATIONS: 'notifications',
-  DEMO: 'demo',
-  CALL: 'call',
-};
+const warnedCameras = new Set();
+
+function acceptCameraId(cameraId) {
+  if (!cameraId) return false;
+  if (isConfiguredCamera(cameraId)) return true;
+  if (!warnedCameras.has(cameraId)) {
+    warnedCameras.add(cameraId);
+    console.warn("[store] ignored event for unknown camera", cameraId);
+  }
+  return false;
+}
+
+const MAX_INCIDENTS = 50;
+const MAX_TRANSCRIPT = 200;
+const MAX_TOOLS = 100;
+
+const warnedTypes = new Set();
+
+function emptyHealth() {
+  return {
+    type: "health.strip",
+    cameras_online: 0,
+    cameras_total: 0,
+    models_resident: false,
+    gpu_util: null,
+    p95_ms: null,
+    frames_screened: 0,
+    frames_escalated: 0,
+    ts: null,
+  };
+}
+
+function createInitialState() {
+  return {
+    cameras: {},
+    incidents: {},
+    order: [],
+    selectedId: null,
+    route: "live",
+    health: emptyHealth(),
+    call: {
+      incidentId: null,
+      transcript: [],
+      tools: [],
+      dispatchedAt: null,
+    },
+    /** incident_id → ordered camera_id list for pursuit drawing after seek */
+    cameraPath: {},
+    demo: {
+      t: 0,
+      running: false,
+      speed: 1,
+      scenario: "full",
+      autoFollow: false,
+    },
+    connection: {
+      status: "MOCK",
+    },
+  };
+}
+
+function ensureCamera(state, cameraId) {
+  if (!state.cameras[cameraId]) {
+    state.cameras[cameraId] = {
+      online: false,
+      boxes: [],
+      lastTs: null,
+    };
+  }
+  return state.cameras[cameraId];
+}
+
+function resolveIncidentPayload(event) {
+  if (event.incident != null) return event.incident;
+  if (event.incident_dict != null) return event.incident_dict;
+  return null;
+}
+
+function resortOrder(state) {
+  state.order.sort((a, b) =>
+    compareIncidents(state.incidents[a], state.incidents[b]),
+  );
+}
+
+function capIncidents(state) {
+  while (state.order.length > MAX_INCIDENTS) {
+    const dropId = state.order.pop();
+    delete state.incidents[dropId];
+    if (state.selectedId === dropId) state.selectedId = state.order[0] ?? null;
+  }
+}
+
+/** Keep selection on the highest-priority open incident. */
+function syncSelection(state) {
+  const pref = preferredIncidentId(state);
+  const cur = state.selectedId ? state.incidents[state.selectedId] : null;
+  if (!pref) {
+    if (cur && !isOpenIncident(cur)) state.selectedId = null;
+    return;
+  }
+  if (!cur || !isOpenIncident(cur)) {
+    state.selectedId = pref;
+    return;
+  }
+  // Upgrade to severe if a higher-priority open incident exists
+  const prefInc = state.incidents[pref];
+  if (
+    prefInc?.severity === "SEVERE" &&
+    isOpenIncident(prefInc) &&
+    cur.severity !== "SEVERE"
+  ) {
+    state.selectedId = pref;
+  }
+}
 
 export function createStore() {
-  const state = {
-    /** id -> camera descriptor (name, map position, online) */
-    cameras: new Map(),
-    /** camera ids shown on the wall, in order */
-    wall: [],
+  let state = createInitialState();
+  const listeners = new Set();
+  let raf = 0;
+  let dirty = false;
 
-    /** id -> incident view model */
-    incidents: new Map(),
-    /** cameraId -> overlay view model */
-    overlays: new Map(),
+  function notify() {
+    dirty = true;
+    if (raf) return;
+    raf = requestAnimationFrame(() => {
+      raf = 0;
+      if (!dirty) return;
+      dirty = false;
+      const snap = state;
+      for (const fn of listeners) fn(snap);
+    });
+  }
 
-    health: null,
-
-    selectedId: null,
-    expandedCameraId: null,
-    filter: 'ALL',
-
-    paused: false,
-    prewarmed: false,
-
-    notifications: [],
-    unseen: 0,
-
-    /** incidentId -> { incidentId, transcript: [], toolCalls: [],
-     *                  startedAt, lastDeltaAt, dismissed }
-     *  No `brief`: services/api never serializes a CallBrief onto the socket.
-     *  No `ended`: there is no call.ended envelope either — see ensureCall. */
-    calls: new Map(),
-    activeCallId: null,
-    /** whether the console has taken the panel below the camera wall */
-    callVisible: false,
-  };
-
-  const subs = new Set();
-
-  function notify(kind) {
-    for (const fn of subs) {
-      try {
-        fn(state, kind);
-      } catch (err) {
-        console.error('[store] subscriber failed on', kind, err);
-      }
+  function flush() {
+    if (raf) {
+      cancelAnimationFrame(raf);
+      raf = 0;
     }
+    if (!dirty) return;
+    dirty = false;
+    const snap = state;
+    for (const fn of listeners) fn(snap);
   }
 
-  /* ---------------- ingest ---------------- */
-
-  function setCameras(list) {
-    state.cameras = new Map(list.map((c) => [c.id, { ...c, online: true }]));
-    state.wall = list.filter((c) => c.onWall).map((c) => c.id);
-    notify(Change.CAMERAS);
+  function setConnection(status) {
+    state.connection = { ...state.connection, status };
+    notify();
   }
 
-  function setCameraOnline({ cameraId, online }) {
-    const cam = state.cameras.get(cameraId);
-    if (!cam) return;
-    cam.online = online;
-    notify(Change.CAMERAS);
+  function setDemo(partial) {
+    state.demo = { ...state.demo, ...partial };
+    notify();
   }
 
-  function upsertIncident(vm) {
-    const isNew = !state.incidents.has(vm.id);
-    state.incidents.set(vm.id, vm);
-
-    if (isNew) {
-      state.notifications.unshift({
-        incidentId: vm.id,
-        title: vm.title,
-        locationText: vm.locationText,
-        uiSeverity: vm.uiSeverity,
-        ts: vm.createdAt || new Date(),
-      });
-      state.notifications = state.notifications.slice(0, 12);
-      state.unseen += 1;
-      notify(Change.NOTIFICATIONS);
-    }
-
-    notify(Change.INCIDENTS);
-    return isNew;
+  function setSelected(id) {
+    state.selectedId = id;
+    notify();
   }
 
-  /** Append a timeline entry and move the incident's state. */
-  function applyStateChange({ incidentId, state: next, ts, note }) {
-    const inc = state.incidents.get(incidentId);
-    if (!inc) return null;
-
-    inc.state = next;
-    inc.updatedAt = ts || new Date();
-    inc.timeline = [...inc.timeline, { ts: ts || new Date(), state: next, note }];
-
-    // recompute derived display fields
-    inc.stateLabel = STATE_LABEL[next] || next;
-    inc.open = isOpen(next);
-    inc.alerting = isAlerting(next);
-
-    notify(Change.INCIDENTS);
-    return inc;
+  function setRoute(route) {
+    if (state.route === route) return;
+    state.route = route;
+    notify();
   }
 
-  function setHealth(vm) {
-    state.health = vm;
-    notify(Change.HEALTH);
+  function reset() {
+    const conn = state.connection;
+    const route = state.route;
+    const autoFollow = state.demo?.autoFollow;
+    state = createInitialState();
+    state.connection = { ...conn };
+    state.route = route;
+    state.demo.autoFollow = Boolean(autoFollow);
+    notify();
   }
 
-  function setOverlay(vm) {
-    state.overlays.set(vm.cameraId, vm);
-    notify(Change.OVERLAYS);
-  }
-
-  /** Back to an empty board.
-   *
-   *  Nothing is seeded client-side: the backend's own reset (DemoHub.reset →
-   *  seed) re-publishes camera.online, health.strip and a fresh scenario, so
-   *  the queue refills from the wire. Fabricating starter incidents here would
-   *  put rows in the queue that no service knows about.
-   */
-  function clearIncidents() {
-    state.incidents = new Map();
-    state.overlays = new Map();
-    state.selectedId = null;
-    state.notifications = [];
-    state.unseen = 0;
-    state.expandedCameraId = null;
-    state.filter = 'ALL';
-    state.calls = new Map();
-    state.activeCallId = null;
-    state.callVisible = false;
-    notify(Change.INCIDENTS);
-    notify(Change.NOTIFICATIONS);
-    notify(Change.SELECTION);
-    notify(Change.CALL);
-  }
-
-  /* ---------------- ui intent ---------------- */
-
-  function select(incidentId) {
-    if (state.selectedId === incidentId) return;
-    state.selectedId = incidentId;
-    notify(Change.SELECTION);
-  }
-
-  function setFilter(filter) {
-    state.filter = filter;
-    notify(Change.FILTER);
-  }
-
-  function toggleExpand(cameraId) {
-    state.expandedCameraId = state.expandedCameraId === cameraId ? null : cameraId;
-    notify(Change.WALL);
-  }
-
-  function expandCamera(cameraId) {
-    state.expandedCameraId = cameraId;
-    notify(Change.WALL);
-  }
-
-  function setPaused(paused) {
-    state.paused = paused;
-    notify(Change.DEMO);
-  }
-
-  function setPrewarmed(prewarmed) {
-    state.prewarmed = prewarmed;
-    notify(Change.DEMO);
-  }
-
-  function clearUnseen() {
-    if (state.unseen === 0) return;
-    state.unseen = 0;
-    notify(Change.NOTIFICATIONS);
-  }
-
-  /* ---------------- call console ---------------- */
-
-  /**
-   * Open (or find) the console entry for an incident the voice service has
-   * started talking about.
-   *
-   * There is no call.started envelope: services/voice publishes only
-   * call.transcript_delta and tool.call_live, and DemoHub.publish() kicks the
-   * VoiceAgent off on any SEVERE upsert with no operator involvement. So the
-   * arrival of a delta IS the signal that a call exists, and this runs on every
-   * one of them. It must stay idempotent.
-   *
-   * Once the operator closes the console the call is marked `dismissed` and
-   * later deltas keep accumulating without popping the panel back open.
-   */
-  function ensureCall(incidentId) {
-    if (!incidentId) return null;
-
-    let call = state.calls.get(incidentId);
-    let changed = false;
-
-    if (!call) {
-      call = {
-        incidentId,
-        transcript: [],
-        toolCalls: [],
-        startedAt: new Date(),
-        lastDeltaAt: new Date(),
-        dismissed: false,
+  function softReset() {
+    const conn = state.connection;
+    const route = state.route;
+    const autoFollow = state.demo?.autoFollow;
+    const cameras = {};
+    for (const [id, cam] of Object.entries(state.cameras)) {
+      cameras[id] = {
+        online: Boolean(cam.online),
+        boxes: [],
+        lastTs: null,
       };
-      state.calls.set(incidentId, call);
-      changed = true;
     }
+    state = createInitialState();
+    state.connection = { ...conn };
+    state.route = route;
+    state.demo.autoFollow = Boolean(autoFollow);
+    state.cameras = cameras;
+    notify();
+  }
 
-    if (!call.dismissed) {
-      if (state.activeCallId !== incidentId) {
-        state.activeCallId = incidentId;
-        changed = true;
+  function handle(event) {
+    if (!event || typeof event !== "object") {
+      console.warn("[store] ignored non-object event", event);
+      return;
+    }
+    const type = event.type;
+    switch (type) {
+      case "incident.upsert": {
+        const rec = resolveIncidentPayload(event);
+        if (!rec || !rec.incident_id) {
+          console.warn("[store] incident.upsert missing incident", event);
+          break;
+        }
+        if (rec.camera_id && !acceptCameraId(rec.camera_id)) break;
+        if (typeof rec.description === "string") {
+          rec.description = redactPlaces(rec.description);
+        }
+        if (typeof rec.person_description === "string") {
+          rec.person_description = redactPlaces(rec.person_description);
+        }
+        // Keep location_text in the record (contract) but never display it.
+        const id = rec.incident_id;
+        const isNew = !state.incidents[id];
+        // Preserve richer timeline if incoming is thinner
+        const prev = state.incidents[id];
+        if (rec.camera_id) {
+          const path = state.cameraPath[id] ? state.cameraPath[id].slice() : [];
+          if (!path.length && prev?.camera_id) path.push(prev.camera_id);
+          if (!path.length) path.push(rec.camera_id);
+          else if (path[path.length - 1] !== rec.camera_id) path.push(rec.camera_id);
+          state.cameraPath[id] = path;
+        }
+        let timeline = Array.isArray(rec.timeline) ? rec.timeline.slice() : [];
+        if (prev && Array.isArray(prev.timeline) && prev.timeline.length > timeline.length) {
+          timeline = prev.timeline.slice();
+        }
+        state.incidents[id] = { ...rec, timeline };
+        if (!state.order.includes(id)) state.order.push(id);
+        resortOrder(state);
+        capIncidents(state);
+        if (isNew && rec.severity === "SEVERE" && isOpenIncident(rec)) {
+          state.selectedId = id;
+        }
+        syncSelection(state);
+        break;
       }
-      if (!state.callVisible) {
-        state.callVisible = true;
-        changed = true;
+      case "incident.state_change": {
+        const id = event.incident_id;
+        const existing = state.incidents[id];
+        if (!existing) {
+          console.warn("[store] state_change for unknown incident", id);
+          break;
+        }
+        const next = { ...existing, state: event.state };
+        if (event.severity != null) next.severity = event.severity;
+        next.updated_at = event.ts ?? existing.updated_at;
+        if (event.state === "DISMISSED") {
+          next.dismissed_reason = event.note || next.dismissed_reason || null;
+        }
+        const timeline = Array.isArray(existing.timeline)
+          ? existing.timeline.slice()
+          : [];
+        timeline.push({
+          ts: event.ts ?? existing.updated_at,
+          state: event.state,
+          note: event.note ?? "",
+        });
+        next.timeline = timeline;
+        state.incidents[id] = next;
+        if (event.state === "DISPATCHED") {
+          state.call.incidentId = id;
+          state.call.dispatchedAt = event.ts || next.updated_at;
+        }
+        resortOrder(state);
+        syncSelection(state);
+        break;
+      }
+      case "overlay.boxes": {
+        if (!acceptCameraId(event.camera_id)) break;
+        const cam = ensureCamera(state, event.camera_id);
+        cam.boxes = Array.isArray(event.boxes) ? event.boxes.slice() : [];
+        cam.lastTs = event.ts ?? cam.lastTs;
+        break;
+      }
+      case "health.strip": {
+        state.health = {
+          type: "health.strip",
+          cameras_online: event.cameras_online ?? 0,
+          cameras_total: event.cameras_total ?? 0,
+          models_resident: Boolean(event.models_resident),
+          gpu_util: event.gpu_util ?? null,
+          p95_ms: event.p95_ms ?? null,
+          frames_screened: event.frames_screened ?? 0,
+          frames_escalated: event.frames_escalated ?? 0,
+          ts: event.ts ?? null,
+        };
+        break;
+      }
+      case "call.transcript_delta": {
+        if (event.incident_id) state.call.incidentId = event.incident_id;
+        state.call.transcript = [
+          ...state.call.transcript,
+          {
+            incident_id: event.incident_id,
+            speaker: event.speaker,
+            text: redactPlaces(event.text),
+            ts: event.ts ?? null,
+          },
+        ].slice(-MAX_TRANSCRIPT);
+        break;
+      }
+      case "tool.call_live": {
+        if (event.incident_id) state.call.incidentId = event.incident_id;
+        state.call.tools = [
+          ...state.call.tools,
+          {
+            incident_id: event.incident_id,
+            tool: event.tool,
+            args: event.args ?? {},
+            result: event.result ?? {},
+            ts: event.ts ?? null,
+          },
+        ].slice(-MAX_TOOLS);
+        break;
+      }
+      case "demo.control": {
+        break;
+      }
+      case "camera.online": {
+        if (!acceptCameraId(event.camera_id)) break;
+        const cam = ensureCamera(state, event.camera_id);
+        cam.online = Boolean(event.online);
+        cam.lastTs = event.ts ?? cam.lastTs;
+        break;
+      }
+      default: {
+        if (type == null) {
+          console.warn("[store] event missing type", event);
+        } else if (!warnedTypes.has(type)) {
+          warnedTypes.add(type);
+          console.warn("[store] unknown event type (ignored once):", type);
+        }
+        return;
       }
     }
-
-    if (changed) notify(Change.CALL);
-    return call;
+    notify();
   }
 
-  function appendTranscript(vm) {
-    const call = ensureCall(vm.incidentId);
-    if (!call) return;
-    call.transcript = [...call.transcript, vm];
-    call.lastDeltaAt = new Date();
-    notify(Change.CALL);
+  function subscribe(fn) {
+    listeners.add(fn);
+    return () => listeners.delete(fn);
   }
 
-  function appendToolCall(vm) {
-    const call = ensureCall(vm.incidentId);
-    if (!call) return;
-    call.toolCalls = [...call.toolCalls, vm];
-    call.lastDeltaAt = new Date();
-    notify(Change.CALL);
+  function getState() {
+    return state;
   }
 
-  function setCallVisible(visible) {
-    if (!visible) {
-      const call = activeCall();
-      if (call) call.dismissed = true;
+  function getActiveSevere() {
+    for (const id of state.order) {
+      const inc = state.incidents[id];
+      if (!inc || inc.severity !== "SEVERE") continue;
+      if (!isOpenIncident(inc)) continue;
+      return inc;
     }
-    state.callVisible = visible;
-    notify(Change.CALL);
-  }
-
-  function activeCall() {
-    return state.activeCallId ? state.calls.get(state.activeCallId) || null : null;
-  }
-
-  /* ---------------- selectors ---------------- */
-
-  /** Newest first, filtered by the severity chips. */
-  function visibleIncidents() {
-    const all = [...state.incidents.values()].sort(
-      (a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)
-    );
-    if (state.filter === 'ALL') return all;
-    return all.filter((i) => i.uiSeverity === state.filter);
-  }
-
-  function selected() {
-    return state.selectedId ? state.incidents.get(state.selectedId) || null : null;
-  }
-
-  /** Cameras that should show the red alert border. */
-  function alertingCameraIds() {
-    const ids = new Set();
-    for (const inc of state.incidents.values()) {
-      if (inc.alerting) ids.add(inc.cameraId);
-    }
-    return ids;
-  }
-
-  /** cameraId -> Set(track_id) for the tracks tied to an alerting incident,
-   *  so the wall reddens only the box that belongs to the incident. */
-  function alertingTracks() {
-    const map = new Map();
-    for (const inc of state.incidents.values()) {
-      if (!inc.alerting) continue;
-      if (!map.has(inc.cameraId)) map.set(inc.cameraId, new Set());
-      map.get(inc.cameraId).add(inc.trackId);
-    }
-    return map;
-  }
-
-  function openCount() {
-    let n = 0;
-    for (const inc of state.incidents.values()) if (inc.open) n += 1;
-    return n;
+    return null;
   }
 
   return {
-    getState: () => state,
-    subscribe(fn) {
-      subs.add(fn);
-      return () => subs.delete(fn);
-    },
-    // ingest
-    setCameras,
-    setCameraOnline,
-    upsertIncident,
-    applyStateChange,
-    setHealth,
-    setOverlay,
-    clearIncidents,
-    // intent
-    select,
-    setFilter,
-    toggleExpand,
-    expandCamera,
-    setPaused,
-    setPrewarmed,
-    clearUnseen,
-    // call console
-    ensureCall,
-    appendTranscript,
-    appendToolCall,
-    setCallVisible,
-    activeCall,
-    // selectors
-    visibleIncidents,
-    selected,
-    alertingCameraIds,
-    alertingTracks,
-    openCount,
+    getState,
+    handle,
+    subscribe,
+    setConnection,
+    setDemo,
+    setSelected,
+    setRoute,
+    reset,
+    softReset,
+    getActiveSevere,
+    flush,
   };
 }
