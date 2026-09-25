@@ -146,6 +146,13 @@ async def main() -> None:
     assert "health.strip" in types
     assert "incident.upsert" in types
 
+    # A refreshed/replacement dashboard also needs its own camera snapshot.
+    r2, w2 = await asyncio.open_connection("127.0.0.1", port)
+    await _ws_handshake(r2, w2)
+    second_types = [(await _recv_frame(r2))["type"] for _ in range(10)]
+    assert "camera.online" in second_types
+    w2.close()
+
     await _send_text(w, {"cmd": "start"})  # idempotent — must not double-seed WEAPON
     await _send_text(w, {"cmd": "runScenario", "scenario_id": "forced-entry"})
     got_theft = False

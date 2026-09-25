@@ -17,7 +17,9 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
 
-from .hub import DemoHub, dumps
+from contracts import CameraOnline, event_to_dict, utcnow
+
+from .hub import WALL_CAMS, DemoHub, dumps
 from .vision_bridge import VisionBridge, vision_enabled
 
 DEFAULT_HOST = "0.0.0.0"
@@ -260,6 +262,11 @@ class ApiServer:
         self.clients.add(client)
         first = len(self.clients) == 1
         try:
+            now = utcnow()
+            for camera_id in WALL_CAMS:
+                await client.send_text(
+                    dumps(event_to_dict(CameraOnline(camera_id=camera_id, online=True, ts=now)))
+                )
             if first:
                 await self.hub.seed()
                 await self.hub.start_loops()
