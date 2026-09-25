@@ -1,12 +1,15 @@
 /**
- * Assist button — bottom-right. Hides while the sidebar is open;
- * returns when the sidebar is closed.
+ * Assist button — bottom-right on Live. Opens a small menu with the two
+ * existing operator actions: Report incident and Broadcast (operator.js
+ * dialogs). The I key does the same. It no longer opens a sidebar: the Live
+ * page shows incidents, map and call in its own columns.
  */
 
-import { now as clockNow } from "../clock.js?v=fix9b";
-import { isOpenIncident } from "../format.js?v=fix9b";
-import { OPEN_SIDEBAR_EVENT, MORE_INCIDENTS_EVENT } from "./cameras.js?v=fix9b";
-import { LOGO_MARK_INVERSE } from "../logo.js?v=fix9b";
+import { now as clockNow } from "../clock.js?v=live2";
+import { isOpenIncident } from "../format.js?v=live2";
+import { el } from "../dom.js?v=live2";
+import { LOGO_MARK_INVERSE } from "../logo.js?v=live2";
+import { OP_BROADCAST_EVENT, OP_REPORT_EVENT } from "./operator.js?v=live2";
 
 function activeCount(state) {
   let n = 0;
@@ -22,12 +25,12 @@ function activeCount(state) {
   return { n, maxSev };
 }
 
-export function mountAssist(root, store, sidebarApi) {
+export function mountAssist(root, store) {
   if (!root) return () => {};
 
   root.innerHTML = `
     <button type="button" class="assist assist--br" id="assist-btn"
-      aria-label="Open incident panel" aria-expanded="false" aria-controls="sidebar">
+      aria-label="Operator actions" aria-haspopup="menu" aria-expanded="false" aria-controls="assist-menu">
       <span class="assist__mark">${LOGO_MARK_INVERSE}</span>
       <span class="assist__badge" data-badge hidden>0</span>
     </button>
@@ -35,6 +38,106 @@ export function mountAssist(root, store, sidebarApi) {
   const btn = root.querySelector(".assist");
   const badge = root.querySelector("[data-badge]");
   let lastSeverePulse = 0;
+
+  const menu = el("div", {
+    className: "assist-menu surface-light",
+    id: "assist-menu",
+    attrs: { role: "menu", "aria-label": "Operator actions" },
+  });
+  menu.hidden = true;
+  const reportItem = el("button", {
+    type: "button",
+    className: "assist-menu__item",
+    text: "Report incident",
+    attrs: { role: "menuitem" },
+  });
+  const broadcastItem = el("button", {
+    type: "button",
+    className: "assist-menu__item",
+    text: "Broadcast",
+    attrs: { role: "menuitem" },
+  });
+  menu.appendChild(reportItem);
+  menu.appendChild(broadcastItem);
+  root.appendChild(menu);
+
+  function isMenuOpen() {
+    return !menu.hidden;
+  }
+
+  function openMenu() {
+    menu.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+    reportItem.focus({ preventScroll: true });
+    document.addEventListener("pointerdown", onOutside, true);
+    window.addEventListener("keydown", onMenuKey, true);
+  }
+
+  function closeMenu(returnFocus = true) {
+    if (!isMenuOpen()) return;
+    menu.hidden = true;
+    btn.setAttribute("aria-expanded", "false");
+    document.removeEventListener("pointerdown", onOutside, true);
+    window.removeEventListener("keydown", onMenuKey, true);
+    if (returnFocus) btn.focus({ preventScroll: true });
+  }
+
+  function onOutside(e) {
+    if (menu.contains(e.target) || btn.contains(e.target)) return;
+    closeMenu(false);
+  }
+
+  function onMenuKey(e) {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      closeMenu();
+      return;
+    }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      e.stopPropagation();
+      (document.activeElement === reportItem ? broadcastItem : reportItem).focus();
+    }
+  }
+
+  /** Broadcast about the selected open incident, if any (as the action bar does). */
+  function selectedOpenIncidentId() {
+    const state = store.getState();
+    const inc = state.selectedId ? state.incidents[state.selectedId] : null;
+    return inc && isOpenIncident(inc) ? inc.incident_id : null;
+  }
+
+  reportItem.addEventListener("click", () => {
+    closeMenu(false);
+    document.dispatchEvent(new CustomEvent(OP_REPORT_EVENT, { detail: { anchor: btn } }));
+  });
+  broadcastItem.addEventListener("click", () => {
+    closeMenu(false);
+    document.dispatchEvent(
+      new CustomEvent(OP_BROADCAST_EVENT, { detail: { incidentId: selectedOpenIncidentId() } }),
+    );
+  });
+
+  function toggleMenu() {
+    if (isMenuOpen()) closeMenu();
+    else openMenu();
+  }
+
+  btn.addEventListener("click", () => toggleMenu());
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== "i" && e.key !== "I") return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (!document.body.classList.contains("route-live")) return;
+    const tag = e.target?.tagName;
+    if (tag && ["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
+    if (e.target?.isContentEditable) return;
+    // Not while a dialog or popover owns the keyboard.
+    if (e.target?.closest?.('[role="dialog"]')) return;
+    e.preventDefault();
+    toggleMenu();
+  });
 
   function paintClasses(maxSev) {
     const pulse = btn.classList.contains("assist--pulse");
@@ -44,58 +147,11 @@ export function mountAssist(root, store, sidebarApi) {
     if (pulse) btn.classList.add("assist--pulse");
   }
 
-  function setVisible(show) {
-    root.hidden = !show;
-    btn.hidden = !show;
-    root.setAttribute("aria-hidden", show ? "false" : "true");
-  }
-
-  function toggle() {
-    if (sidebarApi.isOpen()) {
-      sidebarApi.close();
-    } else {
-      setVisible(false);
-      sidebarApi.open("incidents");
-    }
-  }
-
-  btn.addEventListener("click", () => toggle());
-
-  window.addEventListener("keydown", (e) => {
-    if (e.key !== "i" && e.key !== "I") return;
-    const tag = e.target?.tagName;
-    if (tag && ["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
-    e.preventDefault();
-    toggle();
-  });
-
-  document.addEventListener(OPEN_SIDEBAR_EVENT, (e) => {
-    setVisible(false);
-    sidebarApi.open(e.detail?.tab || "incidents", e.detail?.incidentId);
-  });
-  document.addEventListener(MORE_INCIDENTS_EVENT, () => {
-    setVisible(false);
-    sidebarApi.open("incidents");
-  });
-
   function render(state) {
     const { n, maxSev } = activeCount(state);
-    const open = sidebarApi.isOpen();
-
-    setVisible(!open);
-
-    badge.hidden = n === 0 || open;
+    badge.hidden = n === 0;
     if (n > 0) badge.textContent = String(n);
-
     paintClasses(maxSev);
-
-    btn.setAttribute("aria-expanded", open ? "true" : "false");
-    btn.setAttribute(
-      "aria-label",
-      open ? "Close incident panel" : "Open incident panel",
-    );
-
-    if (open) return;
 
     const severe = store.getActiveSevere?.();
     if (severe) {
@@ -113,11 +169,13 @@ export function mountAssist(root, store, sidebarApi) {
 
   render(store.getState());
   const unsub = store.subscribe(render);
-  const onSide = () => render(store.getState());
-  document.addEventListener("sentinel:sidebar", onSide);
 
-  return () => {
-    unsub();
-    document.removeEventListener("sentinel:sidebar", onSide);
+  return {
+    isMenuOpen,
+    closeMenu,
+    destroy() {
+      unsub();
+      closeMenu(false);
+    },
   };
 }

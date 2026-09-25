@@ -3,19 +3,19 @@
  * Shared by sidebar Site plan tab and the expand modal.
  */
 
-import { WALL_CAMERA_IDS, cameraLabel, cameraTitle } from "../site.js?v=fix9b";
-import { predictedCameraAt } from "../mock.js?v=fix9b";
+import { WALL_CAMERA_IDS, cameraLabel, cameraTitle } from "../site.js?v=live2";
+import { predictedCameraAt } from "../mock.js?v=live2";
 import {
   classLabel,
   severityLabel,
   formatRel,
   formatElapsedPlus,
   isOpenIncident,
-} from "../format.js?v=fix9b";
-import { clear, el, setText } from "../dom.js?v=fix9b";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix9b";
-import { now, subscribeTick } from "../clock.js?v=fix9b";
-import { activeIncidentForCamera, cameraStatus, onlineCount } from "../cameraStatus.js?v=fix9b";
+} from "../format.js?v=live2";
+import { clear, el, setText } from "../dom.js?v=live2";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=live2";
+import { now, subscribeTick } from "../clock.js?v=live2";
+import { activeIncidentForCamera, cameraStatus, onlineCount } from "../cameraStatus.js?v=live2";
 
 function activeHit(state, cameraId) {
   const inc = activeIncidentForCamera(state, cameraId);

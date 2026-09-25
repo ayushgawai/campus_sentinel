@@ -3,7 +3,7 @@
  * Never uploads; never writes into the repo.
  */
 
-import { WALL_CAMERA_IDS } from "./site.js?v=fix9b";
+import { WALL_CAMERA_IDS } from "./site.js?v=live2";
 
 const DB_NAME = "sentinel-demo";
 const DB_STORE = "camera-sources";

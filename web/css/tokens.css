@@ -202,6 +202,22 @@
   --call-panel-w: 400px;
   --call-panel-min-w: 380px;
   --wall-min-w: 560px;
+  /* Live page columns in incident mode (watch mode is one full stage).
+     300 / 380 up to 1599px wide, 340 / 420 from 1600px. */
+  --live-left: 300px;
+  --live-right: 380px;
+  --live-gap: 16px;
+  --live-pad: 16px;
+  /* Live watch ring and motion (redesign part 2) */
+  --live-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --live-move-ms: 600ms;
+  --live-col-in-ms: 350ms;
+  --ring-leader: var(--aqua);
+  --ring-disc-shadow: 0 10px 32px rgba(0, 0, 0, 0.35);
+  --tile-radius: 14px;
+  --tile-vignette: rgba(0, 0, 0, 0.42);
+  --tile-scanline: rgba(255, 255, 255, 0.035);
+  --hud-chip-bg: rgba(14, 14, 16, 0.62);
   --assist-size: 56px;
   --assist-m: 24px;
 
@@ -218,6 +234,8 @@
 @media (min-width: 1600px) {
   :root {
     --call-panel-w: 440px;
+    --live-left: 340px;
+    --live-right: 420px;
   }
 }
 @media (min-width: 1800px) {

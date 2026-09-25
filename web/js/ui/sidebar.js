@@ -4,9 +4,9 @@
  * a separate floating call panel (call.js's mountCallPanel).
  */
 
-import { now, subscribeTick } from "../clock.js?v=fix9b";
-import { WALL_CAMERA_IDS } from "../site.js?v=fix9b";
-import { onlineCount } from "../cameraStatus.js?v=fix9b";
+import { now, subscribeTick } from "../clock.js?v=live2";
+import { WALL_CAMERA_IDS } from "../site.js?v=live2";
+import { onlineCount } from "../cameraStatus.js?v=live2";
 import {
   classLabel,
   cameraLabel,
@@ -21,143 +21,47 @@ import {
   pctNumber,
   isOpenIncident,
   isDispatchSimState,
-} from "../format.js?v=fix9b";
-import { mountIncidentClip } from "./incidentClip.js?v=fix9b";
-import { clear, el, setText } from "../dom.js?v=fix9b";
-import { mountMap } from "./map.js?v=fix9b";
+} from "../format.js?v=live2";
+import { mountIncidentClip } from "./incidentClip.js?v=live2";
+import { clear, el, setText } from "../dom.js?v=live2";
+import { mountMap } from "./map.js?v=live2";
 import {
   legendMarkup,
   mountSiteCamerasList,
   mountTrackingCard,
   mountSiteOverview,
-} from "./sitePlanExtras.js?v=fix9b";
-import { findCallIncident, formatCallTimer, callElapsedMs } from "./call.js?v=fix9b";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix9b";
+} from "./sitePlanExtras.js?v=live2";
+import { findCallIncident, formatCallTimer, callElapsedMs } from "./call.js?v=live2";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=live2";
 import {
   OP_REPORT_EVENT,
   OP_STATUS_EVENT,
   actionBar,
   opButton,
   confidenceLong,
-} from "./operator.js?v=fix9b";
+} from "./operator.js?v=live2";
 import {
   detailHeaderCard,
   detailsCard,
   clipCard,
   timelineCard,
   emptyState,
-} from "./incidentDetail.js?v=fix9b";
+} from "./incidentDetail.js?v=live2";
 
 /** Same entries by identity (store replaces an incident object when it changes). */
 function sameSig(a, b) {
   return Boolean(a && b && a.length === b.length && a.every((x, i) => x === b[i]));
 }
 
-export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
-  let open = false;
-  let tab = "incidents";
+/**
+ * Incident list and detail (report toolbar, incident cards, detail cards and
+ * action bar). Used by the Live sidebar and the Live incident column.
+ * `opts.isVisible()` gates painting so a hidden panel costs nothing.
+ * @returns {{ paint: (state: object) => void, showDetail: (id: string) => void, showList: () => void }}
+ */
+export function mountIncidentPanel(host, store, actions, layoutCtl, opts = {}) {
+  const isVisible = opts.isVisible || (() => true);
   let detailId = null;
-  let mapApi = null;
-  let mapHost = null;
-  /** @type {{ destroy?: Function, paint?: Function }[]} */
-  let mapExtras = [];
-  let expandUnmount = null;
-  let expandExtras = [];
-
-  root.id = "sidebar";
-  root.setAttribute("aria-label", "Incidents");
-  root.innerHTML = `
-    <div class="sidebar">
-      <header class="sidebar__head">
-        <nav class="sidebar__tabs" data-tabs role="tablist">
-          <button type="button" role="tab" data-tab="incidents" class="is-active">Incidents</button>
-          <button type="button" role="tab" data-tab="map">Site plan</button>
-        </nav>
-        <button type="button" class="btn btn--ghost sidebar__call-btn" data-call-btn hidden>
-          <span class="sidebar__call-dot" aria-hidden="true"></span>
-          Call <span class="mono" data-call-timer>00:00</span>
-        </button>
-        <button type="button" class="btn btn--ghost" data-close aria-label="Close panel">Close</button>
-      </header>
-      <div class="sidebar__body">
-        <div class="sidebar__panel" data-panel="incidents"></div>
-        <div class="sidebar__panel" data-panel="map" hidden></div>
-      </div>
-    </div>
-  `;
-
-  const tabsEl = root.querySelector("[data-tabs]");
-  const panels = {
-    incidents: root.querySelector('[data-panel="incidents"]'),
-    map: root.querySelector('[data-panel="map"]'),
-  };
-  const callBtn = root.querySelector("[data-call-btn]");
-  const callTimerEl = root.querySelector("[data-call-timer]");
-
-  root.querySelector("[data-close]").addEventListener("click", () => api.close());
-  callBtn.addEventListener("click", () => {
-    document.dispatchEvent(new CustomEvent("sentinel:open-call-panel"));
-  });
-
-  for (const btn of tabsEl.querySelectorAll("[data-tab]")) {
-    btn.addEventListener("click", () => {
-      tab = btn.dataset.tab;
-      detailId = tab === "incidents" ? detailId : detailId;
-      if (tab !== "incidents") detailId = tab === "incidents" ? detailId : null;
-      paint();
-    });
-  }
-
-  function setOpen(next, opts = {}) {
-    open = next;
-    root.hidden = !open;
-    document.body.classList.toggle("sidebar-open", open);
-    if (opts.tab) tab = opts.tab;
-    if (opts.incidentId) {
-      detailId = opts.incidentId;
-      tab = "incidents";
-    }
-    if (!open) hooks.onClose?.();
-    document.dispatchEvent(
-      new CustomEvent("sentinel:sidebar", { detail: { open, tab } }),
-    );
-    paint();
-  }
-
-  const api = {
-    isOpen: () => open,
-    open(nextTab = "incidents", incidentId = null) {
-      setOpen(true, { tab: nextTab, incidentId });
-    },
-    close() {
-      setOpen(false);
-    },
-    setTab(t) {
-      tab = t;
-      paint();
-    },
-  };
-
-  const ACTIVE_CALL_STATES = new Set(["DISPATCHED", "TRACKING"]);
-
-  function paintTabs(state) {
-    for (const btn of tabsEl.querySelectorAll("[data-tab]")) {
-      btn.classList.toggle("is-active", btn.dataset.tab === tab);
-      btn.setAttribute("aria-selected", btn.dataset.tab === tab ? "true" : "false");
-    }
-    for (const [name, panel] of Object.entries(panels)) {
-      panel.hidden = name !== tab;
-    }
-  }
-
-  function paintCallBtn(state, nowMs = now()) {
-    const inc = findCallIncident(state);
-    const active = inc && ACTIVE_CALL_STATES.has(inc.state);
-    callBtn.hidden = !active;
-    if (!active) return;
-    const ms = callElapsedMs(inc, state, nowMs);
-    setText(callTimerEl, ms == null ? "00:00" : formatCallTimer(ms));
-  }
 
   /** "Camera N · 8 s ago · 92% confidence" lines, refreshed by the ticker. */
   let agoLines = [];
@@ -184,8 +88,7 @@ export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
   }
 
   function paintTimes(nowMs = now()) {
-    if (!open) return;
-    paintCallBtn(store.getState(), nowMs);
+    if (!isVisible()) return;
     for (const entry of agoLines) paintAgoLine(entry, nowMs);
   }
 
@@ -208,7 +111,7 @@ export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
     if (sameSig(sig, lastSig)) return;
     lastSig = sig;
 
-    const panel = panels.incidents;
+    const panel = host;
     const hadFocus = panel.contains(document.activeElement)
       ? document.activeElement.dataset.focusKey
       : null;
@@ -248,7 +151,7 @@ export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
         detailHeaderCard(inc, {
           onBack: () => {
             detailId = null;
-            paint();
+            repaint();
           },
         }),
       );
@@ -315,10 +218,143 @@ export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
         detailId = id;
         actions.select(id);
         if (inc.camera_id && layoutCtl) layoutCtl.swapMain(inc.camera_id);
-        paint();
+        repaint();
       });
       panel.appendChild(row);
     }
+  }
+
+  function repaint() {
+    lastSig = null;
+    if (isVisible()) paintIncidents(store.getState());
+  }
+
+  subscribeTick((nowMs) => paintTimes(nowMs));
+  document.addEventListener(OP_STATUS_EVENT, () => {
+    opVersion += 1;
+    repaint();
+  });
+
+  return {
+    paint(state) {
+      if (isVisible()) paintIncidents(state);
+    },
+    showDetail(id) {
+      detailId = id || null;
+      repaint();
+    },
+    showList() {
+      detailId = null;
+      repaint();
+    },
+  };
+}
+
+export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
+  let open = false;
+  let tab = "incidents";
+  let mapApi = null;
+  let mapHost = null;
+  /** @type {{ destroy?: Function, paint?: Function }[]} */
+  let mapExtras = [];
+  let expandUnmount = null;
+  let expandExtras = [];
+
+  root.id = "sidebar";
+  root.setAttribute("aria-label", "Incidents");
+  root.innerHTML = `
+    <div class="sidebar">
+      <header class="sidebar__head">
+        <nav class="sidebar__tabs" data-tabs role="tablist">
+          <button type="button" role="tab" data-tab="incidents" class="is-active">Incidents</button>
+          <button type="button" role="tab" data-tab="map">Site plan</button>
+        </nav>
+        <button type="button" class="btn btn--ghost sidebar__call-btn" data-call-btn hidden>
+          <span class="sidebar__call-dot" aria-hidden="true"></span>
+          Call <span class="mono" data-call-timer>00:00</span>
+        </button>
+        <button type="button" class="btn btn--ghost" data-close aria-label="Close panel">Close</button>
+      </header>
+      <div class="sidebar__body">
+        <div class="sidebar__panel" data-panel="incidents"></div>
+        <div class="sidebar__panel" data-panel="map" hidden></div>
+      </div>
+    </div>
+  `;
+
+  const tabsEl = root.querySelector("[data-tabs]");
+  const panels = {
+    incidents: root.querySelector('[data-panel="incidents"]'),
+    map: root.querySelector('[data-panel="map"]'),
+  };
+  const callBtn = root.querySelector("[data-call-btn]");
+  const callTimerEl = root.querySelector("[data-call-timer]");
+  const incidentPanel = mountIncidentPanel(panels.incidents, store, actions, layoutCtl, {
+    isVisible: () => open && tab === "incidents",
+  });
+
+  root.querySelector("[data-close]").addEventListener("click", () => api.close());
+  callBtn.addEventListener("click", () => {
+    document.dispatchEvent(new CustomEvent("sentinel:open-call-panel"));
+  });
+
+  for (const btn of tabsEl.querySelectorAll("[data-tab]")) {
+    btn.addEventListener("click", () => {
+      tab = btn.dataset.tab;
+      if (tab !== "incidents") incidentPanel.showList();
+      paint();
+    });
+  }
+
+  function setOpen(next, opts = {}) {
+    open = next;
+    root.hidden = !open;
+    document.body.classList.toggle("sidebar-open", open);
+    if (opts.tab) tab = opts.tab;
+    if (opts.incidentId) {
+      incidentPanel.showDetail(opts.incidentId);
+      tab = "incidents";
+    }
+    if (!open) hooks.onClose?.();
+    document.dispatchEvent(
+      new CustomEvent("sentinel:sidebar", { detail: { open, tab } }),
+    );
+    paint();
+  }
+
+  const api = {
+    isOpen: () => open,
+    open(nextTab = "incidents", incidentId = null) {
+      setOpen(true, { tab: nextTab, incidentId });
+    },
+    close() {
+      setOpen(false);
+    },
+    setTab(t) {
+      tab = t;
+      paint();
+    },
+  };
+
+  const ACTIVE_CALL_STATES = new Set(["DISPATCHED", "TRACKING"]);
+
+  function paintTabs(state) {
+    for (const btn of tabsEl.querySelectorAll("[data-tab]")) {
+      btn.classList.toggle("is-active", btn.dataset.tab === tab);
+      btn.setAttribute("aria-selected", btn.dataset.tab === tab ? "true" : "false");
+    }
+    for (const [name, panel] of Object.entries(panels)) {
+      panel.hidden = name !== tab;
+    }
+  }
+
+  function paintCallBtn(state, nowMs = now()) {
+    const inc = findCallIncident(state);
+    const active = inc && ACTIVE_CALL_STATES.has(inc.state);
+    callBtn.hidden = !active;
+    if (!active) return;
+    const ms = callElapsedMs(inc, state, nowMs);
+    setText(callTimerEl, ms == null ? "00:00" : formatCallTimer(ms));
   }
 
   function destroyMapExtras(list) {
@@ -539,7 +575,7 @@ export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
     const state = store.getState();
     paintTabs(state);
     paintCallBtn(state);
-    if (tab === "incidents") paintIncidents(state);
+    if (tab === "incidents") incidentPanel.paint(state);
     if (tab === "map") {
       ensureMap(state);
     }
@@ -555,10 +591,8 @@ export function mountSidebar(root, store, actions, layoutCtl, hooks = {}) {
   }
 
   store.subscribe(render);
-  subscribeTick((nowMs) => paintTimes(nowMs));
-  document.addEventListener(OP_STATUS_EVENT, () => {
-    opVersion += 1;
-    paint();
+  subscribeTick((nowMs) => {
+    if (open) paintCallBtn(store.getState(), nowMs);
   });
 
   window.__sidebar = api;

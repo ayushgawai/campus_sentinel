@@ -3,14 +3,36 @@
  * Pure placement logic; cameras.js applies geometry with transitions.
  */
 
-import { WALL_CAMERA_IDS } from "../site.js?v=fix9b";
-import { isOpenIncident } from "../format.js?v=fix9b";
-import { now as clockNow } from "../clock.js?v=fix9b";
+import { WALL_CAMERA_IDS } from "../site.js?v=live2";
+import { isOpenIncident } from "../format.js?v=live2";
+import { now as clockNow } from "../clock.js?v=live2";
 
 const HOLD_MS = 5000;
 const LEFT_VIEW_MS = 5000;
 const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 const DURATION_MS = 250;
+/** Live watch ↔ incident move (ring ↔ hero). */
+const RING_MOVE_MS = 600;
+
+/**
+ * Watch-mode ring: slot angle per camera (0° = right, clockwise, y down).
+ * Six tiles in a hexagon around the round site map.
+ */
+const RING_SLOTS = {
+  "cam-01": 180,
+  "cam-02": 300,
+  "cam-03": 240,
+  "cam-04": 0,
+  "cam-05": 120,
+  "cam-06": 60,
+};
+
+/** Distance from (px, py) to the nearest point of a rect (0 inside). */
+function distToRect(px, py, r) {
+  const dx = Math.max(r.x - px, 0, px - (r.x + r.w));
+  const dy = Math.max(r.y - py, 0, py - (r.y + r.h));
+  return Math.hypot(dx, dy);
+}
 
 /**
  * @typedef {{
@@ -107,7 +129,11 @@ export function createCameraLayout() {
       }
     }
     for (const [key, h] of [...holds.entries()]) {
-      if (h.until <= now) holds.delete(key);
+      if (h.until > now) continue;
+      holds.delete(key);
+      // Forget the camera too, or the next plan() would start a new hold
+      // for the same closed incident and it would never return to grid.
+      lastCamByInc.delete(key);
     }
   }
 
@@ -280,13 +306,59 @@ export function createCameraLayout() {
    * Compute pixel rects for a stage size.
    * @returns {Map<string, {x:number,y:number,w:number,h:number,role:string,headerH:number}>}
    */
-  function geometry(planResult, stageW, stageH, viewportW) {
+  function geometry(planResult, stageW, stageH, viewportW, opts = {}) {
     const gap = 12;
     const headerH = 48; /* matches --inc-bar-h */
     const map = new Map();
     const reduced =
       typeof matchMedia === "function" &&
       matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (opts.ring && planResult.mains.length === 0) {
+      // Six 16:9 tiles on an ellipse around the stage centre; the site map
+      // disc fills the largest circle that clears every tile.
+      const W = stageW;
+      const H = stageH;
+      const w = Math.min(W * 0.22, ((H * 0.3) * 16) / 9);
+      const h = (w * 9) / 16;
+      const cx = W / 2;
+      const cy = H / 2;
+      const rx = W / 2 - w / 2 - 8;
+      const ry = H / 2 - h / 2 - 8;
+      let nearest = Infinity;
+      let labelHalf = Infinity;
+      WALL_CAMERA_IDS.forEach((id, i) => {
+        const deg = RING_SLOTS[id] ?? i * 60;
+        const a = (deg * Math.PI) / 180;
+        const r = {
+          x: cx + rx * Math.cos(a) - w / 2,
+          y: cy + ry * Math.sin(a) - h / 2,
+          w,
+          h,
+          role: "grid",
+          headerH: 0,
+          angle: deg,
+        };
+        map.set(id, r);
+        nearest = Math.min(nearest, distToRect(cx, cy, r));
+        // Lower tiles bound the room for the map note under the disc.
+        if (r.y + r.h > cy && r.x + r.w > cx && r.x > cx) labelHalf = Math.min(labelHalf, r.x - cx);
+        if (r.y + r.h > cy && r.x < cx && r.x + r.w < cx) labelHalf = Math.min(labelHalf, cx - (r.x + r.w));
+      });
+      const d = Math.max(0, Math.min(nearest * 2 - 16, Math.min(W, H) * 0.5));
+      return {
+        rects: map,
+        reduced,
+        duration: reduced ? 0 : DURATION_MS,
+        ease: EASE,
+        ring: {
+          cx,
+          cy,
+          d,
+          labelW: Number.isFinite(labelHalf) ? Math.max(0, labelHalf * 2 - 16) : d,
+        },
+      };
+    }
 
     if (planResult.mode === "grid" || planResult.mains.length === 0) {
       // 3×2 filling the stage (tiles fill cells; ~16:9 on typical consoles)
@@ -420,6 +492,7 @@ export function createCameraLayout() {
     isAuto: () => mode === "auto",
     getManualMains: () => manualMains.slice(),
     DURATION_MS,
+    RING_MOVE_MS,
     EASE,
   };
 }

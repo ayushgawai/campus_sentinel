@@ -14,13 +14,13 @@ import {
   audienceText,
   isDispatchedOrLater,
   isOperatorReported,
-} from "../actions.js?v=fix9b";
-import { WALL_CAMERA_IDS, cameraLabel, cameraTitle } from "../site.js?v=fix9b";
-import { classLabel, formatPct } from "../format.js?v=fix9b";
-import { clear, el, setText } from "../dom.js?v=fix9b";
-import { icon } from "../icons.js?v=fix9b";
-import { subscribeTick } from "../clock.js?v=fix9b";
-import { callElapsedMs, formatCallTimer } from "./call.js?v=fix9b";
+} from "../actions.js?v=live2";
+import { WALL_CAMERA_IDS, cameraLabel, cameraTitle } from "../site.js?v=live2";
+import { classLabel, formatPct } from "../format.js?v=live2";
+import { clear, el, setText } from "../dom.js?v=live2";
+import { icon } from "../icons.js?v=live2";
+import { subscribeTick } from "../clock.js?v=live2";
+import { callElapsedMs, formatCallTimer } from "./call.js?v=live2";
 
 export const OP_REPORT_EVENT = "sentinel:op-report";
 export const OP_CALL_EVENT = "sentinel:op-call";
@@ -158,6 +158,8 @@ export function actionBar(inc, actions, { review = true, card = true } = {}) {
   const bar = el("div", { className: `op-bar${card ? " card detail-card" : ""}` });
   const dispatchSt = actions.getOpStatus("dispatch", inc.incident_id);
   const broadcastSt = actions.getOpStatus("broadcast", inc.incident_id);
+  const confirmSt = actions.getOpStatus("confirm", inc.incident_id);
+  const dismissSt = actions.getOpStatus("dismiss", inc.incident_id);
   const dispatched = isDispatchedOrLater(inc);
 
   if (dispatched) {

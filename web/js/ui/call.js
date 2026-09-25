@@ -1,6 +1,6 @@
 /** Call Console — single chat thread + tool cards. No floating overlay. */
 
-import { now, subscribeTick } from "../clock.js?v=fix9b";
+import { now, subscribeTick } from "../clock.js?v=live2";
 import {
   awaiting,
   classLabel,
@@ -17,11 +17,11 @@ import {
   HIDDEN_TOOL_KEYS,
   isOpenIncident,
   severityLabel,
-} from "../format.js?v=fix9b";
-import { redactPlaces, cameraTitle } from "../site.js?v=fix9b";
-import { clear, el, setText } from "../dom.js?v=fix9b";
-import { OP_STATUS_EVENT, operatorActions, actionBar } from "./operator.js?v=fix9b";
-import { isDispatchedOrLater } from "../actions.js?v=fix9b";
+} from "../format.js?v=live2";
+import { redactPlaces, cameraTitle } from "../site.js?v=live2";
+import { clear, el, setText } from "../dom.js?v=live2";
+import { OP_STATUS_EVENT, operatorActions, actionBar } from "./operator.js?v=live2";
+import { isDispatchedOrLater } from "../actions.js?v=live2";
 
 const STREAM_MERGE_MS = 700;
 const CALL_STATES = new Set([
@@ -649,6 +649,9 @@ export function mountCallPanel(root, store, actions) {
   const api = {
     isOpen: () => open,
     open() {
+      // Live shows the call in its right column (ui/live.js), so the
+      // floating panel and body.call-open are not used there.
+      if (document.body.classList.contains("route-live")) return;
       open = true;
       root.hidden = false;
       document.body.classList.add("call-open");

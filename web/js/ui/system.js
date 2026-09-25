@@ -1,6 +1,6 @@
 /** System page — site info, health stats, AI models, camera status grid. */
 
-import { SITE, WALL_CAMERA_IDS, cameraTitle, getCamera } from "../site.js?v=fix9b";
+import { SITE, WALL_CAMERA_IDS, cameraTitle, getCamera } from "../site.js?v=live2";
 import {
   cameraLabel,
   classLabel,
@@ -9,16 +9,16 @@ import {
   formatMs,
   formatPct,
   stateLabel,
-} from "../format.js?v=fix9b";
-import { el, setText } from "../dom.js?v=fix9b";
-import { icon } from "../icons.js?v=fix9b";
-import { navigate } from "../router.js?v=fix9b";
-import { now, subscribeTick } from "../clock.js?v=fix9b";
-import { cameraStatus, onlineCount } from "../cameraStatus.js?v=fix9b";
-import { MODELS_SUBTITLE } from "../models.js?v=fix9b";
-import { STATUS_DOT, STATUS_LABEL, subscribeModelStatus } from "../modelStatus.js?v=fix9b";
-import { createModelsTable } from "./modelsTable.js?v=fix9b";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix9b";
+} from "../format.js?v=live2";
+import { el, setText } from "../dom.js?v=live2";
+import { icon } from "../icons.js?v=live2";
+import { navigate } from "../router.js?v=live2";
+import { now, subscribeTick } from "../clock.js?v=live2";
+import { cameraStatus, onlineCount } from "../cameraStatus.js?v=live2";
+import { MODELS_SUBTITLE } from "../models.js?v=live2";
+import { STATUS_DOT, STATUS_LABEL, subscribeModelStatus } from "../modelStatus.js?v=live2";
+import { createModelsTable } from "./modelsTable.js?v=live2";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=live2";
 
 const STATUS_DOT_CLASS = {
   online: "dot--ok",

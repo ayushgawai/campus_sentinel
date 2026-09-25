@@ -4,14 +4,14 @@
  * is already in the live main view (or full grid).
  */
 
-import { cameraTitle } from "../site.js?v=fix9b";
+import { cameraTitle } from "../site.js?v=live2";
 import {
   classLabel,
   cameraLabel,
   severityLabel,
   stateLabel,
-} from "../format.js?v=fix9b";
-import { clear, el } from "../dom.js?v=fix9b";
+} from "../format.js?v=live2";
+import { clear, el } from "../dom.js?v=live2";
 
 /**
  * @param {HTMLElement} root

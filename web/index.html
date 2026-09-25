@@ -9,9 +9,9 @@
     />
     <title>Sentinel · Security Console</title>
     <link rel="icon" href="./assets/logo.png" type="image/png" />
-    <link rel="stylesheet" href="./css/tokens.css?v=fix9b" />
-    <link rel="stylesheet" href="./css/app.css?v=fix9b" />
-    <script src="./js/boot.js?v=fix9b"></script>
+    <link rel="stylesheet" href="./css/tokens.css?v=live2" />
+    <link rel="stylesheet" href="./css/app.css?v=live2" />
+    <script src="./js/boot.js?v=live2"></script>
   </head>
   <body class="has-splash">
     <div
@@ -55,9 +55,18 @@
           data-page="live"
           aria-label="Live Operations"
         >
-          <div class="live-stage">
-            <div id="cameras"></div>
+          <aside class="live-col live-col--left" data-live-left aria-label="Incidents"></aside>
+          <div class="live-centre" data-live-centre>
+            <div class="live-stage">
+              <div id="cameras"></div>
+            </div>
+            <div class="live-track" data-live-track></div>
+            <div class="live-ring-centre" data-live-ring-centre hidden></div>
           </div>
+          <aside class="live-col live-col--right" data-live-right aria-label="Site plan and call">
+            <div class="live-map-slot" data-live-map-slot></div>
+            <div class="live-call" data-live-call></div>
+          </aside>
           <aside id="call-float" hidden></aside>
           <aside id="sidebar" hidden></aside>
         </section>
@@ -101,6 +110,6 @@
     <div id="dismiss" aria-hidden="true" hidden></div>
     <div id="op-dialog" aria-hidden="true" hidden></div>
 
-    <script type="module" src="./js/main.js?v=fix9b"></script>
+    <script type="module" src="./js/main.js?v=live2"></script>
   </body>
 </html>

@@ -1,7 +1,7 @@
 /** Camera wall — layout modes, VMS OSD, corner brackets. */
 
-import { WALL_CAMERA_IDS, cameraLabel, SITE, cameraTitle } from "../site.js?v=fix9b";
-import { now, subscribeTick } from "../clock.js?v=fix9b";
+import { WALL_CAMERA_IDS, cameraLabel, SITE, cameraTitle } from "../site.js?v=live2";
+import { now, subscribeTick } from "../clock.js?v=live2";
 import {
   classLabel,
   formatPct,
@@ -10,25 +10,29 @@ import {
   personLabel,
   stateLabel,
   severityLabel,
-} from "../format.js?v=fix9b";
+} from "../format.js?v=live2";
 import {
   activeIncidentForCamera,
   cameraStatus,
   noteFrame,
   noteStream,
   onlineCount,
-} from "../cameraStatus.js?v=fix9b";
-import { clear, el, setText } from "../dom.js?v=fix9b";
-import { createCameraLayout } from "./cameraLayout.js?v=fix9b";
-import { themeColors } from "../theme.js?v=fix9b";
-import * as cameraSources from "../cameraSources.js?v=fix9b";
-import { cameraStream } from "../transport.js?v=fix9b";
-import { icon } from "../icons.js?v=fix9b";
-import { OP_REPORT_EVENT, confidenceShort } from "./operator.js?v=fix9b";
+} from "../cameraStatus.js?v=live2";
+import { clear, el, setText } from "../dom.js?v=live2";
+import { createCameraLayout } from "./cameraLayout.js?v=live2";
+import { themeColors } from "../theme.js?v=live2";
+import * as cameraSources from "../cameraSources.js?v=live2";
+import { cameraStream } from "../transport.js?v=live2";
+import { icon } from "../icons.js?v=live2";
+import { OP_REPORT_EVENT, confidenceShort } from "./operator.js?v=live2";
 
 export const FOCUS_CAMERA_EVENT = "sentinel:focus-camera";
 export const OPEN_SIDEBAR_EVENT = "sentinel:open-sidebar";
 export const MORE_INCIDENTS_EVENT = "sentinel:more-incidents";
+/** #page-live[data-mode] changed ("watch" | "incident"); see ui/live.js. */
+export const LIVE_MODE_EVENT = "sentinel:live-mode";
+/** Live stage geometry changed: detail { mode, ring, rects, duration }. */
+export const LIVE_RING_EVENT = "sentinel:live-ring";
 
 export function toPanePx(bbox, w, h) {
   return {
@@ -765,17 +769,30 @@ export function mountCameras(root, store, actions, layout) {
     );
   }
 
+  const livePage = root.closest('[data-page="live"]');
+
   function applyLayout(state) {
     const plan = layoutCtl.plan(state);
+    // The one place the Live mode is set: incident while plan() has a main
+    // camera (auto or manual focus), watch otherwise. Set before measuring
+    // the stage so the geometry uses the new column layout.
+    const liveMode = plan.mains.length ? "incident" : "watch";
+    let modeChanged = false;
+    if (livePage && livePage.dataset.mode !== liveMode) {
+      livePage.dataset.mode = liveMode;
+      modeChanged = true;
+      document.dispatchEvent(new CustomEvent(LIVE_MODE_EVENT, { detail: { mode: liveMode } }));
+    }
     const stageRect = stage.getBoundingClientRect();
     const sw = Math.max(1, stageRect.width);
     const sh = Math.max(1, stageRect.height);
-    const { rects, duration, ease } = layoutCtl.geometry(
-      plan,
-      sw,
-      sh,
-      window.innerWidth,
-    );
+    const geo = layoutCtl.geometry(plan, sw, sh, window.innerWidth, {
+      ring: Boolean(livePage),
+    });
+    const { rects, ease } = geo;
+    // Ring ↔ incident is the slower move; other changes keep the default.
+    const duration =
+      modeChanged && !geo.reduced ? layoutCtl.RING_MOVE_MS : geo.duration;
 
     const key = `${plan.mode}|${plan.mains.map((m) => m.cameraId).join(",")}|${plan.thumbs.join(",")}|${Math.round(sw)}x${Math.round(sh)}|${layoutCtl.isAuto()}`;
     const animating = key !== lastPlanKey;
@@ -810,6 +827,15 @@ export function mountCameras(root, store, actions, layout) {
 
       const leftUntil = plan.leftNotes.get(id);
       tile.leftNote.hidden = !(leftUntil && leftUntil > now());
+    }
+    stage.classList.toggle("is-ring", Boolean(geo.ring));
+
+    if (livePage && animating) {
+      document.dispatchEvent(
+        new CustomEvent(LIVE_RING_EVENT, {
+          detail: { mode: liveMode, ring: geo.ring || null, rects, duration, stage },
+        }),
+      );
     }
 
     if (plan.moreCount > 0) {
@@ -952,9 +978,16 @@ export function mountCameras(root, store, actions, layout) {
   const unsub = store.subscribe(applyChrome);
   const unsubLayout = layoutCtl.subscribe(() => applyChrome(store.getState()));
   const unsubTick = subscribeTick(paintTimes);
+  // Relayout on the next frame: a Live mode switch inside applyLayout
+  // resizes the stage again, which would otherwise loop within one frame.
+  let roRaf = 0;
   const ro = new ResizeObserver(() => {
-    lastPlanKey = "";
-    applyLayout(store.getState());
+    if (roRaf) return;
+    roRaf = requestAnimationFrame(() => {
+      roRaf = 0;
+      lastPlanKey = "";
+      applyLayout(store.getState());
+    });
   });
   ro.observe(stage);
 
@@ -977,6 +1010,7 @@ export function mountCameras(root, store, actions, layout) {
       unsubSources();
       document.removeEventListener(FOCUS_CAMERA_EVENT, onFocusCamera);
       ro.disconnect();
+      if (roRaf) cancelAnimationFrame(roRaf);
       if (raf) cancelAnimationFrame(raf);
       unsubTick();
       for (const id of [...streamRetry.keys()]) cancelStreamRetry(id);

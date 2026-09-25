@@ -5,11 +5,11 @@
  * is not here: it plays automatically on every load and reload.
  */
 
-import { SCENARIOS } from "../mock.js?v=fix9b";
-import { clear, setText } from "../dom.js?v=fix9b";
-import { mountDemoCameraSources } from "./demoSources.js?v=fix9b";
-import * as cameraSources from "../cameraSources.js?v=fix9b";
-import { WALL_CAMERA_IDS } from "../site.js?v=fix9b";
+import { SCENARIOS } from "../mock.js?v=live2";
+import { clear, setText } from "../dom.js?v=live2";
+import { mountDemoCameraSources } from "./demoSources.js?v=live2";
+import * as cameraSources from "../cameraSources.js?v=live2";
+import { WALL_CAMERA_IDS } from "../site.js?v=live2";
 
 const FOCUSABLE =
   'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';

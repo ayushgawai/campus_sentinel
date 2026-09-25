@@ -12,13 +12,13 @@ import {
   fromCameraMap,
   getCamera,
   mapMode,
-} from "../site.js?v=fix9b";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=fix9b";
-import { clear, setText } from "../dom.js?v=fix9b";
-import { themeColors } from "../theme.js?v=fix9b";
-import { classLabel, formatElapsedPlus } from "../format.js?v=fix9b";
-import { now, subscribeTick } from "../clock.js?v=fix9b";
-import { cameraStatus } from "../cameraStatus.js?v=fix9b";
+} from "../site.js?v=live2";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=live2";
+import { clear, setText } from "../dom.js?v=live2";
+import { themeColors } from "../theme.js?v=live2";
+import { classLabel, formatElapsedPlus } from "../format.js?v=live2";
+import { now, subscribeTick } from "../clock.js?v=live2";
+import { cameraStatus } from "../cameraStatus.js?v=live2";
 
 const LEVEL_RANK = { none: 0, minor: 1, severe: 2 };
 
@@ -127,9 +127,64 @@ function polylineMid(pts) {
   return { x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2, dx: b[0] - a[0], dy: b[1] - a[1] };
 }
 
-function computeViewBox() {
+function computeViewBox(fit = "default") {
+  if (fit === "circle") return circleViewBox();
   if (IMAGE) return imageViewBox();
   return planViewBox();
+}
+
+/** Room around the pins inside the round Live watch disc (map units). */
+const CIRCLE_MARGIN = 28;
+
+/**
+ * Square view whose inscribed circle holds every pin plus a margin: for the
+ * round site map in the Live watch ring. In image mode the centre is the one
+ * giving the smallest circle that stays inside the image (or, if none does,
+ * the least spill), so no empty well shows at the disc edge.
+ */
+function circleViewBox() {
+  if (!activePins.length) return computeViewBox();
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of activePins) {
+    minX = Math.min(minX, p.x);
+    maxX = Math.max(maxX, p.x);
+    minY = Math.min(minY, p.y);
+    maxY = Math.max(maxY, p.y);
+  }
+  const reach = (x, y) =>
+    Math.max(...activePins.map((p) => Math.hypot(p.x - x, p.y - y))) + CIRCLE_MARGIN;
+  let cx = (minX + maxX) / 2;
+  let cy = (minY + maxY) / 2;
+  let r = reach(cx, cy);
+  if (IMAGE) {
+    const iw = Number(IMAGE.width);
+    const ih = Number(IMAGE.height);
+    const spill = (x, y, rr) =>
+      Math.max(0, rr - x) + Math.max(0, x + rr - iw) + Math.max(0, rr - y) + Math.max(0, y + rr - ih);
+    // Any spill ranks after every circle that fits inside the image.
+    const scoreOf = (x, y, rr) => {
+      const out = spill(x, y, rr);
+      return out > 0.5 ? 1e6 + out : rr;
+    };
+    let best = scoreOf(cx, cy, r);
+    const step = Math.max(2, (maxX - minX + maxY - minY) / 80);
+    for (let x = minX; x <= maxX; x += step) {
+      for (let y = minY - (maxY - minY); y <= maxY; y += step) {
+        const rr = reach(x, y);
+        const score = scoreOf(x, y, rr);
+        if (score < best) {
+          best = score;
+          cx = x;
+          cy = y;
+          r = rr;
+        }
+      }
+    }
+  }
+  return { x: cx - r, y: cy - r, w: 2 * r, h: 2 * r };
 }
 
 /** Crop to cameras + walkway bends + margin, inside the image. */
@@ -677,8 +732,11 @@ export function mountMap(el, store, actions, opts = {}) {
     pursuitStartT.clear();
   }
 
+  /** "default" (cropped to the site) or "circle" (Live watch disc). */
+  let fit = "default";
+
   function refreshViewBox() {
-    const next = computeViewBox();
+    const next = computeViewBox(fit);
     currentVb = next;
     const svg = el.querySelector(".cmap__svg");
     if (!svg || !stage) return;
@@ -719,6 +777,22 @@ export function mountMap(el, store, actions, opts = {}) {
     clearPursuit,
     setFocus,
     setHover,
+    setFit(next) {
+      const kind = next === "circle" ? "circle" : "default";
+      if (kind === fit) return;
+      fit = kind;
+      refreshViewBox();
+      el.querySelector(".cmap")?.classList.toggle("cmap--circle", kind === "circle");
+      render(store.getState());
+    },
+    /** Client (viewport) position of a camera pin, or null. */
+    pinClientPoint(id) {
+      const pin = pinPoint(id);
+      const svg = el.querySelector(".cmap__svg");
+      const ctm = svg?.getScreenCTM?.();
+      if (!pin || !ctm) return null;
+      return new DOMPoint(pin.x, pin.y).matrixTransform(ctm);
+    },
     getFocus: () => focusId,
     getHover: () => hoverId,
     setPins(pins) {

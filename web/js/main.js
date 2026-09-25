@@ -1,28 +1,29 @@
 /** Boot. */
 
-import { createStore } from "./store.js?v=fix9b";
-import { start } from "./transport.js?v=fix9b";
-import { createActions } from "./actions.js?v=fix9b";
-import { startRouter, getRoute, navigate } from "./router.js?v=fix9b";
-import { mountTopbar } from "./ui/topbar.js?v=fix9b";
-import { mountBanner } from "./ui/banner.js?v=fix9b";
-import { mountCameras } from "./ui/cameras.js?v=fix9b";
-import { createCameraLayout } from "./ui/cameraLayout.js?v=fix9b";
-import { mountSidebar } from "./ui/sidebar.js?v=fix9b";
-import { mountAssist } from "./ui/assist.js?v=fix9b";
-import { mountCallPage } from "./ui/callpage.js?v=fix9b";
-import { mountCallPanel } from "./ui/call.js?v=fix9b";
-import { mountDemo } from "./ui/demo.js?v=fix9b";
-import { mountDismiss } from "./ui/dismiss.js?v=fix9b";
-import { mountOperator } from "./ui/operator.js?v=fix9b";
-import { mountIncidents } from "./ui/incidents.js?v=fix9b";
-import { mountSystem } from "./ui/system.js?v=fix9b";
-import { startAutoFollow } from "./ui/autofollow.js?v=fix9b";
-import { playSplash, shouldHoldMockForSplash } from "./ui/splash.js?v=fix9b";
-import { startModelStatus } from "./modelStatus.js?v=fix9b";
-import { noteEvent } from "./cameraStatus.js?v=fix9b";
-import { subscribeTick } from "./clock.js?v=fix9b";
-import * as cameraSources from "./cameraSources.js?v=fix9b";
+import { createStore } from "./store.js?v=live2";
+import { start } from "./transport.js?v=live2";
+import { createActions } from "./actions.js?v=live2";
+import { startRouter, getRoute, navigate } from "./router.js?v=live2";
+import { mountTopbar } from "./ui/topbar.js?v=live2";
+import { mountBanner } from "./ui/banner.js?v=live2";
+import { mountCameras } from "./ui/cameras.js?v=live2";
+import { createCameraLayout } from "./ui/cameraLayout.js?v=live2";
+import { mountSidebar } from "./ui/sidebar.js?v=live2";
+import { mountLive } from "./ui/live.js?v=live2";
+import { mountAssist } from "./ui/assist.js?v=live2";
+import { mountCallPage } from "./ui/callpage.js?v=live2";
+import { mountCallPanel } from "./ui/call.js?v=live2";
+import { mountDemo } from "./ui/demo.js?v=live2";
+import { mountDismiss } from "./ui/dismiss.js?v=live2";
+import { mountOperator } from "./ui/operator.js?v=live2";
+import { mountIncidents } from "./ui/incidents.js?v=live2";
+import { mountSystem } from "./ui/system.js?v=live2";
+import { startAutoFollow } from "./ui/autofollow.js?v=live2";
+import { playSplash, shouldHoldMockForSplash } from "./ui/splash.js?v=live2";
+import { startModelStatus } from "./modelStatus.js?v=live2";
+import { noteEvent } from "./cameraStatus.js?v=live2";
+import { subscribeTick } from "./clock.js?v=live2";
+import * as cameraSources from "./cameraSources.js?v=live2";
 
 const store = createStore();
 const layoutCtl = createCameraLayout();
@@ -82,7 +83,9 @@ const sidebarApi = mountSidebar(
   layoutCtl,
   { onClose: () => callPanelApi.close() },
 );
-mountAssist(document.getElementById("assist-root"), store, sidebarApi);
+const assistApi = mountAssist(document.getElementById("assist-root"), store);
+// Live columns: incidents, the single site map, tracking card and call.
+mountLive(document.getElementById("page-live"), store, actions, layoutCtl);
 
 document.addEventListener("sentinel:open-call-panel", () => callPanelApi.open());
 
@@ -125,8 +128,9 @@ window.addEventListener(
   (e) => {
     if (e.key !== "Escape") return;
     if (document.getElementById("splash")) return;
-    // The header Models card closes itself on Esc.
+    // The header Models card and the Assist menu close themselves on Esc.
     if (document.getElementById("models-card")?.hidden === false) return;
+    if (assistApi.isMenuOpen?.()) return;
     if (opApi.isOpen()) {
       opApi.close();
       e.preventDefault();

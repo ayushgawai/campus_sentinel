@@ -132,12 +132,14 @@ body.has-banner #banner:not([hidden]) {
   position: relative;
   transition: grid-template-columns 220ms var(--ease);
 }
-body.sidebar-open:not(.call-open) .page--live {
+/* Pre-redesign panel columns; the Live page now sets data-mode instead
+   (see "Live page shell"), so these only apply without it. */
+body.sidebar-open:not(.call-open) .page--live:not([data-mode]) {
   grid-template-columns: minmax(0, 1fr) var(--incidents-panel-w);
 }
 /* The call track grows to its width only after the wall has its minimum,
    so when space is short the call panel shrinks first (to its min). */
-body.sidebar-open.call-open .page--live {
+body.sidebar-open.call-open .page--live:not([data-mode]) {
   grid-template-columns:
     minmax(min(var(--wall-min-w), 100%), 1fr)
     minmax(var(--call-panel-min-w), var(--call-panel-w))
@@ -4983,4 +4985,369 @@ progress.detail__conf-progress.inc-dl__bar {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ---------- Live page shell (redesign part 1) ---------- */
+/* #page-live[data-mode] is set from the camera layout plan (cameras.js):
+   watch = one full camera stage; incident = incidents | cameras | map+call.
+   The page never scrolls; each column scrolls inside itself. */
+#main:has(> .page--live.is-active) {
+  padding: var(--live-pad);
+}
+.page--live[data-mode] {
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--live-gap);
+}
+.page--live[data-mode="watch"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.page--live[data-mode="incident"] {
+  grid-template-columns: var(--live-left) minmax(0, 1fr) var(--live-right);
+}
+/* The floating sidebar and call panel are not used on Live any more. */
+.page--live[data-mode] > #sidebar,
+.page--live[data-mode] > #call-float {
+  display: none !important;
+}
+.page--live[data-mode="watch"] > .live-col,
+.page--live[data-mode="watch"] .live-track {
+  display: none;
+}
+.live-centre {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--live-gap);
+}
+.live-centre > .live-stage {
+  flex: 1 1 auto;
+}
+.live-track {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.live-col {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+  padding: var(--card-pad-sm);
+  border-radius: var(--r);
+  background-color: var(--carbon);
+  background-image: radial-gradient(
+    var(--dot-color) var(--dot-size),
+    transparent calc(var(--dot-size) + 0.5px)
+  );
+  background-size: var(--dot-gap) var(--dot-gap);
+  overflow: hidden;
+}
+.live-col--left .live-incidents {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+}
+/* Right column: site map on top (~38%), call console fills the rest. */
+.live-map-slot {
+  flex: 0 0 38%;
+  min-height: 0;
+  display: flex;
+}
+.live-call {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.live-call > .call-console {
+  flex: 1 1 auto;
+  padding: 0;
+  background: none;
+}
+/* One column: transcript over tool cards, each scrolling inside itself. */
+.live-call .call-console__grid {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1.4fr) minmax(0, 1fr);
+}
+.live-map-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.live-map-card .map-canvas {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.live-map-card .sidebar-map,
+.live-map-card .cmap,
+.live-map-card .cmap__body,
+.live-map-card .cmap__stage {
+  height: 100%;
+  min-height: 0;
+}
+.live-map-card .site-legend {
+  flex: 0 0 auto;
+}
+/* ---------- Live watch ring (redesign part 2) ---------- */
+/* Six tiles in a hexagon (cameraLayout ring geometry) around the one site
+   map, shown as a disc in the ring centre dock; a dashed leader line runs
+   from each pin to its tile, under the tiles. */
+.live-ring-centre[hidden] {
+  display: none !important;
+}
+.live-ring-centre {
+  position: absolute;
+  z-index: 0;
+}
+.live-ring-centre.is-entering {
+  animation: live-fade-in var(--live-move-ms) var(--live-ease) both;
+}
+.live-ring-centre.is-leaving {
+  opacity: 0;
+  transition: opacity 250ms ease;
+}
+.live-map-card.is-arriving {
+  animation: live-fade-in var(--live-col-in-ms) var(--live-ease) both;
+}
+@keyframes live-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.live-leaders {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+.live-leaders.is-hidden {
+  opacity: 0;
+  transition: none;
+}
+.live-leader line {
+  fill: none;
+  stroke: var(--ring-leader);
+  stroke-opacity: 0.35;
+  stroke-width: 1;
+  stroke-dasharray: 3 5;
+}
+.live-leader circle {
+  fill: var(--ring-leader);
+  fill-opacity: 0.6;
+}
+.live-leader.is-minor line {
+  stroke: var(--minor);
+  stroke-opacity: 0.7;
+}
+.live-leader.is-severe line {
+  stroke: var(--severe);
+  stroke-opacity: 0.7;
+}
+.live-leader.is-minor circle {
+  fill: var(--minor);
+  fill-opacity: 0.9;
+}
+.live-leader.is-severe circle {
+  fill: var(--severe);
+  fill-opacity: 0.9;
+}
+/* The site map card as a bare disc: no head, legend, header or tip. */
+.live-ring-centre .live-map-card {
+  height: 100%;
+  padding: 0;
+  gap: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+.live-ring-centre .site-card__head,
+.live-ring-centre .site-legend,
+.live-ring-centre .cmap__chrome {
+  display: none;
+}
+.live-ring-centre .map-canvas,
+.live-ring-centre .sidebar-map,
+.live-ring-centre .cmap,
+.live-ring-centre .cmap__body {
+  height: 100%;
+  padding: 0 !important;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+.live-ring-centre .sidebar-map .cmap__stage {
+  height: 100%;
+  aspect-ratio: auto;
+  border-radius: 50%;
+  overflow: visible;
+  background: var(--feed-well);
+  box-shadow: 0 0 0 1px var(--line-strong), var(--ring-disc-shadow);
+}
+.live-ring-centre .cmap__svg {
+  border-radius: 50%;
+  clip-path: circle(50%);
+}
+/* Attribution just under the disc, the note under that (it may wrap
+   between the two lower tiles; --ring-label-w is that gap). */
+.live-ring-centre .cmap__note,
+.live-ring-centre .cmap__attr {
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: var(--ring-label-w, 100%);
+  text-align: center;
+}
+.live-ring-centre .cmap__attr {
+  top: calc(100% + 8px);
+}
+.live-ring-centre .cmap__note {
+  top: calc(100% + 30px);
+  white-space: normal;
+}
+
+/* Camera tiles on Live: rounded, CCTV vignette and scanlines, HUD chips. */
+.page--live .cam-tile {
+  transition: border-color 150ms ease;
+}
+.page--live .cam-slot:not(.cam-slot--main) .cam-tile {
+  border-radius: var(--tile-radius);
+}
+.page--live .cam-slot--main .cam-tile {
+  border-radius: 0 0 var(--tile-radius) var(--tile-radius);
+}
+.page--live .cam-tile:hover:not(.is-minor):not(.is-severe) {
+  border-color: var(--aqua);
+}
+.page--live .cam-tile__media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      var(--tile-scanline) 0,
+      var(--tile-scanline) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    radial-gradient(ellipse at center, transparent 55%, var(--tile-vignette) 100%);
+}
+.page--live .cam-tile__live {
+  top: 6px;
+  left: 6px;
+  right: auto;
+  max-width: calc(100% - 70px);
+  height: auto;
+  gap: 6px;
+  padding: 3px 7px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.35;
+  background: var(--hud-chip-bg);
+  border-radius: 6px;
+}
+.page--live .cam-tile__osd--tr,
+.page--live .cam-tile__osd--bl {
+  padding: 3px 7px;
+  line-height: 1.35;
+  background: var(--hud-chip-bg);
+  border-radius: 6px;
+  text-shadow: none;
+}
+.page--live .cam-tile__osd--tr {
+  top: 6px;
+  right: 6px;
+}
+.page--live .cam-tile__osd--bl:empty {
+  display: none;
+}
+.page--live .cam-flag {
+  right: 62px;
+}
+
+/* Side columns slide and fade in when an incident opens. */
+.page--live[data-mode="incident"] > .live-col {
+  animation: live-col-in var(--live-col-in-ms) var(--live-ease) both;
+}
+.page--live[data-mode="incident"] > .live-col--left {
+  --live-col-from: -16px;
+}
+.page--live[data-mode="incident"] > .live-col--right {
+  --live-col-from: 16px;
+}
+@keyframes live-col-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--live-col-from, 0));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-ring-centre.is-entering,
+  .live-map-card.is-arriving,
+  .page--live[data-mode="incident"] > .live-col {
+    animation: none;
+  }
+  .live-ring-centre.is-leaving,
+  .live-leaders,
+  .page--live .cam-tile {
+    transition: none;
+  }
+}
+/* Assist: two-item menu (Report incident, Broadcast) above the button. */
+.assist-menu {
+  position: fixed;
+  right: var(--assist-m);
+  bottom: calc(var(--assist-m) + var(--assist-size) + var(--sp-2));
+  z-index: 41;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: var(--sp-1);
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  box-shadow: var(--card-shadow);
+}
+.assist-menu__item {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--card-text);
+  font: inherit;
+  font-size: var(--fs-13);
+  text-align: left;
+  height: var(--h-md);
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-ctrl);
+  cursor: pointer;
+}
+.assist-menu__item:hover,
+.assist-menu__item:focus-visible {
+  background: var(--card-subtle);
+}
+.assist-menu__item:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
 }

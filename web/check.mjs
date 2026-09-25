@@ -56,7 +56,9 @@ onState({
   incidents: { "inc-1": { incident_id: "inc-1", state: "DISPATCHED" } },
   order: ["inc-1"],
 });
-assert.deepEqual(opened, ["call"]);
+// Live shows incidents, map and call in its own columns: auto follow no
+// longer opens panels.
+assert.deepEqual(opened, []);
 
 assert.deepEqual(cameraStream("cam-01", "ws://zgx-b505:8080/ws"), {
   kind: "mjpeg",

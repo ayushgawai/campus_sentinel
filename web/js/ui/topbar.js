@@ -1,21 +1,21 @@
 /** Header: mark + SENTINEL | nav | health | clock · reconnecting only */
 
-import { ROUTES, navigate, getRoute, subscribeRoute } from "../router.js?v=fix9b";
+import { ROUTES, navigate, getRoute, subscribeRoute } from "../router.js?v=live2";
 import {
   awaiting,
   formatHeaderClock,
   formatInt,
   formatMs,
   formatPct,
-} from "../format.js?v=fix9b";
-import { el as h, setText } from "../dom.js?v=fix9b";
-import { MODELS_SUBTITLE, MODELS_TITLE } from "../models.js?v=fix9b";
-import { STATUS_DOT, STATUS_LABEL, subscribeModelStatus } from "../modelStatus.js?v=fix9b";
-import { createModelsTable } from "./modelsTable.js?v=fix9b";
-import { LOGO_MARK } from "../logo.js?v=fix9b";
-import { now, subscribeTick } from "../clock.js?v=fix9b";
-import { WALL_CAMERA_IDS } from "../site.js?v=fix9b";
-import { cameraStatus, onlineCount } from "../cameraStatus.js?v=fix9b";
+} from "../format.js?v=live2";
+import { el as h, setText } from "../dom.js?v=live2";
+import { MODELS_SUBTITLE, MODELS_TITLE } from "../models.js?v=live2";
+import { STATUS_DOT, STATUS_LABEL, subscribeModelStatus } from "../modelStatus.js?v=live2";
+import { createModelsTable } from "./modelsTable.js?v=live2";
+import { LOGO_MARK } from "../logo.js?v=live2";
+import { now, subscribeTick } from "../clock.js?v=live2";
+import { WALL_CAMERA_IDS } from "../site.js?v=live2";
+import { cameraStatus, onlineCount } from "../cameraStatus.js?v=live2";
 
 export function mountTopbar(el, store, actions, layoutCtl) {
   el.innerHTML = `

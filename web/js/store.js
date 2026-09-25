@@ -1,7 +1,7 @@
 /** Single app state + event reducers. Mirrors contracts/events.py + incident.py. */
 
-import { compareIncidents, isOpenIncident, preferredIncidentId } from "./format.js?v=fix9b";
-import { isConfiguredCamera, redactPlaces } from "./site.js?v=fix9b";
+import { compareIncidents, isOpenIncident, preferredIncidentId } from "./format.js?v=live2";
+import { isConfiguredCamera, redactPlaces } from "./site.js?v=live2";
 
 const warnedCameras = new Set();
 

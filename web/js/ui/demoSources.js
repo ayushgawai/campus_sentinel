@@ -4,9 +4,9 @@
  * grid of camera cards.
  */
 
-import { WALL_CAMERA_IDS, cameraLabel } from "../site.js?v=fix9b";
-import { clear, el, setText, svgEl } from "../dom.js?v=fix9b";
-import * as cameraSources from "../cameraSources.js?v=fix9b";
+import { WALL_CAMERA_IDS, cameraLabel } from "../site.js?v=live2";
+import { clear, el, setText, svgEl } from "../dom.js?v=live2";
+import * as cameraSources from "../cameraSources.js?v=live2";
 
 function formatDur(sec) {
   if (sec == null || !Number.isFinite(sec) || sec < 0) return "";
