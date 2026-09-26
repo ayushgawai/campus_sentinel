@@ -5,8 +5,8 @@
  * Source: the api `activity.tick` (1 s) and `usage.total` (all-time tokens).
  */
 
-import { clear, el, setText } from "../dom.js?v=pro4";
-import { compact } from "../usage.js?v=pro4";
+import { clear, el, setText } from "../dom.js?v=pro7";
+import { compact } from "../usage.js?v=pro7";
 
 /** Tab title with all-time tokens, e.g. "Sentinel · 1.2M tokens". */
 export function tokenTitle(base, total) {

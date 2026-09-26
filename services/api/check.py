@@ -635,6 +635,8 @@ async def _usage_check() -> None:
     buckets = h.usage_buckets("2000-01-01")
     assert len(buckets) == 1 and buckets[0][1]["hf:Qwen"]["tokens_in"] == 150
     assert [e["type"] for e in sent].count("usage.total") == 2
+    # Demo token history is seeded once (7 days of 5-minute rows), never twice.
+    assert h.seed_demo_usage("hf:Qwen") > 2000 and h.seed_demo_usage("hf:Qwen") == 0
 
 
 if __name__ == "__main__":

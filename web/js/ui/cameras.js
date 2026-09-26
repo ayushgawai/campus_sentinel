@@ -1,7 +1,7 @@
 /** Camera wall — layout modes, VMS OSD, corner brackets. */
 
-import { WALL_CAMERA_IDS, cameraLabel, SITE, cameraTitle } from "../site.js?v=pro4";
-import { now, subscribeTick } from "../clock.js?v=pro4";
+import { WALL_CAMERA_IDS, cameraLabel, SITE, cameraTitle } from "../site.js?v=pro7";
+import { now, subscribeTick } from "../clock.js?v=pro7";
 import {
   classLabel,
   formatPct,
@@ -12,22 +12,22 @@ import {
   severityLabel,
   compareHeroIncidents,
   isOpenIncident,
-} from "../format.js?v=pro4";
-import { followedIncident, seenTimes } from "../tracking.js?v=pro4";
+} from "../format.js?v=pro7";
+import { followedIncident, seenTimes } from "../tracking.js?v=pro7";
 import {
   activeIncidentForCamera,
   cameraStatus,
   noteFrame,
   noteStream,
   onlineCount,
-} from "../cameraStatus.js?v=pro4";
-import { clear, el, setText } from "../dom.js?v=pro4";
-import { createCameraLayout } from "./cameraLayout.js?v=pro4";
-import { themeColors } from "../theme.js?v=pro4";
-import * as cameraSources from "../cameraSources.js?v=pro4";
-import { cameraStream } from "../transport.js?v=pro4";
-import { icon } from "../icons.js?v=pro4";
-import { OP_REPORT_EVENT, confidenceShort } from "./operator.js?v=pro4";
+} from "../cameraStatus.js?v=pro7";
+import { clear, el, setText } from "../dom.js?v=pro7";
+import { createCameraLayout } from "./cameraLayout.js?v=pro7";
+import { themeColors } from "../theme.js?v=pro7";
+import * as cameraSources from "../cameraSources.js?v=pro7";
+import { cameraStream } from "../transport.js?v=pro7";
+import { icon } from "../icons.js?v=pro7";
+import { OP_REPORT_EVENT, confidenceShort } from "./operator.js?v=pro7";
 
 export const FOCUS_CAMERA_EVENT = "sentinel:focus-camera";
 export const OPEN_SIDEBAR_EVENT = "sentinel:open-sidebar";
@@ -299,7 +299,7 @@ export function mountCameras(root, store, actions, layout) {
     recDot.className = "dot dot--rec";
     recDot.setAttribute("aria-hidden", "true");
     const recTxt = document.createElement("span");
-    recTxt.textContent = "REC";
+    recTxt.textContent = "LIVE";
     osdTr.appendChild(recDot);
     osdTr.appendChild(recTxt);
 

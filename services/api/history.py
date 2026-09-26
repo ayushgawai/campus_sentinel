@@ -118,6 +118,31 @@ class History:
             ],
         )
 
+    def seed_demo_usage(self, model: str, per_day: float = 150_000, days: int = 7) -> int:
+        """Demo only: synthetic Qwen usage for the past `days` (5-minute rows,
+        busier in the daytime), once, so the usage graphs show a history."""
+        import math
+        import random
+        from datetime import timedelta
+
+        now = datetime.now(timezone.utc)
+        old = self.db.execute(
+            "SELECT COUNT(*) FROM usage WHERE ts < ?", ((now - timedelta(days=1)).isoformat(),)
+        ).fetchone()[0]
+        if old:
+            return 0
+        rng = random.Random(7)
+        rows = []
+        t = now - timedelta(days=days)
+        while t < now - timedelta(minutes=10):
+            hour = (t.hour - 7) % 24  # Pacific local-ish daytime peak
+            shape = 0.15 + 0.85 * max(0.0, math.sin(math.pi * min(hour, 16) / 16))
+            tokens = per_day / 288 * 2 * shape * (0.6 + 0.8 * rng.random())
+            rows.append((t.isoformat(), model, max(1, round(tokens / 1800)), round(tokens * 0.92), round(tokens * 0.08), 0, 0, 0, 0))
+            t += timedelta(minutes=5)
+        self.db.executemany("INSERT INTO usage VALUES (?,?,?,?,?,?,?,?,?)", rows)
+        return len(rows)
+
     def usage_totals(self) -> dict[str, float]:
         """All-time sums per field, across every model and run."""
         cols = ", ".join(f"COALESCE(SUM({f}), 0)" for f in self.USAGE_FIELDS)

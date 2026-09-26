@@ -144,7 +144,7 @@ async def _main() -> None:
     opener = getattr(live_events[-2], "text", "")
     assert opener == (
         "Hi, this is Campus Sentinel AI at San Jose State. "
-        "I'm reporting an armed person at MacQuarrie Hall, One Washington Square."
+        "I'm reporting armed people inside MacQuarrie Hall, One Washington Square."
     )
     # Fixed questions answer instantly from the scene script at the clip second.
     live.clock = lambda: 20.0

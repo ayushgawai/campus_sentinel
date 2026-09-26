@@ -5,15 +5,15 @@
  * Missing values read "—"; dollar tiles appear only when every price is set.
  */
 
-import { el, setText } from "../dom.js?v=pro4";
-import { formatClock, formatInt } from "../format.js?v=pro4";
+import { el, setText } from "../dom.js?v=pro7";
+import { formatClock, formatInt } from "../format.js?v=pro7";
 import {
   PERIODS,
   compact,
   subscribeUsage,
   usageView,
   usd,
-} from "../usage.js?v=pro4";
+} from "../usage.js?v=pro7";
 
 const SVG = "http://www.w3.org/2000/svg";
 const CHART_H = 300;

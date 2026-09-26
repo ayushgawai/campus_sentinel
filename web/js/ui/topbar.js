@@ -1,21 +1,21 @@
 /** Header: mark + SENTINEL | nav | health | clock · reconnecting only */
 
-import { ROUTES, navigate, getRoute, subscribeRoute } from "../router.js?v=pro4";
+import { ROUTES, navigate, getRoute, subscribeRoute } from "../router.js?v=pro7";
 import {
   awaiting,
   formatHeaderClock,
   formatInt,
   formatMs,
   formatPct,
-} from "../format.js?v=pro4";
-import { el as h, setText } from "../dom.js?v=pro4";
-import { MODELS_SUBTITLE, MODELS_TITLE } from "../models.js?v=pro4";
-import { STATUS_DOT, STATUS_LABEL, subscribeModelStatus } from "../modelStatus.js?v=pro4";
-import { createModelsTable } from "./modelsTable.js?v=pro4";
-import { LOGO_MARK } from "../logo.js?v=pro4";
-import { now, subscribeTick } from "../clock.js?v=pro4";
-import { WALL_CAMERA_IDS } from "../site.js?v=pro4";
-import { cameraStatus, onlineCount } from "../cameraStatus.js?v=pro4";
+} from "../format.js?v=pro7";
+import { el as h, setText } from "../dom.js?v=pro7";
+import { MODELS_SUBTITLE, MODELS_TITLE } from "../models.js?v=pro7";
+import { STATUS_DOT, STATUS_LABEL, subscribeModelStatus } from "../modelStatus.js?v=pro7";
+import { createModelsTable } from "./modelsTable.js?v=pro7";
+import { LOGO_MARK } from "../logo.js?v=pro7";
+import { now, subscribeTick } from "../clock.js?v=pro7";
+import { WALL_CAMERA_IDS } from "../site.js?v=pro7";
+import { cameraStatus, onlineCount } from "../cameraStatus.js?v=pro7";
 
 export function mountTopbar(el, store, actions, layoutCtl) {
   el.innerHTML = `
@@ -34,9 +34,11 @@ export function mountTopbar(el, store, actions, layoutCtl) {
         <div class="hm"><span class="hm__label">Latency</span><span class="hm__value"><span class="metric mono" data-p95></span></span></div>
         <div class="hm"><span class="hm__label">Screened</span><span class="hm__value"><span class="metric mono" data-screened>0</span></span></div>
         <div class="hm"><span class="hm__label">Escalated</span><span class="hm__value"><span class="metric mono" data-escalated>0</span></span></div>
+        <div class="hm" title="AI tokens used, all time (never reset)"><span class="hm__label">Tokens</span><span class="hm__value"><span class="metric mono" data-tokens>0</span></span></div>
       </div>
 
       <div class="topbar__right">
+        <button type="button" class="btn btn--secondary btn--sm" data-topbar-reset title="Start the demo from the beginning (tokens and counters keep counting)">Reset</button>
         <span class="topbar__reconnect" data-reconnect hidden>Reconnecting</span>
         <span class="ochip ochip--state topbar__playback" data-playback hidden>Playback</span>
         <time class="topbar__clock metric mono" data-clock></time>
@@ -75,6 +77,8 @@ export function mountTopbar(el, store, actions, layoutCtl) {
   const p95El = $("[data-p95]");
   const screenedEl = $("[data-screened]");
   const escalatedEl = $("[data-escalated]");
+  const tokensEl = $("[data-tokens]");
+  $("[data-topbar-reset]").addEventListener("click", () => actions.demoReset());
   const reconnectEl = $("[data-reconnect]");
   const playbackEl = $("[data-playback]");
   const clockEl = $("[data-clock]");
@@ -146,6 +150,8 @@ export function mountTopbar(el, store, actions, layoutCtl) {
     setText(gpuEl, formatPct(h.gpu_util));
     setText(p95El, formatMs(h.p95_ms));
     bumpScreened(h.frames_screened);
+
+    if (state.usageTotal) setText(tokensEl, formatInt(state.usageTotal.tokens));
 
     const esc = h.frames_escalated;
     if (esc == null || Number.isNaN(esc)) setText(escalatedEl, awaiting());

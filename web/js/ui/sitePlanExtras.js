@@ -3,8 +3,8 @@
  * Shared by sidebar Site plan tab and the expand modal.
  */
 
-import { WALL_CAMERA_IDS, cameraLabel, cameraTitle } from "../site.js?v=pro4";
-import { followedIncident, pathHops } from "../tracking.js?v=pro4";
+import { WALL_CAMERA_IDS, cameraLabel, cameraTitle } from "../site.js?v=pro7";
+import { followedIncident, pathHops } from "../tracking.js?v=pro7";
 import {
   classLabel,
   severityLabel,
@@ -12,11 +12,11 @@ import {
   formatElapsedPlus,
   formatClock,
   isOpenIncident,
-} from "../format.js?v=pro4";
-import { clear, el, setText } from "../dom.js?v=pro4";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=pro4";
-import { now, subscribeTick } from "../clock.js?v=pro4";
-import { activeIncidentForCamera, cameraStatus, onlineCount } from "../cameraStatus.js?v=pro4";
+} from "../format.js?v=pro7";
+import { clear, el, setText } from "../dom.js?v=pro7";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=pro7";
+import { now, subscribeTick } from "../clock.js?v=pro7";
+import { activeIncidentForCamera, cameraStatus, onlineCount } from "../cameraStatus.js?v=pro7";
 
 function activeHit(state, cameraId) {
   const inc = activeIncidentForCamera(state, cameraId);

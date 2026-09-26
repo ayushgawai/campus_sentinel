@@ -207,7 +207,7 @@ class VoiceAgent:
         text = (
             f"Hi, this is Campus Sentinel AI at "
             f"{site.get('spoken_name', site.get('name', 'San Jose State'))}. "
-            f"I'm reporting an armed person at {self._building}, "
+            f"I'm reporting armed people inside {self._building}, "
             "One Washington Square."
         )
         self._last_answer = text

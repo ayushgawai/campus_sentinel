@@ -4,9 +4,9 @@
  * a separate floating call panel (call.js's mountCallPanel).
  */
 
-import { now, subscribeTick } from "../clock.js?v=pro4";
-import { WALL_CAMERA_IDS, cameraPlace } from "../site.js?v=pro4";
-import { onlineCount } from "../cameraStatus.js?v=pro4";
+import { now, subscribeTick } from "../clock.js?v=pro7";
+import { WALL_CAMERA_IDS, cameraPlace } from "../site.js?v=pro7";
+import { onlineCount } from "../cameraStatus.js?v=pro7";
 import {
   classLabel,
   cameraLabel,
@@ -23,21 +23,21 @@ import {
   isDispatchSimState,
   formatClock,
   formatElapsedPlus,
-} from "../format.js?v=pro4";
-import { mountIncidentClip } from "./incidentClip.js?v=pro4";
-import { clear, el, setText } from "../dom.js?v=pro4";
-import { mountMap } from "./map.js?v=pro4";
+} from "../format.js?v=pro7";
+import { mountIncidentClip } from "./incidentClip.js?v=pro7";
+import { clear, el, setText } from "../dom.js?v=pro7";
+import { mountMap } from "./map.js?v=pro7";
 import {
   legendMarkup,
   mountSiteCamerasList,
   mountTrackingCard,
   mountSiteOverview,
-} from "./sitePlanExtras.js?v=pro4";
-import { findCallIncident, formatCallTimer, callElapsedMs } from "./call.js?v=pro4";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=pro4";
-import { incidentRow } from "./incidentRow.js?v=pro4";
-import { incidentActions } from "./incidentActions.js?v=pro4";
-import { isDispatchedOrLater } from "../actions.js?v=pro4";
+} from "./sitePlanExtras.js?v=pro7";
+import { findCallIncident, formatCallTimer, callElapsedMs } from "./call.js?v=pro7";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=pro7";
+import { incidentRow } from "./incidentRow.js?v=pro7";
+import { incidentActions } from "./incidentActions.js?v=pro7";
+import { isDispatchedOrLater } from "../actions.js?v=pro7";
 import {
   OP_BROADCAST_EVENT,
   OP_CALL_EVENT,
@@ -47,14 +47,14 @@ import {
   opButton,
   confidenceLong,
   dispatchedText,
-} from "./operator.js?v=pro4";
+} from "./operator.js?v=pro7";
 import {
   detailHeaderCard,
   detailsCard,
   clipCard,
   timelineCard,
   emptyState,
-} from "./incidentDetail.js?v=pro4";
+} from "./incidentDetail.js?v=pro7";
 
 /** Same entries by identity (store replaces an incident object when it changes). */
 function sameSig(a, b) {

@@ -13,6 +13,8 @@ const KNOWN = new Set([
   "demo.control",
   "camera.online",
   "usage.tick",
+  "usage.total",
+  "activity.tick",
 ]);
 
 const INCIDENT_STATES = new Set([
@@ -227,6 +229,33 @@ export function validateEvent(raw) {
         window_s: isNum(raw.window_s) && raw.window_s > 0 ? raw.window_s : null,
         by_model: by,
       };
+    }
+    case "usage.total": {
+      // All-time counts from the api history database (never reset).
+      if (!isNum(raw.tokens) || raw.tokens < 0) return null;
+      const out = { type: "usage.total", ts: isOptStr(raw.ts) ? raw.ts : null };
+      for (const f of ["tokens", "tokens_in", "tokens_out", "requests", "frames", "audio_s", "chars"]) {
+        out[f] = isNum(raw[f]) && raw[f] >= 0 ? raw[f] : 0;
+      }
+      return out;
+    }
+    case "activity.tick": {
+      // Pipeline stages in order: what each is doing right now.
+      if (!Array.isArray(raw.stages)) return null;
+      const stages = [];
+      for (const st of raw.stages) {
+        if (!isObj(st) || !isStr(st.id) || !isStr(st.name)) continue;
+        stages.push({
+          id: st.id,
+          name: st.name,
+          role: isStr(st.role) ? st.role : "",
+          unit: isStr(st.unit) ? st.unit : "",
+          count: isNum(st.count) && st.count >= 0 ? st.count : 0,
+          active: st.active === true,
+          last_s: isOptNum(st.last_s) ? st.last_s : null,
+        });
+      }
+      return { type: "activity.tick", ts: isOptStr(raw.ts) ? raw.ts : null, stages };
     }
     default:
       return null;

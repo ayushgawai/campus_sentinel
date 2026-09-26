@@ -403,9 +403,7 @@ class DemoHub:
         await self.publish(
             DemoControl(action="reset", scenario_id=None, ts=_utcnow())
         )
-        self.frames_screened = 0
-        self.frames_escalated = 0
-        telemetry.reset()
+        # Screened/escalated counters and tokens are cumulative: Reset keeps them.
         self._seeded = False
         await self.seed(force=True, run_scenario=False)
 
@@ -490,7 +488,23 @@ class DemoHub:
             )
             rec.updated_at = now
             await self.publish(IncidentUpsert(incident=rec))
-        return {"ok": True, "incident_id": incident_id or None}
+        from services.voice.signalwire_bridge import send_sms, sos_call
+
+        text = f"SOS - Campus Sentinel: {message[:300]}"
+        try:
+            sms = await asyncio.to_thread(send_sms, text)
+        except Exception as exc:  # noqa: BLE001 — the broadcast itself still counts
+            sms = {"ok": False, "reason": type(exc).__name__}
+            print(f"[hub] SOS text failed: {exc}", flush=True)
+        if not sms.get("ok"):
+            # Unregistered numbers cannot text (10DLC): call and read it instead.
+            try:
+                sms = await asyncio.to_thread(sos_call, text)
+            except Exception as exc:  # noqa: BLE001
+                sms = {"ok": False, "reason": type(exc).__name__}
+                print(f"[hub] SOS call failed: {exc}", flush=True)
+        self._log_call(incident_id, "sms_sent" if sms.get("ok") else "sms_failed", detail=str(sms.get("sid") or sms.get("reason") or ""))
+        return {"ok": True, "incident_id": incident_id or None, "sms": sms}
 
     def _require_incident(self, incident_id: str) -> IncidentRecord:
         rec = self.get_incident(incident_id)
@@ -657,6 +671,12 @@ class DemoHub:
             print(f"[hub] usage write failed: {exc}", flush=True)
 
     def _usage_totals(self) -> dict[str, float]:
+        if self._usage_sum is None and self.history is not None and float(
+            os.environ.get("CS_DEMO_TOKEN_RATE", "0") or 0
+        ) > 0:
+            from services.brain.zrt_client import DEFAULT_MODEL
+
+            self.history.seed_demo_usage(DEFAULT_MODEL)
         if self._usage_sum is None:
             self._usage_sum = (
                 self.history.usage_totals()

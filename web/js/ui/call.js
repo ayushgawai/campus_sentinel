@@ -1,6 +1,6 @@
 /** Call Console — single chat thread + tool cards. No floating overlay. */
 
-import { now, subscribeTick } from "../clock.js?v=pro4";
+import { now, subscribeTick } from "../clock.js?v=pro7";
 import {
   awaiting,
   classLabel,
@@ -18,13 +18,13 @@ import {
   isOpenIncident,
   severityLabel,
   formatClock,
-} from "../format.js?v=pro4";
-import { redactPlaces, cameraTitle } from "../site.js?v=pro4";
-import { clear, el, setText } from "../dom.js?v=pro4";
-import { OP_STATUS_EVENT, operatorActions, actionBar } from "./operator.js?v=pro4";
-import { isDispatchedOrLater } from "../actions.js?v=pro4";
-import { subscribeModelStatus } from "../modelStatus.js?v=pro4";
-import { renderConversation } from "./conversation.js?v=pro4";
+} from "../format.js?v=pro7";
+import { redactPlaces, cameraTitle } from "../site.js?v=pro7";
+import { clear, el, setText } from "../dom.js?v=pro7";
+import { OP_STATUS_EVENT, operatorActions, actionBar } from "./operator.js?v=pro7";
+import { isDispatchedOrLater } from "../actions.js?v=pro7";
+import { subscribeModelStatus } from "../modelStatus.js?v=pro7";
+import { renderConversation } from "./conversation.js?v=pro7";
 
 const STREAM_MERGE_MS = 700;
 const CALL_STATES = new Set([

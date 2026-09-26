@@ -87,6 +87,73 @@ def place_call(incident_id: str, *, config: SignalWireConfig | None = None) -> d
     return {"ok": bool(sid), "call_sid": sid, "incident_id": incident_id}
 
 
+def send_sms(body: str, *, config: SignalWireConfig | None = None) -> dict[str, Any]:
+    """Text the demo phone (operator broadcast / SOS)."""
+    cfg = config if config is not None else load_sms_config()
+    if cfg is None:
+        return {"ok": False, "skipped": True, "reason": "signalwire_not_configured"}
+    endpoint = (
+        f"https://{cfg.space}/api/laml/2010-04-01/Accounts/"
+        f"{quote(cfg.project_id, safe='')}/Messages.json"
+    )
+    auth = base64.b64encode(f"{cfg.project_id}:{cfg.api_token}".encode()).decode()
+    req = Request(
+        endpoint,
+        data=urlencode({"From": cfg.from_number, "To": cfg.to_number, "Body": body[:1500]}).encode(),
+        headers={"Authorization": f"Basic {auth}", "Content-Type": "application/x-www-form-urlencoded"},
+        method="POST",
+    )
+    with urlopen(req, timeout=15) as response:
+        payload = json.loads(response.read().decode())
+    return {"ok": bool(payload.get("sid")), "sid": payload.get("sid"), "status": payload.get("status")}
+
+
+def sos_call(text: str, *, config: SignalWireConfig | None = None) -> dict[str, Any]:
+    """Fallback when texting is refused (10DLC campaign): call and read it aloud."""
+    cfg = config if config is not None else load_config()
+    if cfg is None:
+        return {"ok": False, "skipped": True, "reason": "signalwire_not_configured"}
+    endpoint = (
+        f"https://{cfg.space}/api/laml/2010-04-01/Accounts/"
+        f"{quote(cfg.project_id, safe='')}/Calls.json"
+    )
+    url = f"{cfg.public_base}/signalwire/sos?{urlencode({'text': text[:500]})}"
+    auth = base64.b64encode(f"{cfg.project_id}:{cfg.api_token}".encode()).decode()
+    req = Request(
+        endpoint,
+        data=urlencode({"To": cfg.to_number, "From": cfg.from_number, "Url": url, "Method": "POST"}).encode(),
+        headers={"Authorization": f"Basic {auth}", "Content-Type": "application/x-www-form-urlencoded"},
+        method="POST",
+    )
+    with urlopen(req, timeout=15) as response:
+        payload = json.loads(response.read().decode())
+    return {"ok": bool(payload.get("sid")), "sid": payload.get("sid"), "via": "call"}
+
+
+def cxml_say(text: str) -> str:
+    from xml.sax.saxutils import escape
+
+    said = escape(text)
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        f"<Response><Say>{said}</Say><Pause length=\"1\"/><Say>{said}</Say><Hangup/></Response>"
+    )
+
+
+def load_sms_config() -> SignalWireConfig | None:
+    """Texts need credentials only: they work even while calls are scripted."""
+    if os.environ.get("CS_KILL_SWITCH", "").strip().lower() in {"1", "true", "yes"}:
+        return None
+    vals = [os.environ.get(k, "").strip() for k in (
+        "SIGNALWIRE_SPACE", "SIGNALWIRE_PROJECT_ID", "SIGNALWIRE_API_TOKEN", "SIGNALWIRE_FROM", "CS_DEMO_TO_NUMBER")]
+    if not all(vals) or not all(_E164.fullmatch(v) for v in vals[3:]):
+        return None
+    if vals[4].lstrip("+") in _BLOCKED:
+        raise ValueError("refusing emergency number")
+    space = vals[0].removeprefix("https://").removeprefix("http://").rstrip("/")
+    return SignalWireConfig(space, vals[1], vals[2], vals[3], vals[4], "", True)
+
+
 def hangup_call(call_sid: str, *, config: SignalWireConfig | None = None) -> bool:
     """End a live call (Reset must leave no call running on the phone)."""
     cfg = config if config is not None else load_config()

@@ -140,7 +140,8 @@ def update_line(frm: str, to: str) -> str:
 
 
 INTENTS: list[tuple[tuple[str, ...], str]] = [
-    (("who are you", "who is this", "who am i", "calling from", "who's calling"), "identity"),
+    # Phone ASR garbles words ("where you call info"): match loosely.
+    (("who are you", "who is this", "who am i", "calling", "call from", "you call", "your name", "who's"), "identity"),
     (("address", "where is the emergency", "what building", "which building"), "address"),
     (("how many", "number of", "count"), "count"),
     (("describe", "description", "look like", "wearing", "clothes", "clothing"), "describe"),
@@ -151,6 +152,8 @@ INTENTS: list[tuple[tuple[str, ...], str]] = [
     (("where are they", "where is", "location", "right now", "where now"), "location"),
     (("update", "anything new", "what's happening", "what is happening", "status"), "status"),
     (("emergency", "what are you reporting", "what happened", "go ahead"), "report"),
+    (("where",), "location"),
+    (("who",), "identity"),
 ]
 
 
@@ -202,6 +205,8 @@ def answer(question: str, t: float) -> str | None:
 
 if __name__ == "__main__":
     assert intent("Where are you calling from?") == "identity"
+    assert intent("where you call info") == "identity"
+    assert intent("Where are they?") == "location"
     assert intent("How many people do you see?") == "count"
     assert intent("What weapons do they have?") == "weapons"
     assert intent("Describe the persons") == "describe"

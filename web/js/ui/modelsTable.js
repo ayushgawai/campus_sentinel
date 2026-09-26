@@ -5,11 +5,11 @@
  * it refreshes every second. Only models actually in use are listed.
  */
 
-import { el } from "../dom.js?v=pro4";
-import { formatClock } from "../format.js?v=pro4";
-import { subscribeTick } from "../clock.js?v=pro4";
-import { modelRows } from "../modelStatus.js?v=pro4";
-import { liveModelRows } from "../modelActivity.js?v=pro4";
+import { el } from "../dom.js?v=pro7";
+import { formatClock } from "../format.js?v=pro7";
+import { subscribeTick } from "../clock.js?v=pro7";
+import { modelRows } from "../modelStatus.js?v=pro7";
+import { liveModelRows } from "../modelActivity.js?v=pro7";
 
 const COLUMNS = ["Role", "Model", "Runtime", "Status", "Last active", "Live metric"];
 const STATUS_TEXT = { active: "Active", idle: "Idle", offline: "Offline", error: "Error", connecting: "Connecting" };

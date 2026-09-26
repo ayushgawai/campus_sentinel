@@ -162,12 +162,17 @@ class ApiServer:
 
     async def broadcast(self, envelope: dict[str, Any]) -> None:
         blob = dumps(envelope)
-        dead: list[WsClient] = []
-        for c in list(self.clients):
+
+        async def send(c: WsClient) -> WsClient | None:
             try:
-                await c.send_text(blob)
+                await asyncio.wait_for(c.send_text(blob), timeout=2.0)
+                return None
             except Exception:
-                dead.append(c)
+                return c
+
+        # Parallel, with a timeout: one stalled browser (sleeping laptop,
+        # background tab) used to block every broadcast, freezing vision.
+        dead = [c for c in await asyncio.gather(*map(send, list(self.clients))) if c]
         for c in dead:
             self.clients.discard(c)
             c.close()
@@ -229,6 +234,17 @@ class ApiServer:
                     "tts": tts_status(),
                     "scripted_voice": True,
                 },
+            )
+            return
+        if method == "POST" and path.startswith("/signalwire/sos"):
+            # SOS broadcast read aloud (texts need a registered 10DLC campaign).
+            from urllib.parse import parse_qs, urlparse
+
+            from services.voice.signalwire_bridge import cxml_say
+
+            text = (parse_qs(urlparse(path).query).get("text") or ["Campus Sentinel alert."])[0]
+            await self._http_raw(
+                writer, 200, cxml_say(text[:500]).encode(), extra={"Content-Type": "application/xml"}
             )
             return
         if method == "POST" and path.startswith("/signalwire/voice"):
@@ -426,8 +442,7 @@ class ApiServer:
         finally:
             self.clients.discard(client)
             client.close()
-            if not self.clients:
-                await self.hub.stop_loops()
+            # Loops keep running with no viewer: the demo is always live.
                 # keep vision bridge running across reconnects
 
     async def _signalwire_media(
@@ -694,6 +709,9 @@ class ApiServer:
         if self.vision is not None:
             self.vision.start()
             print("[api] CS_VISION_SEVILLE bridge starting", flush=True)
+        # Health, usage and activity run from startup, viewer or not.
+        await self.hub.seed()
+        await self.hub.start_loops()
         server = await asyncio.start_server(self.handle, self.host, self.port)
         addrs = ", ".join(str(s.getsockname()) for s in server.sockets or [])
         print(

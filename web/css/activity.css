@@ -19,57 +19,56 @@
   line-height: 1.2;
 }
 .act-tokens__label {
-  color: var(--card-text-3);
+  color: var(--text-muted);
   font-size: var(--fs-11);
 }
 .act-tokens__value {
   font-family: var(--mono);
-  font-size: var(--fs-16);
-  color: var(--card-text);
+  font-size: var(--fs-14);
+  color: var(--text);
 }
 .act-flow {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
-  overflow-x: auto;
   min-width: 0;
 }
 .act-stage {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  column-gap: 5px;
+  display: flex;
   align-items: center;
-  flex: 0 0 auto;
-  padding: 3px 8px;
+  gap: 5px;
+  padding: 2px 7px;
   border: 1px solid var(--line);
   border-radius: var(--r-control, 6px);
-  color: var(--card-text-3);
-  opacity: 0.6;
+  color: var(--text-muted);
+  font-size: var(--fs-11);
+  white-space: nowrap;
+  opacity: 0.55;
 }
 .act-stage__dot {
-  grid-row: 1 / span 2;
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: var(--line-strong);
+  background: var(--text-muted);
 }
 .act-stage__name {
   color: inherit;
-  white-space: nowrap;
 }
 .act-stage__count {
-  grid-column: 2;
   font-family: var(--mono);
-  font-size: var(--fs-11);
-  white-space: nowrap;
+  color: var(--text-muted);
 }
 .act-stage.is-active {
   opacity: 1;
-  color: var(--card-text);
+  color: var(--text);
   border-color: var(--ok-border);
   background: var(--ok-bg);
+}
+.act-stage.is-active .act-stage__count {
+  color: var(--text-body);
 }
 .act-stage.is-active .act-stage__dot {
   background: var(--ok);
@@ -80,4 +79,16 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .act-stage.is-active .act-stage__dot { animation: none; }
+}
+
+/* Top bar Reset (ui/topbar.js): readable on the header in both themes. */
+.topbar [data-topbar-reset] {
+  background: transparent;
+  color: var(--header-text);
+  border: 1px solid var(--header-border);
+  font-weight: 600;
+  padding: 0 12px;
+}
+.topbar [data-topbar-reset]:hover {
+  background: var(--header-accent, rgba(127, 127, 127, 0.12));
 }

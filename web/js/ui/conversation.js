@@ -10,10 +10,10 @@
  * Phone numbers are masked and camera places redacted before display.
  */
 
-import { el } from "../dom.js?v=pro4";
-import { formatClock } from "../format.js?v=pro4";
-import { icon } from "../icons.js?v=pro4";
-import { redactPlaces } from "../site.js?v=pro4";
+import { el } from "../dom.js?v=pro7";
+import { formatClock } from "../format.js?v=pro7";
+import { icon } from "../icons.js?v=pro7";
+import { redactPlaces } from "../site.js?v=pro7";
 
 const GROUP_MS = 60 * 1000;
 const DIVIDER_MS = 2 * 60 * 1000;

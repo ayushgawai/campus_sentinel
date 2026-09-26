@@ -11,8 +11,8 @@
  * tiles) into the expanded map view (liveExpand.js) and puts it back.
  */
 
-import { WALL_CAMERA_IDS, cameraLabel, cameraPlace } from "../site.js?v=pro4";
-import { onlineCount } from "../cameraStatus.js?v=pro4";
+import { WALL_CAMERA_IDS, cameraLabel, cameraPlace } from "../site.js?v=pro7";
+import { onlineCount } from "../cameraStatus.js?v=pro7";
 import {
   classLabel,
   formatClock,
@@ -20,21 +20,21 @@ import {
   isOpenIncident,
   severityLabel,
   stateLabel,
-} from "../format.js?v=pro4";
-import { clear, el, setText } from "../dom.js?v=pro4";
-import { icon } from "../icons.js?v=pro4";
-import { now, subscribeTick } from "../clock.js?v=pro4";
-import { mountMap } from "./map.js?v=pro4";
-import { mountTrackingCard } from "./sitePlanExtras.js?v=pro4";
-import { mountLiveCall } from "./call.js?v=pro4";
-import { mountIncidentPanel } from "./sidebar.js?v=pro4";
-import { createLiveExpand } from "./liveExpand.js?v=pro4";
-import { OP_BROADCAST_EVENT, OP_REPORT_EVENT, opButton } from "./operator.js?v=pro4";
+} from "../format.js?v=pro7";
+import { clear, el, setText } from "../dom.js?v=pro7";
+import { icon } from "../icons.js?v=pro7";
+import { now, subscribeTick } from "../clock.js?v=pro7";
+import { mountMap } from "./map.js?v=pro7";
+import { mountTrackingCard } from "./sitePlanExtras.js?v=pro7";
+import { mountLiveCall } from "./call.js?v=pro7";
+import { mountIncidentPanel } from "./sidebar.js?v=pro7";
+import { createLiveExpand } from "./liveExpand.js?v=pro7";
+import { OP_BROADCAST_EVENT, OP_REPORT_EVENT, opButton } from "./operator.js?v=pro7";
 import {
   LIVE_MODE_EVENT,
   MORE_INCIDENTS_EVENT,
   OPEN_SIDEBAR_EVENT,
-} from "./cameras.js?v=pro4";
+} from "./cameras.js?v=pro7";
 
 /** Compact one-line legend: small dots, same meanings as the map. */
 const LEGEND = [
