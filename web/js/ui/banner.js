@@ -1,17 +1,17 @@
 /**
- * Severe banner — notifies when a severe incident is on a camera
- * you are not currently viewing as main. Hidden while that camera
- * is already in the live main view (or full grid).
+ * Severe banner — notifies about a severe incident while you are on
+ * another page. Hidden on Live Operations and Incidents, which already
+ * list every incident.
  */
 
-import { cameraTitle } from "../site.js?v=live2";
+import { cameraTitle } from "../site.js?v=pro3";
 import {
   classLabel,
   cameraLabel,
   severityLabel,
   stateLabel,
-} from "../format.js?v=live2";
-import { clear, el } from "../dom.js?v=live2";
+} from "../format.js?v=pro3";
+import { clear, el } from "../dom.js?v=pro3";
 
 /**
  * @param {HTMLElement} root
@@ -21,13 +21,8 @@ import { clear, el } from "../dom.js?v=live2";
  */
 export function mountBanner(root, store, actions, layoutCtl) {
   function isViewingIncidentCamera(inc, state) {
-    const layout = layoutCtl || window.__cameraLayout;
-    if (!layout?.plan) return false;
-    if ((state.route || "live") !== "live") return false;
-    const plan = layout.plan(state);
-    // Full grid: every camera is on screen — no off-camera notify.
-    if (plan.mode === "grid") return true;
-    return plan.mains.some((m) => m.cameraId === inc.camera_id);
+    const route = state.route || "live";
+    return route === "live" || route === "incidents";
   }
 
   function render() {

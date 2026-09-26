@@ -1,29 +1,31 @@
 /** Boot. */
 
-import { createStore } from "./store.js?v=live2";
-import { start } from "./transport.js?v=live2";
-import { createActions } from "./actions.js?v=live2";
-import { startRouter, getRoute, navigate } from "./router.js?v=live2";
-import { mountTopbar } from "./ui/topbar.js?v=live2";
-import { mountBanner } from "./ui/banner.js?v=live2";
-import { mountCameras } from "./ui/cameras.js?v=live2";
-import { createCameraLayout } from "./ui/cameraLayout.js?v=live2";
-import { mountSidebar } from "./ui/sidebar.js?v=live2";
-import { mountLive } from "./ui/live.js?v=live2";
-import { mountAssist } from "./ui/assist.js?v=live2";
-import { mountCallPage } from "./ui/callpage.js?v=live2";
-import { mountCallPanel } from "./ui/call.js?v=live2";
-import { mountDemo } from "./ui/demo.js?v=live2";
-import { mountDismiss } from "./ui/dismiss.js?v=live2";
-import { mountOperator } from "./ui/operator.js?v=live2";
-import { mountIncidents } from "./ui/incidents.js?v=live2";
-import { mountSystem } from "./ui/system.js?v=live2";
-import { startAutoFollow } from "./ui/autofollow.js?v=live2";
-import { playSplash, shouldHoldMockForSplash } from "./ui/splash.js?v=live2";
-import { startModelStatus } from "./modelStatus.js?v=live2";
-import { noteEvent } from "./cameraStatus.js?v=live2";
-import { subscribeTick } from "./clock.js?v=live2";
-import * as cameraSources from "./cameraSources.js?v=live2";
+import { createStore } from "./store.js?v=pro3";
+import { start } from "./transport.js?v=pro3";
+import { createActions } from "./actions.js?v=pro3";
+import { startRouter, getRoute, navigate } from "./router.js?v=pro3";
+import { mountTopbar } from "./ui/topbar.js?v=pro3";
+import { mountBanner } from "./ui/banner.js?v=pro3";
+import { mountCameras } from "./ui/cameras.js?v=pro3";
+import { createCameraLayout } from "./ui/cameraLayout.js?v=pro3";
+import { mountSidebar } from "./ui/sidebar.js?v=pro3";
+import { mountLive } from "./ui/live.js?v=pro3";
+import { mountCallPage } from "./ui/callpage.js?v=pro3";
+import { startCallRecorder } from "./callHistory.js?v=pro3";
+import { mountCallPanel } from "./ui/call.js?v=pro3";
+import { mountDemo } from "./ui/demo.js?v=pro3";
+import { mountDismiss } from "./ui/dismiss.js?v=pro3";
+import { mountOperator } from "./ui/operator.js?v=pro3";
+import { mountIncidents } from "./ui/incidents.js?v=pro3";
+import { mountSystem } from "./ui/system.js?v=pro3";
+import { startAutoFollow } from "./ui/autofollow.js?v=pro3";
+import { playSplash, shouldHoldMockForSplash } from "./ui/splash.js?v=pro3";
+import { startModelStatus } from "./modelStatus.js?v=pro3";
+import { startUsage } from "./usage.js?v=pro3";
+import { startModelActivity } from "./modelActivity.js?v=pro3";
+import { noteEvent } from "./cameraStatus.js?v=pro3";
+import { subscribeTick } from "./clock.js?v=pro3";
+import * as cameraSources from "./cameraSources.js?v=pro3";
 
 const store = createStore();
 const layoutCtl = createCameraLayout();
@@ -71,7 +73,7 @@ await cameraSources.hydrate();
 
 mountTopbar(document.getElementById("topbar"), store, actions, layoutCtl);
 mountBanner(document.getElementById("banner"), store, actions, layoutCtl);
-mountCameras(document.getElementById("cameras"), store, actions, layoutCtl);
+const cameraWall = mountCameras(document.getElementById("cameras"), store, actions, layoutCtl);
 
 const opApi = mountOperator(document.getElementById("op-dialog"), store, actions);
 const callPanelApi = mountCallPanel(document.getElementById("call-float"), store, actions);
@@ -83,13 +85,14 @@ const sidebarApi = mountSidebar(
   layoutCtl,
   { onClose: () => callPanelApi.close() },
 );
-const assistApi = mountAssist(document.getElementById("assist-root"), store);
 // Live columns: incidents, the single site map, tracking card and call.
-mountLive(document.getElementById("page-live"), store, actions, layoutCtl);
+mountLive(document.getElementById("page-live"), store, actions, layoutCtl, cameraWall);
 
 document.addEventListener("sentinel:open-call-panel", () => callPanelApi.open());
 
 mountCallPage(document.getElementById("call-page"), store, actions);
+// Save calls in this browser as they happen (Call page → Call history).
+startCallRecorder(store);
 
 mountDemo(document.getElementById("demo"), store, actions);
 mountDismiss(document.getElementById("dismiss"), store, actions);
@@ -101,6 +104,8 @@ mountIncidents(
 );
 mountSystem(document.getElementById("system"), store);
 startModelStatus(store);
+startUsage(store);
+startModelActivity(store);
 // Camera status expires with time (10 s without frames or events), so
 // views re-evaluate once a second even when no event arrives.
 subscribeTick(() => store.touch());
@@ -128,9 +133,8 @@ window.addEventListener(
   (e) => {
     if (e.key !== "Escape") return;
     if (document.getElementById("splash")) return;
-    // The header Models card and the Assist menu close themselves on Esc.
+    // The header Models card closes itself on Esc.
     if (document.getElementById("models-card")?.hidden === false) return;
-    if (assistApi.isMenuOpen?.()) return;
     if (opApi.isOpen()) {
       opApi.close();
       e.preventDefault();

@@ -1,7 +1,7 @@
 /** Dismiss reason dialog — preset options. */
 
-import { DISMISS_REASONS } from "../actions.js?v=live2";
-import { clear, el, setText } from "../dom.js?v=live2";
+import { DISMISS_REASONS } from "../actions.js?v=pro3";
+import { clear, el, setText } from "../dom.js?v=pro3";
 
 export function mountDismiss(root, store, actions) {
   let pendingId = null;

@@ -1,7 +1,7 @@
 /** Incidents page — list + full detail. Status via type weight, not badges. */
 
-import { cameraTitle } from "../site.js?v=live2";
-import { now, subscribeTick } from "../clock.js?v=live2";
+import { cameraTitle } from "../site.js?v=pro3";
+import { now, subscribeTick } from "../clock.js?v=pro3";
 import {
   classLabel,
   cameraLabel,
@@ -14,16 +14,18 @@ import {
   formatTimeLocal,
   pctNumber,
   isOpenIncident,
-} from "../format.js?v=live2";
-import { clear, el, setText } from "../dom.js?v=live2";
-import { OP_STATUS_EVENT, actionBar, confidenceShort } from "./operator.js?v=live2";
+} from "../format.js?v=pro3";
+import { clear, el, setText } from "../dom.js?v=pro3";
+import { OP_STATUS_EVENT, confidenceShort } from "./operator.js?v=pro3";
+import { incidentRow } from "./incidentRow.js?v=pro3";
+import { incidentActions } from "./incidentActions.js?v=pro3";
 import {
   detailHeaderCard,
   detailsCard,
   clipCard,
   timelineCard,
   emptyState,
-} from "./incidentDetail.js?v=live2";
+} from "./incidentDetail.js?v=pro3";
 
 /** Same entries by identity (store replaces an incident object when it changes). */
 function sameSig(a, b) {
@@ -96,12 +98,15 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
     detailBody.appendChild(stack);
 
     if (isOpenIncident(inc)) {
-      // Same action bar as the incidents panel.
-      const footer = el("footer", { className: "detail__footer detail__footer--op" });
-      footer.appendChild(actionBar(inc, actions, { card: false }));
+      // Same action layout as the Live focus card.
+      const footer = el("footer", { className: "card detail-card detail__footer detail__footer--op" });
+      footer.appendChild(incidentActions(inc, actions, store));
       detailBody.appendChild(footer);
     }
   }
+
+  /** Rows whose action strip is open (chevron). */
+  const expanded = new Set();
 
   /** Row "ago" nodes; the ticker refreshes only these. */
   let agoNodes = [];
@@ -144,52 +149,23 @@ export function mountIncidents(listRoot, detailRoot, store, actions) {
 
     for (const id of ids) {
       const inc = state.incidents[id];
-      const row = el("article", {
-        className: `iq-row${state.selectedId === id ? " is-selected" : ""}`,
-      });
-      row.appendChild(
-        el("span", {
-          className: `iq-row__bar iq-row__bar--${inc.severity || "NONE"}`,
+      listEl.appendChild(
+        incidentRow({
+          inc,
+          selected: state.selectedId === id,
+          expanded: expanded.has(id),
+          onSelect: () => actions.select(id),
+          onDetails: () => actions.select(id),
+          onToggle: () => {
+            if (expanded.has(id)) expanded.delete(id);
+            else expanded.add(id);
+            lastSig = null;
+            render(store.getState());
+          },
+          actions,
+          store,
         }),
       );
-      const btn = el("button", {
-        type: "button",
-        className: "iq-row__hit",
-        dataset: { id },
-      });
-      const top = el("div", { className: "iq-row__top" });
-      top.appendChild(
-        el("span", {
-          className: "iq-row__type",
-          text: classLabel(inc.class_token),
-        }),
-      );
-      const stateWrap = el("span", { className: "iq-row__state-wrap" });
-      stateWrap.appendChild(
-        el("span", {
-          className: "iq-row__state",
-          text: stateLabel(inc.state),
-        }),
-      );
-      top.appendChild(stateWrap);
-      const meta = el("div", { className: "iq-row__meta" });
-      meta.appendChild(
-        el("span", { className: "iq-row__loc", text: cameraTitle(inc.camera_id) }),
-      );
-      const agoEl = el("span", { className: "mono" });
-      agoNodes.push({ node: agoEl, iso: inc.created_at || inc.peak_ts });
-      meta.appendChild(agoEl);
-      meta.appendChild(
-        el("span", {
-          className: "mono",
-          text: confidenceShort(inc),
-        }),
-      );
-      btn.appendChild(top);
-      btn.appendChild(meta);
-      btn.addEventListener("click", () => actions.select(id));
-      row.appendChild(btn);
-      listEl.appendChild(row);
     }
 
     paintTimes();

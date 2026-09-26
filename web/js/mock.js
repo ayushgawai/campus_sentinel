@@ -1,5 +1,5 @@
-import { cameraLabel, WALL_CAMERA_IDS } from "./site.js?v=live2";
-import { mockIso, setMockEpoch } from "./clock.js?v=live2";
+import { cameraLabel, WALL_CAMERA_IDS } from "./site.js?v=pro3";
+import { mockIso, setMockEpoch } from "./clock.js?v=pro3";
 
 /**
  * Contract-shaped event helpers + deterministic mock timeline player.
@@ -42,6 +42,48 @@ export function mkHealth({
     frames_escalated,
     ts: atIso(at),
   };
+}
+
+/**
+ * Mock usage.tick (the contract proposed for the api): per-window counts
+ * keyed by the model ids in config.js CLOUD_EQUIV. Mock values only.
+ */
+export function mkUsageTick({ at = 0, window_s = 10, by_model = {} }) {
+  return { type: "usage.tick", ts: atIso(at), window_s, by_model };
+}
+
+/**
+ * Counts for the window [t0, t0 + 10 s) of the mock timeline: router frames
+ * all the time, Qwen calls when incidents are classified (minor @15 s,
+ * severe @28 s) and while the call runs, speech during the call.
+ */
+function mockUsageWindow(t0, { includeMinor, includeSevere }) {
+  const w = 10;
+  const frames = FRAMES_PER_SEC * w;
+  const by = {
+    "yolo26s-pose": { frames },
+    "clip-vit-b-16": { frames },
+  };
+  let req = 0;
+  let tin = 0;
+  let tout = 0;
+  const inWin = (x) => x >= t0 && x < t0 + w;
+  if (includeMinor && inWin(15)) {
+    req += 1; tin += 4400; tout += 8; // classify: 16 frames
+  }
+  if (includeSevere && inWin(28)) {
+    req += 2; tin += 4400 + 320; tout += 8 + 60; // classify + describe
+  }
+  const callOn = includeSevere && t0 + w > 32 && t0 < 92;
+  if (callOn) {
+    req += 2; tin += 1300; tout += 110; // dispatcher answers
+    by["faster-whisper-base.en"] = { requests: 2, audio_s: 7.5 };
+    by["kokoro-82m"] = { requests: 3, chars: 190 };
+  }
+  if (req) {
+    by["hf:Qwen/Qwen3-VL-30B-A3B-Instruct-FP8"] = { requests: req, tokens_in: tin, tokens_out: tout, live: req };
+  }
+  return by;
 }
 
 export function mkBoxes({ camera_id, boxes = [], at = 0 }) {
@@ -294,20 +336,20 @@ function pushIncidentScriptFiltered(script, { includeMinor, includeSevere }) {
 
   if (!includeSevere) return;
 
-  // --- SEVERE FALL on Camera 3 @ ~28s ---
+  // --- SEVERE MEDICAL (collapse) on Camera 3 @ ~28s ---
   // Pursuit along the walkway graph (site.js EDGES): Camera 3 → Camera 2 →
   // Camera 1 (out the south entrance) → Camera 4 (parking).
   const severeAt = 28;
   const fallBase = {
     incident_id: SEVERE_ID,
     track_id: SEVERE_TRACK,
-    class_token: "FALL",
+    class_token: "MEDICAL",
     class_logprob_calibrated: -0.04,
     router_score: 0.91,
     fused_prob: 0.94,
     severity: "SEVERE",
     description:
-      "Person falls suddenly and remains on the ground, not moving.",
+      "Person collapses suddenly and remains on the ground, not moving.",
     location_text: cameraLabel("cam-03"),
     person_description: "Adult, grey hoodie, dark backpack, short dark hair.",
     clip_uri: "file://clips/severe_fall_cam03.mp4",
@@ -687,7 +729,7 @@ export function predictedCameraAt(t) {
 
 /** Demo scenarios selectable from the control modal. */
 export const SCENARIOS = [
-  { id: "full", name: "Full demo" },
+  { id: "full", name: "Full scenario" },
   { id: "quiet", name: "Quiet only" },
   { id: "medical_fall", name: "Medical fall only" },
 ];
@@ -739,6 +781,13 @@ export function buildScript(scenarioId = "full") {
         frames_screened: t * FRAMES_PER_SEC,
         frames_escalated: escalated,
       }),
+    });
+  }
+
+  for (let t0 = 0; t0 + 10 <= HEALTH_DURATION; t0 += 10) {
+    script.push({
+      at: t0 + 10,
+      event: mkUsageTick({ at: t0 + 10, by_model: mockUsageWindow(t0, { includeMinor, includeSevere }) }),
     });
   }
 

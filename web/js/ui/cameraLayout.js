@@ -3,14 +3,16 @@
  * Pure placement logic; cameras.js applies geometry with transitions.
  */
 
-import { WALL_CAMERA_IDS } from "../site.js?v=live2";
-import { isOpenIncident } from "../format.js?v=live2";
-import { now as clockNow } from "../clock.js?v=live2";
+import { WALL_CAMERA_IDS } from "../site.js?v=pro3";
+import { compareHeroIncidents, isOpenIncident } from "../format.js?v=pro3";
+import { now as clockNow } from "../clock.js?v=pro3";
 
 const HOLD_MS = 5000;
 const LEFT_VIEW_MS = 5000;
 const EASE = "cubic-bezier(0.2, 0.8, 0.2, 1)";
 const DURATION_MS = 250;
+/** Live shows ONE hero camera (no split view). */
+const MAX_MAINS = 1;
 /** Live watch ↔ incident move (ring ↔ hero). */
 const RING_MOVE_MS = 600;
 
@@ -83,14 +85,8 @@ export function createCameraLayout() {
       if (inc.severity !== "SEVERE" && inc.severity !== "MINOR") continue;
       list.push(inc);
     }
-    list.sort((a, b) => {
-      const sa = a.severity === "SEVERE" ? 0 : 1;
-      const sb = b.severity === "SEVERE" ? 0 : 1;
-      if (sa !== sb) return sa - sb;
-      const ta = Date.parse(a.updated_at || a.created_at || a.peak_ts || 0) || 0;
-      const tb = Date.parse(b.updated_at || b.created_at || b.peak_ts || 0) || 0;
-      return tb - ta;
-    });
+    // Hero order: SEVERE first, then further along the response, then newest.
+    list.sort(compareHeroIncidents);
     return list;
   }
 
@@ -150,21 +146,17 @@ export function createCameraLayout() {
 
   function setManualMains(ids) {
     mode = "manual";
-    manualMains = ids.slice(0, 2);
+    manualMains = ids.slice(0, MAX_MAINS);
     notify();
   }
 
+  /** One hero on Live: the clicked camera becomes it (until Esc). */
   function swapMain(cameraId) {
     mode = "manual";
-    if (manualMains.length === 0) {
-      manualMains = [cameraId];
-    } else if (manualMains.includes(cameraId)) {
-      // already main — keep
-    } else if (manualMains.length === 1) {
-      manualMains = [cameraId];
+    if (manualMains.length === 1 && manualMains[0] === cameraId) {
+      // already the hero — keep
     } else {
-      // replace secondary
-      manualMains = [manualMains[0], cameraId];
+      manualMains = [cameraId];
     }
     notify();
   }
@@ -175,20 +167,26 @@ export function createCameraLayout() {
     notify();
   }
 
+  /** Severe incident ids already seen, so only a NEW one takes the hero. */
+  const seenSevere = new Set();
+
   /**
-   * On new Severe while manual — always take main.
+   * A new Severe incident always takes the hero, even over a manual pick;
+   * a manual pick survives while no new Severe arrives.
    */
   function maybeSevereOverride(state) {
     const actives = activeIncidents(state);
-    const severe = actives.find((i) => i.severity === "SEVERE");
-    if (!severe?.camera_id) return;
-    if (mode === "manual") {
-      // New severe always takes main
-      if (!manualMains.includes(severe.camera_id)) {
-        manualMains = [severe.camera_id, ...manualMains.filter((c) => c !== severe.camera_id)].slice(0, 2);
-        manualQuiet = false;
-        notify();
-      }
+    let fresh = null;
+    for (const inc of actives) {
+      if (inc.severity !== "SEVERE" || seenSevere.has(inc.incident_id)) continue;
+      seenSevere.add(inc.incident_id);
+      if (!fresh && inc.camera_id) fresh = inc;
+    }
+    if (!fresh || mode !== "manual") return;
+    if (manualMains[0] !== fresh.camera_id) {
+      manualMains = [fresh.camera_id];
+      manualQuiet = false;
+      notify();
     }
   }
 
@@ -257,10 +255,10 @@ export function createCameraLayout() {
         };
       });
     } else {
-      // Auto: up to 2 from actives + holds
+      // Auto: the hero from actives, else a hold
       const chosen = [];
       for (const inc of actives) {
-        if (chosen.length >= 2) break;
+        if (chosen.length >= MAX_MAINS) break;
         if (!inc.camera_id) continue;
         if (chosen.some((c) => c.cameraId === inc.camera_id)) continue;
         chosen.push({
@@ -270,7 +268,7 @@ export function createCameraLayout() {
         });
       }
       for (const h of activeHolds) {
-        if (chosen.length >= 2) break;
+        if (chosen.length >= MAX_MAINS) break;
         if (chosen.some((c) => c.cameraId === h.cameraId)) continue;
         chosen.push({
           cameraId: h.cameraId,
@@ -381,6 +379,35 @@ export function createCameraLayout() {
       return { rects: map, reduced, duration: reduced ? 0 : DURATION_MS, ease: EASE };
     }
 
+    if (opts.live && planResult.mains.length) {
+      // Live incident: the hero takes all the height left after the
+      // tracking bar (opts.trackH) and one row of thumbnails at ~15% of
+      // the column (min 96 px). The incident banner above the columns
+      // replaces the old bar over the hero, so no header space here.
+      const W = stageW;
+      const H = stageH;
+      const trackH = Math.max(0, opts.trackH || 0);
+      const n = planResult.thumbs.length || 1;
+      const th = Math.max(96, Math.round(H * 0.15));
+      const tw = (W - gap * (n - 1)) / n;
+      const trackBlock = trackH ? trackH + gap : 0;
+      const hh = Math.max(40, H - th - gap - trackBlock);
+      const main = planResult.mains[0];
+      map.set(main.cameraId, { x: 0, y: 0, w: W, h: hh, role: "main", headerH: 0 });
+      const trackY = hh + gap;
+      const thumbY = trackY + trackBlock;
+      planResult.thumbs.forEach((id, i) => {
+        map.set(id, { x: i * (tw + gap), y: thumbY, w: tw, h: th, role: "thumb", headerH: 0 });
+      });
+      return {
+        rects: map,
+        reduced,
+        duration: reduced ? 0 : DURATION_MS,
+        ease: EASE,
+        track: { x: 0, y: trackY, w: W, h: trackH },
+      };
+    }
+
     const stripBottom = viewportW <= 1280 && planResult.mode === "focus";
     const stripSize = stripBottom
       ? Math.min(110, Math.floor(stageH * 0.22))
@@ -476,6 +503,7 @@ export function createCameraLayout() {
     holds.clear();
     leftNotes.clear();
     lastCamByInc.clear();
+    seenSevere.clear();
     notify();
   }
 

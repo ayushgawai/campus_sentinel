@@ -1,6 +1,6 @@
 /** System page — site info, health stats, AI models, camera status grid. */
 
-import { SITE, WALL_CAMERA_IDS, cameraTitle, getCamera } from "../site.js?v=live2";
+import { SITE, WALL_CAMERA_IDS, cameraTitle, getCamera } from "../site.js?v=pro3";
 import {
   cameraLabel,
   classLabel,
@@ -9,16 +9,16 @@ import {
   formatMs,
   formatPct,
   stateLabel,
-} from "../format.js?v=live2";
-import { el, setText } from "../dom.js?v=live2";
-import { icon } from "../icons.js?v=live2";
-import { navigate } from "../router.js?v=live2";
-import { now, subscribeTick } from "../clock.js?v=live2";
-import { cameraStatus, onlineCount } from "../cameraStatus.js?v=live2";
-import { MODELS_SUBTITLE } from "../models.js?v=live2";
-import { STATUS_DOT, STATUS_LABEL, subscribeModelStatus } from "../modelStatus.js?v=live2";
-import { createModelsTable } from "./modelsTable.js?v=live2";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=live2";
+} from "../format.js?v=pro3";
+import { el, setText } from "../dom.js?v=pro3";
+import { icon } from "../icons.js?v=pro3";
+import { navigate } from "../router.js?v=pro3";
+import { now, subscribeTick } from "../clock.js?v=pro3";
+import { cameraStatus, onlineCount } from "../cameraStatus.js?v=pro3";
+import { STATUS_DOT, STATUS_LABEL, subscribeModelStatus } from "../modelStatus.js?v=pro3";
+import { createModelsTable } from "./modelsTable.js?v=pro3";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=pro3";
+import { mountUsageCard } from "./usageCard.js?v=pro3";
 
 const STATUS_DOT_CLASS = {
   online: "dot--ok",
@@ -43,10 +43,14 @@ export function mountSystem(root, store) {
         </header>
         <div class="panel__body" data-health></div>
       </article>
+      <div class="system__usage-slot" data-usage></div>
       <article class="panel system__models" aria-labelledby="system-models-title">
         <header class="panel__header">
           <h2 class="panel__title" id="system-models-title">AI models</h2>
-          <div class="panel__slot"><span data-models-sub></span></div>
+          <div class="panel__slot mtable-sum">
+            <span class="mono" data-models-sub></span>
+            <span class="mtable-live"><span class="mdot mdot--active" aria-hidden="true"></span>Live</span>
+          </div>
         </header>
         <div class="panel__body" data-models></div>
       </article>
@@ -61,8 +65,13 @@ export function mountSystem(root, store) {
   `;
 
   const $ = (sel) => root.querySelector(sel);
-  setText($("[data-models-sub]"), MODELS_SUBTITLE);
-  const models = createModelsTable({ className: "mtable--page" });
+  // Cloud cost avoided: right after the health row.
+  const usageSlot = $("[data-usage]");
+  const unmountUsage = mountUsageCard(usageSlot.parentNode, store);
+  usageSlot.replaceWith(root.querySelector(".system__usage"));
+  const models = createModelsTable({ className: "mtable--page", store });
+  const modelsSub = $("[data-models-sub]");
+  models.onChange(() => setText(modelsSub, models.summary()));
   $("[data-models]").appendChild(models.el);
 
   // Site: static key/value list.
@@ -329,6 +338,7 @@ export function mountSystem(root, store) {
   const unsubModels = subscribeModelStatus(() => render(store.getState()));
   const unsub = store.subscribe(render);
   return () => {
+    unmountUsage();
     unsub();
     unsubModels();
     unsubTick();

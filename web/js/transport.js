@@ -1,8 +1,8 @@
 /** Event source: mock timeline by default, or WebSocket via ?ws=<url>. */
 
-import { createMockPlayer, atIso, predictedCameraAt } from "./mock.js?v=live2";
-import { validateEvent } from "./validate.js?v=live2";
-import { setMode, setMockT, sampleServerTime } from "./clock.js?v=live2";
+import { createMockPlayer, atIso, predictedCameraAt } from "./mock.js?v=pro3";
+import { validateEvent } from "./validate.js?v=pro3";
+import { setMode, setMockT, sampleServerTime } from "./clock.js?v=pro3";
 
 const BACKOFFS = [1000, 2000, 5000];
 // Reconnect replays old incidents/transcript with their original ts; only

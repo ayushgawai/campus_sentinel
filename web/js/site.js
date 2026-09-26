@@ -19,7 +19,7 @@ export const SITE = {
     width: 780,
     height: 553,
     attribution: "© OpenStreetMap contributors",
-    note: "Illustrative layout · not an actual deployment",
+    note: "Camera placement for illustration",
   },
 };
 
@@ -121,6 +121,11 @@ export function cameraLabel(cameraId) {
     console.warn("[site] cameraLabel: unknown camera id", id);
   }
   return `Camera ${n}`;
+}
+
+/** The camera's place ("MacQuarrie Hall · East corridor"), or "". */
+export function cameraPlace(cameraId) {
+  return byId.get(String(cameraId ?? ""))?.name || "";
 }
 
 /** @deprecated Use cameraLabel — kept as alias for any residual imports. */

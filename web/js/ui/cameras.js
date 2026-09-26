@@ -1,7 +1,7 @@
 /** Camera wall — layout modes, VMS OSD, corner brackets. */
 
-import { WALL_CAMERA_IDS, cameraLabel, SITE, cameraTitle } from "../site.js?v=live2";
-import { now, subscribeTick } from "../clock.js?v=live2";
+import { WALL_CAMERA_IDS, cameraLabel, SITE, cameraTitle } from "../site.js?v=pro3";
+import { now, subscribeTick } from "../clock.js?v=pro3";
 import {
   classLabel,
   formatPct,
@@ -10,21 +10,24 @@ import {
   personLabel,
   stateLabel,
   severityLabel,
-} from "../format.js?v=live2";
+  compareHeroIncidents,
+  isOpenIncident,
+} from "../format.js?v=pro3";
+import { followedIncident, seenTimes } from "../tracking.js?v=pro3";
 import {
   activeIncidentForCamera,
   cameraStatus,
   noteFrame,
   noteStream,
   onlineCount,
-} from "../cameraStatus.js?v=live2";
-import { clear, el, setText } from "../dom.js?v=live2";
-import { createCameraLayout } from "./cameraLayout.js?v=live2";
-import { themeColors } from "../theme.js?v=live2";
-import * as cameraSources from "../cameraSources.js?v=live2";
-import { cameraStream } from "../transport.js?v=live2";
-import { icon } from "../icons.js?v=live2";
-import { OP_REPORT_EVENT, confidenceShort } from "./operator.js?v=live2";
+} from "../cameraStatus.js?v=pro3";
+import { clear, el, setText } from "../dom.js?v=pro3";
+import { createCameraLayout } from "./cameraLayout.js?v=pro3";
+import { themeColors } from "../theme.js?v=pro3";
+import * as cameraSources from "../cameraSources.js?v=pro3";
+import { cameraStream } from "../transport.js?v=pro3";
+import { icon } from "../icons.js?v=pro3";
+import { OP_REPORT_EVENT, confidenceShort } from "./operator.js?v=pro3";
 
 export const FOCUS_CAMERA_EVENT = "sentinel:focus-camera";
 export const OPEN_SIDEBAR_EVENT = "sentinel:open-sidebar";
@@ -215,7 +218,6 @@ export function mountCameras(root, store, actions, layout) {
     tile.className = "cam-tile";
     tile.dataset.cameraId = id;
     tile.setAttribute("aria-label", cameraTitle(id));
-    tile.title = cameraTitle(id);
 
     const media = document.createElement("div");
     media.className = "cam-tile__media";
@@ -233,6 +235,11 @@ export function mountCameras(root, store, actions, layout) {
     video.hidden = true;
     videos.set(id, video);
     video.addEventListener("timeupdate", () => noteFrame(id));
+    // Black bands baked into the file (e.g. 16:9 footage padded to 4:3):
+    // measure them so the real picture can be centred in the tile.
+    video.addEventListener("loadeddata", () => measureBars(id));
+    video.addEventListener("emptied", () => resetBars(id));
+    video.addEventListener("error", () => retryWithoutCors(id));
 
     const streamImg = document.createElement("img");
     streamImg.className = "cam-tile__stream";
@@ -283,6 +290,8 @@ export function mountCameras(root, store, actions, layout) {
     liveLbl.textContent = cameraTitle(id);
     liveRow.appendChild(liveDot);
     liveRow.appendChild(liveLbl);
+    // Full name as a tooltip on the label only (not over the video).
+    liveRow.title = cameraTitle(id);
 
     const osdTr = document.createElement("div");
     osdTr.className = "cam-tile__osd cam-tile__osd--tr";
@@ -308,6 +317,15 @@ export function mountCameras(root, store, actions, layout) {
     leftNote.hidden = true;
     leftNote.textContent = "Person left view";
 
+    // Live thumbnails: a pennant with the camera's open incident class
+    // ("+N" when it has more) and a "Seen" chip on the followed path.
+    const pennant = document.createElement("span");
+    pennant.className = "cam-tile__pennant";
+    pennant.hidden = true;
+    const seen = document.createElement("span");
+    seen.className = "cam-tile__seen mono";
+    seen.hidden = true;
+
     tile.appendChild(media);
     tile.appendChild(dropHint);
     tile.appendChild(liveRow);
@@ -315,6 +333,8 @@ export function mountCameras(root, store, actions, layout) {
     tile.appendChild(osdBl);
     tile.appendChild(chip);
     tile.appendChild(leftNote);
+    tile.appendChild(pennant);
+    tile.appendChild(seen);
 
     // Report flag: a sibling of the tile (a button cannot hold a button),
     // in the tile header band just left of REC. Shown on hover or focus;
@@ -353,8 +373,13 @@ export function mountCameras(root, store, actions, layout) {
       chipEl: chip,
       offlineEl: offline,
       leftNote,
+      pennantEl: pennant,
+      seenEl: seen,
       uploadBtn: null,
       boxes: [],
+      bars: null,
+      barSamples: 0,
+      barTimer: 0,
       dirty: true,
       highlightTrack: null,
       severity: null,
@@ -448,6 +473,11 @@ export function mountCameras(root, store, actions, layout) {
       tile.hasLocalVideo = Boolean(ready);
       if (videoUrl) {
         if (video.src !== videoUrl) {
+          // Remote files are read (pixels only, for band detection) with
+          // CORS; the api allows it, and retryWithoutCors covers one that
+          // does not. Local uploads are blob: URLs and need nothing.
+          if (!ready && !tile.noCors) video.crossOrigin = "anonymous";
+          else video.removeAttribute("crossorigin");
           video.src = videoUrl;
           try {
             video.currentTime = ready ? src.offset || 0 : 0;
@@ -552,6 +582,153 @@ export function mountCameras(root, store, actions, layout) {
     }
   }
 
+  /**
+   * Picture rect inside a w×h tile. Known footage aspect: contain on the
+   * Live hero, cover elsewhere. Unknown aspect (no footage yet): the hero
+   * assumes 16:9, other tiles use the whole tile as before. When the video
+   * file has black bands baked in (tile.bars), the rect is the whole frame
+   * placed so the real picture is centred (and fitted) instead.
+   */
+  function mediaRect(tile, w, h) {
+    const hero = Boolean(livePage) && tile.wrap.classList.contains("cam-slot--main");
+    let ar = 0;
+    const vid = !tile.video.hidden && tile.video.videoWidth;
+    if (vid) ar = tile.video.videoWidth / tile.video.videoHeight;
+    else if (!tile.streamImg.hidden && tile.streamImg.naturalWidth) {
+      ar = tile.streamImg.naturalWidth / tile.streamImg.naturalHeight;
+    }
+    if (!ar) {
+      if (!hero) return { x: 0, y: 0, w, h };
+      ar = 16 / 9;
+    }
+    const b = vid ? tile.bars : null;
+    // Content box in frame units (frame height = 1, width = ar).
+    const cx0 = b ? b.x0 * ar : 0;
+    const cy0 = b ? b.y0 : 0;
+    const cw = b ? (b.x1 - b.x0) * ar : ar;
+    const ch = b ? b.y1 - b.y0 : 1;
+    const scale = hero ? Math.min(w / cw, h / ch) : Math.max(w / cw, h / ch);
+    return {
+      x: (w - cw * scale) / 2 - cx0 * scale,
+      y: (h - ch * scale) / 2 - cy0 * scale,
+      w: ar * scale,
+      h: scale,
+    };
+  }
+
+  /** Place the video element on the band-corrected rect (or reset it). */
+  function placeVideo(tile, w, h) {
+    const st = tile.video.style;
+    if (!tile.bars || tile.video.hidden || !tile.video.videoWidth) {
+      if (st.width) {
+        st.left = st.top = st.width = st.height = st.objectFit = "";
+      }
+      return;
+    }
+    const r = mediaRect(tile, w, h);
+    st.left = `${r.x}px`;
+    st.top = `${r.y}px`;
+    st.width = `${r.w}px`;
+    st.height = `${r.h}px`;
+    st.objectFit = "fill";
+  }
+
+  const BAR_SAMPLE_W = 96;
+  const BAR_LUMA = 24; // a row/column this dark on every sample is a band
+  const BAR_MIN = 0.03; // ignore bands thinner than 3% of the frame
+  const BAR_SAMPLES = 5;
+  let barCanvas = null;
+
+  function resetBars(id) {
+    const tile = tiles.get(id);
+    if (!tile) return;
+    window.clearTimeout(tile.barTimer);
+    tile.barTimer = 0;
+    tile.bars = null;
+    tile.barSamples = 0;
+    tile.barAcc = null;
+    tile.dirty = true;
+    scheduleDraw();
+  }
+
+  function retryWithoutCors(id) {
+    const tile = tiles.get(id);
+    if (!tile || tile.noCors || !tile.video.crossOrigin) return;
+    const src = tile.video.getAttribute("src");
+    if (!src) return;
+    tile.noCors = true;
+    tile.video.removeAttribute("crossorigin");
+    tile.video.src = src;
+    const p = tile.video.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+  }
+
+  /**
+   * Sample the frame a few times (a few seconds apart) and keep only bands
+   * that are dark on every sample, so a dark scene is never cropped.
+   */
+  function measureBars(id) {
+    const tile = tiles.get(id);
+    const v = tile?.video;
+    if (!v || !v.videoWidth || tile.barSamples >= BAR_SAMPLES) return;
+    const sw = BAR_SAMPLE_W;
+    const sh = Math.max(8, Math.round((sw * v.videoHeight) / v.videoWidth));
+    barCanvas = barCanvas || document.createElement("canvas");
+    barCanvas.width = sw;
+    barCanvas.height = sh;
+    const cx = barCanvas.getContext("2d", { willReadFrequently: true });
+    let data;
+    try {
+      cx.drawImage(v, 0, 0, sw, sh);
+      data = cx.getImageData(0, 0, sw, sh).data;
+    } catch {
+      tile.barSamples = BAR_SAMPLES; // not readable: leave the frame as is
+      return;
+    }
+    const lit = (i) => Math.max(data[i], data[i + 1], data[i + 2]) > BAR_LUMA;
+    const rowLit = (y) => {
+      for (let x = 0; x < sw; x++) if (lit((y * sw + x) * 4)) return true;
+      return false;
+    };
+    const colLit = (x) => {
+      for (let y = 0; y < sh; y++) if (lit((y * sw + x) * 4)) return true;
+      return false;
+    };
+    let y0 = 0;
+    while (y0 < sh && !rowLit(y0)) y0++;
+    if (y0 >= sh) {
+      // All black (not started yet, or a black frame): try again later.
+      tile.barTimer = window.setTimeout(() => measureBars(id), 1500);
+      return;
+    }
+    let y1 = sh;
+    while (y1 > y0 && !rowLit(y1 - 1)) y1--;
+    let x0 = 0;
+    while (x0 < sw && !colLit(x0)) x0++;
+    let x1 = sw;
+    while (x1 > x0 && !colLit(x1 - 1)) x1--;
+    const cur = { x0: x0 / sw, y0: y0 / sh, x1: x1 / sw, y1: y1 / sh };
+    const acc = tile.barAcc
+      ? {
+          x0: Math.min(tile.barAcc.x0, cur.x0),
+          y0: Math.min(tile.barAcc.y0, cur.y0),
+          x1: Math.max(tile.barAcc.x1, cur.x1),
+          y1: Math.max(tile.barAcc.y1, cur.y1),
+        }
+      : cur;
+    tile.barAcc = acc;
+    tile.barSamples += 1;
+    const snap = (a, edge) => (Math.abs(a - edge) < BAR_MIN ? edge : a);
+    const b = { x0: snap(acc.x0, 0), y0: snap(acc.y0, 0), x1: snap(acc.x1, 1), y1: snap(acc.y1, 1) };
+    const banded = b.x0 > 0 || b.y0 > 0 || b.x1 < 1 || b.y1 < 1;
+    tile.bars = banded ? b : null;
+    tile.dirty = true;
+    scheduleDraw();
+    if (tile.barSamples < BAR_SAMPLES) {
+      tile.barTimer = window.setTimeout(() => measureBars(id), 3000);
+    }
+  }
+
   function drawTile(tile) {
     resizeCanvas(tile);
     const { ctx, canvas, boxes, highlightTrack, severity } = tile;
@@ -559,6 +736,7 @@ export function mountCameras(root, store, actions, layout) {
     const dpr = window.devicePixelRatio || 1;
     const w = canvas.width / dpr;
     const h = canvas.height / dpr;
+    placeVideo(tile, w, h);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
 
@@ -576,9 +754,13 @@ export function mountCameras(root, store, actions, layout) {
       return;
     }
 
+    // Where the picture actually sits in the tile: the Live hero shows the
+    // whole frame (object-fit: contain), other tiles fill it (cover).
+    const fit = mediaRect(tile, w, h);
     const placed = [];
     for (const box of boxes) {
-      const r = toPanePx(box, w, h);
+      const p = toPanePx(box, fit.w, fit.h);
+      const r = { x: fit.x + p.x, y: fit.y + p.y, w: p.w, h: p.h };
       // Red for anyone vision sees holding a weapon, and for the tracked subject.
       const severeHit =
         box.label === "weapon" ||
@@ -681,6 +863,16 @@ export function mountCameras(root, store, actions, layout) {
   function paintHeader(cameraId, mainMeta, state) {
     const header = headers.get(cameraId);
     if (!header) return;
+    // Live: the incident banner above the columns replaces this bar.
+    if (livePage) {
+      if (!header.hidden) {
+        header.hidden = true;
+        clear(header);
+        tiles.get(cameraId)?.wrap?.classList.remove("has-bar");
+        headerAgo.delete(cameraId);
+      }
+      return;
+    }
     const wrap = tiles.get(cameraId)?.wrap;
     const inc = mainMeta?.incidentId ? state.incidents[mainMeta.incidentId] : null;
     const sig = mainMeta ? [mainMeta.hold || "", inc] : null;
@@ -773,6 +965,45 @@ export function mountCameras(root, store, actions, layout) {
 
   const livePage = root.closest('[data-page="live"]');
 
+  /** Tone of an open incident: its severity (coral before anything else). */
+  function toneOf(inc) {
+    if (!inc) return "";
+    if (inc.severity === "SEVERE") return "severe";
+    if (inc.severity === "MINOR") return "minor";
+    return "";
+  }
+
+  /** Open Severe/Minor incidents on a camera, hero order. */
+  function openOnCamera(state, cameraId) {
+    const list = [];
+    for (const id of state.order || []) {
+      const inc = state.incidents[id];
+      if (!inc || inc.camera_id !== cameraId || !isOpenIncident(inc)) continue;
+      if (inc.severity !== "SEVERE" && inc.severity !== "MINOR") continue;
+      list.push(inc);
+    }
+    return list.sort(compareHeroIncidents);
+  }
+
+  /** "Seen" chips: cameras on the followed path other than the hero. */
+  function paintPathChips(state, plan) {
+    const hero = plan.mains[0]?.cameraId || null;
+    const followed = livePage ? followedIncident(state) : null;
+    const seen = seenTimes(state, followed);
+    for (const id of WALL_CAMERA_IDS) {
+      const tile = tiles.get(id);
+      const show = Boolean(followed) && seen.has(id) && id !== hero && id !== followed.camera_id;
+      tile.seenEl.hidden = !show;
+      if (!show) continue;
+      const at = seen.get(id);
+      const ms = at ? Date.parse(at) : NaN;
+      setText(tile.seenEl, Number.isNaN(ms) ? "Seen" : `Seen ${formatClock(ms)}`);
+    }
+  }
+
+  /** Expanded map view: slots taken out of the stage while it is open. */
+  let borrowed = false;
+
   function applyLayout(state) {
     const plan = layoutCtl.plan(state);
     // The one place the Live mode is set: incident while plan() has a main
@@ -788,8 +1019,12 @@ export function mountCameras(root, store, actions, layout) {
     const stageRect = stage.getBoundingClientRect();
     const sw = Math.max(1, stageRect.width);
     const sh = Math.max(1, stageRect.height);
+    // Live: the tracking card sits in the stage between hero and thumbnails.
+    const trackEl = livePage ? stage.querySelector("[data-live-track]") : null;
+    const trackH = trackEl && liveMode === "incident" ? trackEl.offsetHeight : 0;
     const geo = layoutCtl.geometry(plan, sw, sh, window.innerWidth, {
-      ring: Boolean(livePage),
+      live: Boolean(livePage),
+      trackH,
     });
     const { rects, ease } = geo;
     // Ring ↔ incident is the slower move; other changes keep the default.
@@ -806,11 +1041,22 @@ export function mountCameras(root, store, actions, layout) {
 
     const mainByCam = new Map(plan.mains.map((m) => [m.cameraId, m]));
 
+    if (trackEl && geo.track) {
+      trackEl.style.top = `${geo.track.y}px`;
+      trackEl.style.left = `${geo.track.x}px`;
+      trackEl.style.width = `${geo.track.w}px`;
+    }
+
     for (const id of WALL_CAMERA_IDS) {
       const tile = tiles.get(id);
       const r = rects.get(id);
       if (!r) continue;
       const wrap = tile.wrap;
+      // Borrowed by the expanded map view: it places the slot itself.
+      if (borrowed) {
+        paintHeader(id, mainByCam.get(id) || null, state);
+        continue;
+      }
       wrap.style.transition = animating
         ? `left ${duration}ms ${ease}, top ${duration}ms ${ease}, width ${duration}ms ${ease}, height ${duration}ms ${ease}`
         : "none";
@@ -831,6 +1077,7 @@ export function mountCameras(root, store, actions, layout) {
       tile.leftNote.hidden = !(leftUntil && leftUntil > now());
     }
     stage.classList.toggle("is-ring", Boolean(geo.ring));
+    paintPathChips(state, plan);
 
     if (livePage && animating) {
       document.dispatchEvent(
@@ -938,6 +1185,15 @@ export function mountCameras(root, store, actions, layout) {
       }
 
       const inc = st.inc;
+      const onCam = online ? openOnCamera(state, id) : [];
+      const top = onCam[0] || null;
+      const tone = toneOf(top);
+      tile.pennantEl.hidden = !top;
+      if (top) {
+        const extra = onCam.length > 1 ? ` +${onCam.length - 1}` : "";
+        setText(tile.pennantEl, `${classLabel(top.class_token)}${extra}`);
+        tile.pennantEl.className = `cam-tile__pennant cam-tile__pennant--${tone}`;
+      }
       tile.tile.classList.remove("is-minor", "is-severe");
       if (!online) {
         tile.severity = null;
@@ -992,6 +1248,8 @@ export function mountCameras(root, store, actions, layout) {
     });
   });
   ro.observe(stage);
+  const liveTrack = livePage?.querySelector("[data-live-track]");
+  if (liveTrack) ro.observe(liveTrack);
 
   window.__cameraLayout = layoutCtl;
 
@@ -1004,8 +1262,58 @@ export function mountCameras(root, store, actions, layout) {
     scheduleDraw();
   });
 
-  return {
+  const wallApi = {
     layout: layoutCtl,
+    /**
+     * Move the SAME slot nodes (no stream or video reload) into `host`; the
+     * caller positions them with placeBorrowed until returnTiles().
+     */
+    borrowTiles(host) {
+      if (borrowed || !host) return null;
+      borrowed = true;
+      const out = new Map();
+      for (const id of WALL_CAMERA_IDS) {
+        const t = tiles.get(id);
+        t.wrap.style.transition = "none";
+        t.wrap.classList.add("is-borrowed");
+        host.appendChild(t.wrap);
+        out.set(id, t.wrap);
+      }
+      return out;
+    },
+    placeBorrowed(rects) {
+      if (!borrowed) return;
+      for (const [id, r] of rects) {
+        const t = tiles.get(id);
+        if (!t) continue;
+        t.wrap.style.left = `${r.x}px`;
+        t.wrap.style.top = `${r.y}px`;
+        t.wrap.style.width = `${r.w}px`;
+        t.wrap.style.height = `${r.h}px`;
+        t.wrap.classList.toggle("is-narrow", r.w < 200);
+        t.dirty = true;
+      }
+      scheduleDraw();
+    },
+    returnTiles() {
+      if (!borrowed) return;
+      borrowed = false;
+      for (const id of WALL_CAMERA_IDS) {
+        const t = tiles.get(id);
+        t.wrap.classList.remove("is-borrowed");
+        stage.appendChild(t.wrap);
+      }
+      lastPlanKey = "";
+      applyLayout(store.getState());
+      // Snap back without animating from the overlay positions.
+      for (const t of tiles.values()) t.wrap.style.transition = "none";
+    },
+    isBorrowed: () => borrowed,
+  };
+  window.__cameraWall = wallApi;
+
+  return {
+    ...wallApi,
     destroy() {
       unsub();
       unsubLayout();

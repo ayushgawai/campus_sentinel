@@ -1,7 +1,7 @@
 /** Single app state + event reducers. Mirrors contracts/events.py + incident.py. */
 
-import { compareIncidents, isOpenIncident, preferredIncidentId } from "./format.js?v=live2";
-import { isConfiguredCamera, redactPlaces } from "./site.js?v=live2";
+import { compareIncidents, isOpenIncident, preferredIncidentId } from "./format.js?v=pro3";
+import { isConfiguredCamera, redactPlaces } from "./site.js?v=pro3";
 
 const warnedCameras = new Set();
 
@@ -61,6 +61,11 @@ function createInitialState() {
     lastUpsertId: null,
     /** incident_id → ordered camera_id list for pursuit drawing after seek */
     cameraPath: {},
+    /**
+     * incident_id → ISO time per cameraPath entry: the incident's created_at
+     * for the first camera, then the updated_at of the upsert that moved it.
+     */
+    cameraPathAt: {},
     demo: {
       t: 0,
       running: false,
@@ -241,10 +246,21 @@ export function createStore() {
         const prev = state.incidents[id];
         if (rec.camera_id) {
           const path = state.cameraPath[id] ? state.cameraPath[id].slice() : [];
-          if (!path.length && prev?.camera_id) path.push(prev.camera_id);
-          if (!path.length) path.push(rec.camera_id);
-          else if (path[path.length - 1] !== rec.camera_id) path.push(rec.camera_id);
+          const at = state.cameraPathAt[id] ? state.cameraPathAt[id].slice() : [];
+          const firstAt = rec.created_at || prev?.created_at || rec.peak_ts || null;
+          if (!path.length && prev?.camera_id) {
+            path.push(prev.camera_id);
+            at.push(firstAt);
+          }
+          if (!path.length) {
+            path.push(rec.camera_id);
+            at.push(firstAt);
+          } else if (path[path.length - 1] !== rec.camera_id) {
+            path.push(rec.camera_id);
+            at.push(rec.updated_at || event.ts || null);
+          }
           state.cameraPath[id] = path;
+          state.cameraPathAt[id] = at;
         }
         let timeline = Array.isArray(rec.timeline) ? rec.timeline.slice() : [];
         if (prev && Array.isArray(prev.timeline) && prev.timeline.length > timeline.length) {
@@ -362,6 +378,14 @@ export function createStore() {
         } else {
           return;
         }
+        break;
+      }
+      case "usage.tick": {
+        // Queue with a running seq: several ticks can land in one frame
+        // (replay on connect, mock seek); usage.js reads each seq once.
+        const q = state.usageTicks || { seq: 0, items: [] };
+        const seq = q.seq + 1;
+        state.usageTicks = { seq, items: [...q.items, { seq, event }].slice(-500) };
         break;
       }
       case "camera.online": {

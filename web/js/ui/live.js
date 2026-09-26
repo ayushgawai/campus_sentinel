@@ -1,261 +1,336 @@
 /**
  * Live page shell. Two modes, set on #page-live[data-mode] by cameras.js
  * from layoutCtl.plan() (the one place the camera layout is applied):
- *   watch    — no main camera: the camera stage fills the page.
- *   incident — one or more main cameras (auto or manual): incident column
- *              left, cameras + tracking card centre, site map + call right.
- * Mounts the existing components into those columns. The site map is ONE
- * instance whose card node moves between the ring centre (watch) and the
- * top of the right column (incident), so window.__map stays correct.
- * In watch mode the six tiles sit in a hexagon ring (cameraLayout ring
- * geometry) around the map, shown as a disc, with a dashed leader line from
- * each pin to its tile.
+ *   watch    — no main camera: the framed 3×2 camera grid, Report and
+ *              Broadcast in the wall toolbar.
+ *   incident — a hero camera (an incident, or a camera click): a full-width
+ *              incident banner over three aligned columns — incidents left;
+ *              hero, tracking bar and thumbnails centre; site plan and call
+ *              right.
+ * The site map is ONE instance; "Expand" moves it (and the same camera
+ * tiles) into the expanded map view (liveExpand.js) and puts it back.
  */
 
-import { WALL_CAMERA_IDS } from "../site.js?v=live2";
-import { cameraStatus, onlineCount } from "../cameraStatus.js?v=live2";
-import { clear, el, setText, svgEl } from "../dom.js?v=live2";
-import { mountMap } from "./map.js?v=live2";
-import { legendMarkup, mountTrackingCard } from "./sitePlanExtras.js?v=live2";
-import { mountCallHost } from "./call.js?v=live2";
-import { mountIncidentPanel } from "./sidebar.js?v=live2";
+import { WALL_CAMERA_IDS, cameraLabel, cameraPlace } from "../site.js?v=pro3";
+import { onlineCount } from "../cameraStatus.js?v=pro3";
+import {
+  classLabel,
+  formatClock,
+  formatElapsedPlus,
+  isOpenIncident,
+  severityLabel,
+  stateLabel,
+} from "../format.js?v=pro3";
+import { clear, el, setText } from "../dom.js?v=pro3";
+import { icon } from "../icons.js?v=pro3";
+import { now, subscribeTick } from "../clock.js?v=pro3";
+import { mountMap } from "./map.js?v=pro3";
+import { mountTrackingCard } from "./sitePlanExtras.js?v=pro3";
+import { mountLiveCall } from "./call.js?v=pro3";
+import { mountIncidentPanel } from "./sidebar.js?v=pro3";
+import { createLiveExpand } from "./liveExpand.js?v=pro3";
+import { OP_BROADCAST_EVENT, OP_REPORT_EVENT, opButton } from "./operator.js?v=pro3";
 import {
   LIVE_MODE_EVENT,
-  LIVE_RING_EVENT,
   MORE_INCIDENTS_EVENT,
   OPEN_SIDEBAR_EVENT,
-} from "./cameras.js?v=live2";
+} from "./cameras.js?v=pro3";
 
-export function mountLive(page, store, actions, layoutCtl) {
+/** Compact one-line legend: small dots, same meanings as the map. */
+const LEGEND = [
+  ["ok", "Online"],
+  ["minor", "Minor"],
+  ["severe", "Severe"],
+  ["off", "Offline"],
+  ["path", "Tracked path"],
+  ["pred", "Predicted next"],
+];
+
+/** Flash on move: 3 pulses of 0.8 s (CSS), then the class is removed. */
+const FLASH_MS = 2400;
+
+export function mountLive(page, store, actions, layoutCtl, wall) {
   if (!page) return () => {};
   if (!page.dataset.mode) page.dataset.mode = "watch";
 
+  const bannerHost = page.querySelector("[data-live-banner]");
   const leftHost = page.querySelector("[data-live-left]");
+  const rightHost = page.querySelector("[data-live-right]");
   const trackHost = page.querySelector("[data-live-track]");
-  const ringCentre = page.querySelector("[data-live-ring-centre]");
-  const mapSlot = page.querySelector("[data-live-map-slot]");
-  const callHost = page.querySelector("[data-live-call]");
 
   const isLiveRoute = () => document.body.classList.contains("route-live");
   const isIncident = () => page.dataset.mode === "incident";
 
-  // Left: incident list and detail (same component as the sidebar panel).
+  /** Broadcast about the selected open incident, if any (as before). */
+  function broadcastTarget(state) {
+    const inc = state.selectedId ? state.incidents[state.selectedId] : null;
+    return inc && isOpenIncident(inc) ? inc.incident_id : null;
+  }
+
+  // ---------- Left: incidents ----------
   const incidentsHost = el("div", { className: "live-incidents" });
   leftHost.appendChild(incidentsHost);
   const incidentPanel = mountIncidentPanel(incidentsHost, store, actions, layoutCtl, {
     isVisible: () => isLiveRoute() && isIncident(),
+    variant: "live",
+    broadcastTarget,
   });
 
-  // Site map: the sidebar's Site plan card, mounted once.
-  const mapCard = el("div", { className: "card card--compact site-map-card live-map-card" });
-  const mapHead = el("div", { className: "site-card__head" });
-  const mapTitles = el("div", { className: "site-card__titles" });
-  mapTitles.appendChild(el("h3", { className: "site-card__title", text: "Site plan" }));
-  const mapSub = el("span", { className: "site-card__meta" });
-  mapTitles.appendChild(mapSub);
-  mapHead.appendChild(mapTitles);
-  mapCard.appendChild(mapHead);
-  const mapCanvas = el("div", { className: "map-canvas" });
+  // ---------- Watch: Report and Broadcast in the camera wall toolbar ----------
+  const toolbar = page.querySelector("#cameras .camwall__toolbar");
+  const toolbarOps = el("div", { className: "live-toolbar-ops" });
+  const reportBtn = opButton({
+    className: "btn btn--sm lp-headbtn",
+    iconName: "flag",
+    text: "Report",
+    attrs: { "data-live-op": "report" },
+    onClick: () =>
+      document.dispatchEvent(new CustomEvent(OP_REPORT_EVENT, { detail: { anchor: reportBtn } })),
+  });
+  const broadcastBtn = opButton({
+    className: "btn btn--sm lp-headbtn",
+    iconName: "megaphone",
+    text: "Broadcast",
+    attrs: { "data-live-op": "broadcast" },
+    onClick: () =>
+      document.dispatchEvent(
+        new CustomEvent(OP_BROADCAST_EVENT, { detail: { incidentId: broadcastTarget(store.getState()) } }),
+      ),
+  });
+  toolbarOps.appendChild(reportBtn);
+  toolbarOps.appendChild(broadcastBtn);
+  toolbar?.appendChild(toolbarOps);
+
+  // The I key opens Report incident directly (Live only, not while typing
+  // or in a dialog).
+  function onKey(e) {
+    if (e.key !== "i" && e.key !== "I") return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (!isLiveRoute()) return;
+    const tag = e.target?.tagName;
+    if (tag && ["INPUT", "TEXTAREA", "SELECT"].includes(tag)) return;
+    if (e.target?.isContentEditable || e.target?.closest?.('[role="dialog"]')) return;
+    if (document.getElementById("map-expand")?.hidden === false) return;
+    e.preventDefault();
+    // Anchor the dialog on whichever Report button is showing.
+    const anchor =
+      [...page.querySelectorAll('[data-live-op="report"]')].find((b) => b.offsetParent) || reportBtn;
+    document.dispatchEvent(new CustomEvent(OP_REPORT_EVENT, { detail: { anchor } }));
+  }
+  window.addEventListener("keydown", onKey);
+
+  // ---------- Right: site plan card ----------
+  const site = el("section", { className: "card ls-site", attrs: { "aria-label": "Site plan" } });
+  const siteHead = el("header", { className: "ls-head" });
+  siteHead.appendChild(el("h2", { className: "ls-title", text: "Site plan" }));
+  const onlinePill = el("span", { className: "lp-pill lp-pill--aqua mono" });
+  siteHead.appendChild(onlinePill);
+  const expandBtn = el("button", {
+    type: "button",
+    className: "btn btn--sm ls-expand",
+    attrs: { "aria-label": "Expand site map", "aria-haspopup": "dialog" },
+  });
+  expandBtn.appendChild(icon("expand"));
+  expandBtn.appendChild(el("span", { text: "Expand" }));
+  siteHead.appendChild(expandBtn);
+  site.appendChild(siteHead);
+
+  const mapCanvas = el("div", { className: "map-canvas ls-map" });
   const mapHost = el("div", { className: "sidebar-map" });
   mapCanvas.appendChild(mapHost);
-  mapCard.appendChild(mapCanvas);
-  const legend = el("div", { className: "site-legend" });
-  legend.innerHTML = legendMarkup();
-  mapCard.appendChild(legend);
+  site.appendChild(mapCanvas);
+  const legend = el("ul", { className: "ls-legend", attrs: { "aria-label": "Map legend" } });
+  for (const [key, label] of LEGEND) {
+    const li = el("li", { className: "ls-legend__item" });
+    li.appendChild(el("i", { className: `leg leg--${key}`, attrs: { "aria-hidden": "true" } }));
+    li.appendChild(el("span", { text: label }));
+    legend.appendChild(li);
+  }
+  site.appendChild(legend);
+  rightHost.appendChild(site);
+
   const unmountMap = mountMap(mapHost, store, actions, {
     showTip: false,
     fillHeight: true,
     showHeader: false,
   });
 
-  // Ring centre dock and leader lines live inside the camera stage, under
-  // the tiles (DOM order: leaders, dock, then the camera slots).
+  // ---------- Right: call card ----------
+  const callHost = el("div", { className: "ls-call" });
+  rightHost.appendChild(callHost);
+  const unmountCall = mountLiveCall(callHost, store, actions);
+
+  // ---------- Centre: tracking bar between hero and thumbnails ----------
   const camStage = page.querySelector("#cameras [data-stage]");
-  const leaders = svgEl("svg", { class: "live-leaders", "aria-hidden": "true" });
-  if (camStage) {
-    camStage.insertBefore(ringCentre, camStage.firstChild);
-    camStage.insertBefore(leaders, ringCentre);
+  if (camStage) camStage.appendChild(trackHost);
+  const tracking = mountTrackingCard(trackHost, { store });
+
+  // ---------- Incident banner ----------
+  let bannerSig = null;
+  let bannerTime = null;
+
+  function iconButton(name, label, onClick) {
+    const b = el("button", {
+      type: "button",
+      className: "btn btn--icon btn--sm live-banner__icon",
+      attrs: { "aria-label": label, title: label },
+      onClick,
+    });
+    b.appendChild(icon(name));
+    return b;
   }
 
-  const reducedMotion = () =>
-    typeof matchMedia === "function" &&
-    matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const LEAVE_MS = 250;
+  function paintBanner(state) {
+    if (!isIncident()) return;
+    const main = layoutCtl.plan(state).mains[0] || null;
+    const inc = main?.incidentId ? state.incidents[main.incidentId] || null : null;
+    const others = state.order.filter((id) => {
+      const o = state.incidents[id];
+      return o && id !== inc?.incident_id && isOpenIncident(o) && (o.severity === "SEVERE" || o.severity === "MINOR");
+    }).length;
+    const online = onlineCount(state, WALL_CAMERA_IDS);
+    const sig = [main?.cameraId, inc, others, online].map((x) => (x && typeof x === "object" ? x : String(x)));
+    if (bannerSig && sig.every((x, i) => x === bannerSig[i])) return;
+    bannerSig = sig;
 
-  /** Latest watch geometry from cameras.js (target rects, not animated). */
-  let ring = null;
-  let rects = null;
-  let leaderTimer = 0;
-  let leaveTimer = 0;
-  let leaderSig = "";
-  /** End of the current ring ↔ incident move (performance.now ms). */
-  let moveUntil = 0;
+    clear(bannerHost);
+    bannerTime = null;
+    const cameraId = inc?.camera_id || main?.cameraId || null;
+    const sev = inc ? (inc.severity === "SEVERE" ? "severe" : "minor") : "none";
+    bannerHost.className = `live-banner live-banner--${sev}`;
 
-  function mapApi() {
-    return window.__map;
-  }
+    const block = el("div", { className: "live-banner__block" });
+    block.appendChild(
+      el("span", { className: "live-banner__class", text: inc ? classLabel(inc.class_token) : cameraLabel(cameraId) }),
+    );
+    bannerHost.appendChild(block);
 
-  function placeMap() {
-    window.clearTimeout(leaveTimer);
-    leaveTimer = 0;
-    if (isIncident()) {
-      if (mapCard.parentElement === mapSlot) return;
-      // Watch → incident: the disc fades out, then the map moves right.
-      const move = () => {
-        leaveTimer = 0;
-        mapApi()?.setFit?.("default");
-        mapSlot.appendChild(mapCard);
-        ringCentre.classList.remove("is-leaving");
-        ringCentre.hidden = true;
-        if (!reducedMotion()) {
-          mapCard.classList.remove("is-arriving");
-          void mapCard.offsetWidth;
-          mapCard.classList.add("is-arriving");
-        }
-      };
-      if (mapCard.parentElement === ringCentre && !reducedMotion()) {
-        ringCentre.classList.add("is-leaving");
-        leaveTimer = window.setTimeout(move, LEAVE_MS);
-      } else {
-        move();
-      }
-      return;
+    const info = el("div", { className: "live-banner__info" });
+    if (inc) {
+      info.appendChild(el("span", { className: `lp-pill lp-pill--${sev}`, text: severityLabel(inc.severity) }));
+      info.appendChild(el("span", { className: "lp-pill lp-pill--state", text: stateLabel(inc.state) }));
     }
-    // Incident → watch: back into the disc, which fades in with the tiles.
-    ringCentre.classList.remove("is-leaving");
-    mapCard.classList.remove("is-arriving");
-    if (mapCard.parentElement !== ringCentre) {
-      ringCentre.appendChild(mapCard);
-      if (!reducedMotion()) {
-        ringCentre.classList.remove("is-entering");
-        void ringCentre.offsetWidth;
-        ringCentre.classList.add("is-entering");
+    const place = cameraPlace(cameraId);
+    info.appendChild(
+      el("span", {
+        className: "live-banner__cam",
+        text: inc || !place ? `${cameraLabel(cameraId)}${place ? ` · ${place}` : ""}` : place,
+      }),
+    );
+    if (inc) {
+      const firstMs = Date.parse(inc.created_at || inc.peak_ts || "");
+      if (!Number.isNaN(firstMs)) {
+        info.appendChild(el("span", { className: "live-banner__time mono", text: `first seen ${formatClock(firstMs)}` }));
+        const elapsed = el("span", { className: "live-banner__elapsed mono" });
+        info.appendChild(elapsed);
+        bannerTime = { node: elapsed, firstMs };
       }
+    } else {
+      info.appendChild(el("span", { className: "live-banner__muted", text: "No open incident on this camera" }));
     }
-    mapApi()?.setFit?.("circle");
-  }
-
-  function sizeDisc() {
-    if (!ring || isIncident()) return;
-    ringCentre.hidden = false;
-    ringCentre.style.left = `${ring.cx - ring.d / 2}px`;
-    ringCentre.style.top = `${ring.cy - ring.d / 2}px`;
-    ringCentre.style.width = `${ring.d}px`;
-    ringCentre.style.height = `${ring.d}px`;
-    ringCentre.style.setProperty("--ring-label-w", `${Math.round(ring.labelW)}px`);
-  }
-
-  /** Nearest point of rect r to (px, py): on its edge when outside. */
-  function nearestOnRect(px, py, r) {
-    return {
-      x: Math.min(Math.max(px, r.x), r.x + r.w),
-      y: Math.min(Math.max(py, r.y), r.y + r.h),
-    };
-  }
-
-  function leaderLevel(state, id) {
-    const key = cameraStatus(state, id).key;
-    return key === "severe" || key === "minor" ? key : "";
-  }
-
-  function drawLeaders() {
-    leaderTimer = 0;
-    clear(leaders);
-    leaderSig = "";
-    if (!ring || !rects || !camStage || isIncident()) return;
-    const api = mapApi();
-    if (!api?.pinClientPoint) return;
-    const origin = camStage.getBoundingClientRect();
-    const state = store.getState();
-    const sig = [];
-    for (const id of WALL_CAMERA_IDS) {
-      const r = rects.get(id);
-      const p = api.pinClientPoint(id);
-      if (!r || !p) continue;
-      const px = p.x - origin.left;
-      const py = p.y - origin.top;
-      const end = nearestOnRect(px, py, r);
-      const level = leaderLevel(state, id);
-      sig.push(level);
-      const cls = `live-leader${level ? ` is-${level}` : ""}`;
-      const g = svgEl("g", { class: cls, "data-camera-id": id });
-      g.appendChild(
-        svgEl("line", {
-          x1: px.toFixed(1),
-          y1: py.toFixed(1),
-          x2: end.x.toFixed(1),
-          y2: end.y.toFixed(1),
+    if (others > 0) {
+      info.appendChild(
+        el("button", {
+          type: "button",
+          className: "lp-pill lp-pill--more live-banner__more",
+          text: `+${others} more`,
+          attrs: { "aria-label": `${others} more open incidents: show the list` },
+          onClick: () => incidentPanel.showList("open"),
         }),
       );
-      g.appendChild(svgEl("circle", { cx: end.x.toFixed(1), cy: end.y.toFixed(1), r: "3" }));
-      leaders.appendChild(g);
     }
-    leaderSig = sig.join(",");
-  }
+    bannerHost.appendChild(info);
 
-  /** Redraw after the tiles (and disc) reach their place. */
-  function scheduleLeaders(delay) {
-    window.clearTimeout(leaderTimer);
-    leaders.classList.toggle("is-hidden", delay > 0);
-    leaderTimer = window.setTimeout(() => {
-      requestAnimationFrame(() => {
-        drawLeaders();
-        leaders.classList.remove("is-hidden");
-      });
-    }, delay);
-  }
-
-  function onRing(e) {
-    const d = e.detail || {};
-    ring = d.ring;
-    rects = d.rects;
-    if (d.mode === "incident" || !ring) {
-      window.clearTimeout(leaderTimer);
-      leaders.classList.add("is-hidden");
-      clear(leaders);
-      leaderSig = "";
-      return;
+    const right = el("div", { className: "live-banner__right" });
+    right.appendChild(
+      el("span", { className: "lp-pill lp-pill--aqua mono", text: `${online}/${WALL_CAMERA_IDS.length} online` }),
+    );
+    const all = el("button", {
+      type: "button",
+      className: "btn btn--sm lp-headbtn live-banner__all",
+      attrs: { "aria-label": "Show all cameras" },
+      onClick: () => layoutCtl.showAll(),
+    });
+    all.appendChild(icon("grid"));
+    all.appendChild(el("span", { text: "All cameras" }));
+    right.appendChild(all);
+    if (inc) {
+      right.appendChild(
+        iconButton("info", "Incident details", () => {
+          actions.select(inc.incident_id);
+          incidentPanel.showDetail(inc.incident_id);
+        }),
+      );
     }
-    sizeDisc();
-    const wait = Math.max(d.duration || 0, moveUntil - performance.now());
-    scheduleLeaders(reducedMotion() ? 0 : Math.max(0, wait));
+    if (cameraId) {
+      const flag = iconButton("flag", `Report incident on ${cameraLabel(cameraId)}`, () =>
+        document.dispatchEvent(new CustomEvent(OP_REPORT_EVENT, { detail: { cameraId, anchor: flag } })),
+      );
+      right.appendChild(flag);
+    }
+    bannerHost.appendChild(right);
+    paintBannerTime();
   }
 
-  // Centre: tracking card under the hero; right: the call console.
-  const tracking = mountTrackingCard(trackHost, { store, vertical: false });
-  const unmountCall = mountCallHost(callHost, store, actions);
+  function paintBannerTime(nowMs = now()) {
+    if (!bannerTime) return;
+    setText(bannerTime.node, formatElapsedPlus((nowMs - bannerTime.firstMs) / 1000));
+  }
+
+  // ---------- Flash on move ----------
+  /** incident id → last camera seen; the first sighting only seeds it. */
+  const lastCam = new Map();
+  const flashTimers = new Map();
+
+  function flash(cameraId) {
+    if (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const nodes = [
+      document.querySelector(`.cam-slot[data-camera-id="${cameraId}"]`),
+      document.querySelector(`.cmap-pin[data-camera-id="${cameraId}"]`),
+    ].filter(Boolean);
+    for (const n of nodes) {
+      n.classList.remove("is-flash");
+      void n.getBoundingClientRect();
+      n.classList.add("is-flash");
+    }
+    window.clearTimeout(flashTimers.get(cameraId));
+    flashTimers.set(
+      cameraId,
+      window.setTimeout(() => {
+        for (const n of nodes) n.classList.remove("is-flash");
+        flashTimers.delete(cameraId);
+      }, FLASH_MS),
+    );
+  }
+
+  function watchMoves(state) {
+    for (const id of state.order) {
+      const inc = state.incidents[id];
+      if (!inc?.camera_id || !isOpenIncident(inc)) continue;
+      const prev = lastCam.get(id);
+      lastCam.set(id, inc.camera_id);
+      if (prev && prev !== inc.camera_id) flash(inc.camera_id);
+    }
+  }
+
+  // ---------- Expanded map view ----------
+  const expand = createLiveExpand({ store, layoutCtl, wall, mapCanvas });
+  expandBtn.addEventListener("click", () => expand.open(expandBtn));
 
   function render(state) {
-    setText(
-      mapSub,
-      `${WALL_CAMERA_IDS.length} cameras · ${onlineCount(state, WALL_CAMERA_IDS)} online`,
-    );
+    setText(onlinePill, `${onlineCount(state, WALL_CAMERA_IDS)}/${WALL_CAMERA_IDS.length} online`);
     incidentPanel.paint(state);
-    // Leader colour follows each camera's open incident severity.
-    if (leaderSig && !isIncident()) {
-      const sig = WALL_CAMERA_IDS.map((id) => leaderLevel(state, id)).join(",");
-      if (sig !== leaderSig) {
-        for (const g of leaders.querySelectorAll(".live-leader")) {
-          const level = leaderLevel(state, g.dataset.cameraId);
-          g.setAttribute("class", `live-leader${level ? ` is-${level}` : ""}`);
-        }
-        leaderSig = sig;
-      }
-    }
+    paintBanner(state);
+    watchMoves(state);
   }
 
   function onMode() {
-    moveUntil = performance.now() + (reducedMotion() ? 0 : layoutCtl.RING_MOVE_MS || 0);
-    if (isIncident()) {
-      window.clearTimeout(leaderTimer);
-      leaders.classList.add("is-hidden");
-    }
-    placeMap();
-    // Columns just appeared or went away: repaint what they show.
+    if (!isIncident() && expand.isOpen()) expand.close();
+    bannerSig = null;
     render(store.getState());
   }
 
-  // Camera wall "details" and "+N more" used to open the sidebar.
+  // "Details" and "+N more" open the incident column.
   function onOpenDetail(e) {
     const id = e.detail?.incidentId;
     if (id) {
@@ -266,25 +341,25 @@ export function mountLive(page, store, actions, layoutCtl) {
     }
   }
   function onMore() {
-    incidentPanel.showList();
+    incidentPanel.showList("open");
   }
 
-  placeMap();
   render(store.getState());
   const unsub = store.subscribe(render);
+  const unsubTick = subscribeTick(paintBannerTime);
   document.addEventListener(LIVE_MODE_EVENT, onMode);
-  document.addEventListener(LIVE_RING_EVENT, onRing);
   document.addEventListener(OPEN_SIDEBAR_EVENT, onOpenDetail);
   document.addEventListener(MORE_INCIDENTS_EVENT, onMore);
 
   return () => {
     unsub();
+    unsubTick();
+    expand.close();
+    window.removeEventListener("keydown", onKey);
     document.removeEventListener(LIVE_MODE_EVENT, onMode);
-    document.removeEventListener(LIVE_RING_EVENT, onRing);
-    window.clearTimeout(leaderTimer);
-    window.clearTimeout(leaveTimer);
     document.removeEventListener(OPEN_SIDEBAR_EVENT, onOpenDetail);
     document.removeEventListener(MORE_INCIDENTS_EVENT, onMore);
+    for (const t of flashTimers.values()) window.clearTimeout(t);
     tracking.destroy?.();
     if (typeof unmountCall === "function") unmountCall();
     if (typeof unmountMap === "function") unmountMap();

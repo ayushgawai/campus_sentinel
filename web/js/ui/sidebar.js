@@ -4,9 +4,9 @@
  * a separate floating call panel (call.js's mountCallPanel).
  */
 
-import { now, subscribeTick } from "../clock.js?v=live2";
-import { WALL_CAMERA_IDS } from "../site.js?v=live2";
-import { onlineCount } from "../cameraStatus.js?v=live2";
+import { now, subscribeTick } from "../clock.js?v=pro3";
+import { WALL_CAMERA_IDS, cameraPlace } from "../site.js?v=pro3";
+import { onlineCount } from "../cameraStatus.js?v=pro3";
 import {
   classLabel,
   cameraLabel,
@@ -21,32 +21,40 @@ import {
   pctNumber,
   isOpenIncident,
   isDispatchSimState,
-} from "../format.js?v=live2";
-import { mountIncidentClip } from "./incidentClip.js?v=live2";
-import { clear, el, setText } from "../dom.js?v=live2";
-import { mountMap } from "./map.js?v=live2";
+  formatClock,
+  formatElapsedPlus,
+} from "../format.js?v=pro3";
+import { mountIncidentClip } from "./incidentClip.js?v=pro3";
+import { clear, el, setText } from "../dom.js?v=pro3";
+import { mountMap } from "./map.js?v=pro3";
 import {
   legendMarkup,
   mountSiteCamerasList,
   mountTrackingCard,
   mountSiteOverview,
-} from "./sitePlanExtras.js?v=live2";
-import { findCallIncident, formatCallTimer, callElapsedMs } from "./call.js?v=live2";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=live2";
+} from "./sitePlanExtras.js?v=pro3";
+import { findCallIncident, formatCallTimer, callElapsedMs } from "./call.js?v=pro3";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=pro3";
+import { incidentRow } from "./incidentRow.js?v=pro3";
+import { incidentActions } from "./incidentActions.js?v=pro3";
+import { isDispatchedOrLater } from "../actions.js?v=pro3";
 import {
+  OP_BROADCAST_EVENT,
+  OP_CALL_EVENT,
   OP_REPORT_EVENT,
   OP_STATUS_EVENT,
   actionBar,
   opButton,
   confidenceLong,
-} from "./operator.js?v=live2";
+  dispatchedText,
+} from "./operator.js?v=pro3";
 import {
   detailHeaderCard,
   detailsCard,
   clipCard,
   timelineCard,
   emptyState,
-} from "./incidentDetail.js?v=live2";
+} from "./incidentDetail.js?v=pro3";
 
 /** Same entries by identity (store replaces an incident object when it changes). */
 function sameSig(a, b) {
@@ -61,7 +69,14 @@ function sameSig(a, b) {
  */
 export function mountIncidentPanel(host, store, actions, layoutCtl, opts = {}) {
   const isVisible = opts.isVisible || (() => true);
+  /** "live": the Live incident column layout (header, counters, focus card). */
+  const live = opts.variant === "live";
   let detailId = null;
+  /** Live list filter: all | SEVERE | MINOR | open */
+  let filter = "all";
+  /** Live ticking text: { node, paint(nowMs) } */
+  let liveTimes = [];
+  let lastSelected = null;
 
   /** "Camera N · 8 s ago · 92% confidence" lines, refreshed by the ticker. */
   let agoLines = [];
@@ -90,6 +105,7 @@ export function mountIncidentPanel(host, store, actions, layoutCtl, opts = {}) {
   function paintTimes(nowMs = now()) {
     if (!isVisible()) return;
     for (const entry of agoLines) paintAgoLine(entry, nowMs);
+    for (const t of liveTimes) t.paint(nowMs);
   }
 
   /** Operator status changes (pending, not confirmed) force a repaint. */
@@ -100,7 +116,24 @@ export function mountIncidentPanel(host, store, actions, layoutCtl, opts = {}) {
     if (detailId && state.incidents[detailId]) {
       return ["detail", detailId, state.incidents[detailId], opVersion];
     }
+    if (live) {
+      return [
+        "live",
+        filter,
+        heroIncidentId(state),
+        state.selectedId,
+        opVersion,
+        ...state.order.map((id) => state.incidents[id]),
+      ];
+    }
     return ["list", state.selectedId, opVersion, ...state.order.map((id) => state.incidents[id])];
+  }
+
+  /** The Live hero camera's incident (layout plan), if it has one. */
+  function heroIncidentId(state) {
+    if (!layoutCtl) return null;
+    const id = layoutCtl.plan(state).mains[0]?.incidentId || null;
+    return id && state.incidents[id] ? id : null;
   }
 
   function paintIncidents(state) {
@@ -117,9 +150,280 @@ export function mountIncidentPanel(host, store, actions, layoutCtl, opts = {}) {
       : null;
     clear(panel);
     agoLines = [];
+    liveTimes = [];
     const nowMs = now();
-    paintIncidentsBody(state, panel, nowMs);
+    if (live && !(detailId && state.incidents[detailId])) paintLiveBody(state, panel, nowMs);
+    else paintIncidentsBody(state, panel, nowMs);
     if (hadFocus) panel.querySelector(`[data-focus-key="${hadFocus}"]`)?.focus();
+    if (live && state.selectedId !== lastSelected) {
+      lastSelected = state.selectedId;
+      panel.querySelector(".lp-row.is-selected")?.scrollIntoView?.({ block: "nearest" });
+    }
+  }
+
+  // ---------- Live incident column ----------
+
+  function tick(node, paint, nowMs) {
+    const entry = { node, paint: (ms) => setText(node, paint(ms)) };
+    liveTimes.push(entry);
+    entry.paint(nowMs);
+    return node;
+  }
+
+  const sevKey = (inc) => (inc.severity === "SEVERE" ? "severe" : "minor");
+
+  function pill(text, tone) {
+    return el("span", { className: `lp-pill lp-pill--${tone}`, text });
+  }
+
+  function counter(label, n, tone) {
+    const box = el("div", { className: `lp-count lp-count--${tone}` });
+    box.appendChild(el("span", { className: "lp-count__n mono", text: String(n) }));
+    box.appendChild(el("span", { className: "lp-count__label", text: label }));
+    return box;
+  }
+
+  function camLine(inc) {
+    const place = cameraPlace(inc.camera_id);
+    return place ? `${cameraLabel(inc.camera_id)} · ${place}` : cameraLabel(inc.camera_id);
+  }
+
+  /** Progress: Alerted → Dispatch pending → Dispatched → Tracking → Resolved. */
+  const PROGRESS = ["ALERTED", "DISPATCH_PENDING", "DISPATCHED", "TRACKING", "RESOLVED"];
+
+  function progress(inc) {
+    const at = PROGRESS.indexOf(inc.state);
+    const wrap = el("div", { className: `lp-progress lp-progress--${sevKey(inc)}` });
+    const bar = el("div", {
+      className: "lp-progress__bar",
+      attrs: {
+        role: "img",
+        "aria-label": `Progress: ${stateLabel(inc.state)}`,
+      },
+    });
+    PROGRESS.forEach((step, i) => {
+      bar.appendChild(
+        el("span", {
+          className: `lp-progress__seg${at >= 0 && i <= at ? " is-done" : ""}${i === at ? " is-current" : ""}`,
+          attrs: { title: stateLabel(step) },
+        }),
+      );
+    });
+    wrap.appendChild(bar);
+    wrap.appendChild(el("p", { className: "lp-progress__label", text: stateLabel(inc.state) }));
+    return wrap;
+  }
+
+  /** Focus card actions: the shared incident action layout. */
+  function focusActions(inc) {
+    return incidentActions(inc, actions, store);
+  }
+
+  function focusCard(inc, nowMs) {
+    const card = el("section", {
+      className: `card lp-focus lp-focus--${sevKey(inc)}`,
+      attrs: { "aria-label": `Focused incident: ${classLabel(inc.class_token)}` },
+    });
+    const top = el("div", { className: "lp-focus__top" });
+    top.appendChild(el("h3", { className: "lp-focus__title", text: classLabel(inc.class_token) }));
+    top.appendChild(pill(severityLabel(inc.severity), sevKey(inc)));
+    top.appendChild(pill(stateLabel(inc.state), "state"));
+    card.appendChild(top);
+    card.appendChild(el("p", { className: "lp-focus__cam", text: camLine(inc) }));
+    const firstMs = Date.parse(inc.created_at || inc.peak_ts || "");
+    const conf = confidenceLong(inc);
+    const meta = el("p", { className: "lp-focus__meta mono" });
+    tick(
+      meta,
+      (ms) =>
+        [
+          Number.isNaN(firstMs) ? "" : `First seen ${formatClock(firstMs)}`,
+          Number.isNaN(firstMs) ? "" : formatElapsedPlus((ms - firstMs) / 1000),
+          conf,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      nowMs,
+    );
+    card.appendChild(meta);
+    card.appendChild(progress(inc));
+    if (isOpenIncident(inc)) card.appendChild(focusActions(inc));
+    return card;
+  }
+
+  function filterBar() {
+    const bar = el("div", { className: "lp-seg", attrs: { role: "group", "aria-label": "Filter incidents" } });
+    for (const [key, label] of [["all", "All"], ["SEVERE", "Severe"], ["MINOR", "Minor"], ["open", "Open"]]) {
+      bar.appendChild(
+        el("button", {
+          type: "button",
+          className: `lp-seg__btn${filter === key ? " is-active" : ""}`,
+          text: label,
+          attrs: { "aria-pressed": filter === key ? "true" : "false", "data-focus-key": `filter-${key}` },
+          onClick: () => {
+            filter = key;
+            repaint();
+          },
+        }),
+      );
+    }
+    return bar;
+  }
+
+  function matches(inc) {
+    if (filter === "SEVERE" || filter === "MINOR") return inc.severity === filter;
+    if (filter === "open") return isOpenIncident(inc);
+    return true;
+  }
+
+  /**
+   * Display-only grouping: open incidents with the same class, camera and
+   * severity show as one row ("×N"); the newest one is the row's incident.
+   */
+  function groupRows(state, ids) {
+    const rows = [];
+    const byKey = new Map();
+    for (const id of ids) {
+      const inc = state.incidents[id];
+      if (!isOpenIncident(inc)) {
+        rows.push({ inc, ids: [id] });
+        continue;
+      }
+      const key = `${inc.class_token}|${inc.camera_id}|${inc.severity}`;
+      const row = byKey.get(key);
+      if (row) {
+        row.ids.push(id);
+        continue;
+      }
+      const next = { inc, ids: [id] };
+      byKey.set(key, next);
+      rows.push(next);
+    }
+    return rows;
+  }
+
+  /** Rows whose action strip is open (chevron). */
+  const expanded = new Set();
+
+  function listRow(state, row) {
+    const { inc, ids } = row;
+    const id = inc.incident_id;
+    const open = () => {
+      detailId = id;
+      actions.select(id);
+      if (inc.camera_id && layoutCtl) layoutCtl.swapMain(inc.camera_id);
+      repaint();
+    };
+    return incidentRow({
+      inc,
+      count: ids.length,
+      selected: ids.includes(state.selectedId),
+      expanded: expanded.has(id),
+      onSelect: open,
+      onDetails: open,
+      onToggle: () => {
+        if (expanded.has(id)) expanded.delete(id);
+        else expanded.add(id);
+        repaint();
+      },
+      actions,
+      store,
+    });
+  }
+
+  function headButton(text, iconName, onClick, key) {
+    const b = opButton({
+      className: "btn btn--sm lp-headbtn",
+      iconName,
+      text,
+      attrs: { "data-focus-key": key, "data-live-op": key === "report" ? "report" : key, "aria-label": text, title: text },
+      onClick: () => onClick(b),
+    });
+    return b;
+  }
+
+  function paintLiveBody(state, panel, nowMs) {
+    // Detail view: the same component as the Incidents page.
+    if (detailId && state.incidents[detailId]) {
+      const inc = state.incidents[detailId];
+      const stack = el("div", { className: "lp-detail inc-detail" });
+      stack.appendChild(
+        detailHeaderCard(inc, {
+          onBack: () => {
+            detailId = null;
+            repaint();
+          },
+        }),
+      );
+      stack.appendChild(detailsCard(inc));
+      const clip = clipCard(inc);
+      if (clip) stack.appendChild(clip);
+      stack.appendChild(timelineCard(inc));
+      if (isOpenIncident(inc)) {
+        const acts = el("div", { className: "card detail-card lp-detail__actions" });
+        acts.appendChild(focusActions(inc));
+        stack.appendChild(acts);
+      }
+      panel.appendChild(stack);
+      return;
+    }
+    const ids = state.order.filter((id) => {
+      const inc = state.incidents[id];
+      return inc && (inc.severity === "SEVERE" || inc.severity === "MINOR");
+    });
+    let severeOpen = 0;
+    let minorOpen = 0;
+    let resolved = 0;
+    for (const id of ids) {
+      const inc = state.incidents[id];
+      if (inc.state === "RESOLVED") resolved += 1;
+      if (!isOpenIncident(inc)) continue;
+      if (inc.severity === "SEVERE") severeOpen += 1;
+      else minorOpen += 1;
+    }
+    const openN = severeOpen + minorOpen;
+
+    const head = el("header", { className: "lp-head" });
+    head.appendChild(el("h2", { className: "lp-title", text: "Incidents" }));
+    head.appendChild(pill(`${openN} open`, openN ? "severe" : "muted"));
+    const btns = el("div", { className: "lp-head__right" });
+    btns.appendChild(
+      headButton("Report", "flag", (b) =>
+        document.dispatchEvent(new CustomEvent(OP_REPORT_EVENT, { detail: { anchor: b } })), "report"),
+    );
+    btns.appendChild(
+      headButton("Broadcast", "megaphone", () =>
+        document.dispatchEvent(
+          new CustomEvent(OP_BROADCAST_EVENT, { detail: { incidentId: opts.broadcastTarget?.(state) ?? null } }),
+        ), "broadcast-head"),
+    );
+    head.appendChild(btns);
+    panel.appendChild(head);
+
+    const counts = el("div", { className: "lp-counts" });
+    counts.appendChild(counter("Severe open", severeOpen, "severe"));
+    counts.appendChild(counter("Minor open", minorOpen, "minor"));
+    counts.appendChild(counter("Resolved", resolved, "aqua"));
+    panel.appendChild(counts);
+
+    const heroId = heroIncidentId(state);
+    if (heroId) panel.appendChild(focusCard(state.incidents[heroId], nowMs));
+
+    panel.appendChild(filterBar());
+    const list = el("div", { className: "lp-list" });
+    const shown = ids.filter((id) => matches(state.incidents[id]));
+    const open = shown.filter((id) => isOpenIncident(state.incidents[id]));
+    const closed = shown.filter((id) => !isOpenIncident(state.incidents[id]));
+    for (const row of groupRows(state, [...open, ...closed])) list.appendChild(listRow(state, row));
+    if (!shown.length) {
+      list.appendChild(
+        el("p", {
+          className: "lp-empty",
+          text: ids.length ? "No incidents match this filter." : "No active incidents. All cameras are being monitored.",
+        }),
+      );
+    }
+    panel.appendChild(list);
   }
 
   function reportToolbar(state) {
@@ -243,8 +547,9 @@ export function mountIncidentPanel(host, store, actions, layoutCtl, opts = {}) {
       detailId = id || null;
       repaint();
     },
-    showList() {
+    showList(nextFilter) {
       detailId = null;
+      if (nextFilter) filter = nextFilter;
       repaint();
     },
   };

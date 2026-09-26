@@ -12,6 +12,7 @@ const KNOWN = new Set([
   "tool.call_live",
   "demo.control",
   "camera.online",
+  "usage.tick",
 ]);
 
 const INCIDENT_STATES = new Set([
@@ -207,6 +208,24 @@ export function validateEvent(raw) {
         camera_id: raw.camera_id,
         online: raw.online !== false,
         ts: isOptStr(raw.ts) ? raw.ts : null,
+      };
+    }
+    case "usage.tick": {
+      // Per-window counts keyed by model id; non-numeric fields dropped.
+      if (!isObj(raw.by_model)) return null;
+      const FIELDS = ["requests", "tokens_in", "tokens_out", "audio_s", "chars", "frames", "live"];
+      const by = {};
+      for (const [id, row] of Object.entries(raw.by_model)) {
+        if (!isStr(id) || !isObj(row)) continue;
+        const clean = {};
+        for (const f of FIELDS) if (isNum(row[f]) && row[f] >= 0) clean[f] = row[f];
+        by[id] = clean;
+      }
+      return {
+        type: "usage.tick",
+        ts: isOptStr(raw.ts) ? raw.ts : null,
+        window_s: isNum(raw.window_s) && raw.window_s > 0 ? raw.window_s : null,
+        by_model: by,
       };
     }
     default:

@@ -3,19 +3,20 @@
  * Shared by sidebar Site plan tab and the expand modal.
  */
 
-import { WALL_CAMERA_IDS, cameraLabel, cameraTitle } from "../site.js?v=live2";
-import { predictedCameraAt } from "../mock.js?v=live2";
+import { WALL_CAMERA_IDS, cameraLabel, cameraTitle } from "../site.js?v=pro3";
+import { followedIncident, pathHops } from "../tracking.js?v=pro3";
 import {
   classLabel,
   severityLabel,
   formatRel,
   formatElapsedPlus,
+  formatClock,
   isOpenIncident,
-} from "../format.js?v=live2";
-import { clear, el, setText } from "../dom.js?v=live2";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=live2";
-import { now, subscribeTick } from "../clock.js?v=live2";
-import { activeIncidentForCamera, cameraStatus, onlineCount } from "../cameraStatus.js?v=live2";
+} from "../format.js?v=pro3";
+import { clear, el, setText } from "../dom.js?v=pro3";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=pro3";
+import { now, subscribeTick } from "../clock.js?v=pro3";
+import { activeIncidentForCamera, cameraStatus, onlineCount } from "../cameraStatus.js?v=pro3";
 
 function activeHit(state, cameraId) {
   const inc = activeIncidentForCamera(state, cameraId);
@@ -25,39 +26,6 @@ function activeHit(state, cameraId) {
 function peopleCount(state, cameraId) {
   const boxes = state.cameras?.[cameraId]?.boxes;
   return Array.isArray(boxes) ? boxes.length : 0;
-}
-
-function trackingIncident(state) {
-  for (const id of state.order) {
-    const inc = state.incidents[id];
-    if (inc && inc.state === "TRACKING") return inc;
-  }
-  return null;
-}
-
-function pursuitRoute(state, inc) {
-  if (!inc) return { steps: [], predicted: null };
-  const path = state.cameraPath?.[inc.incident_id];
-  let steps = Array.isArray(path) && path.length ? path.slice() : [];
-  if (!steps.length && inc.camera_id) steps = [inc.camera_id];
-  if (steps[steps.length - 1] !== inc.camera_id && inc.camera_id) {
-    steps = [...steps, inc.camera_id];
-  }
-  const t = state.demo?.t ?? 0;
-  const predicted =
-    (window.__transport?.mode || "MOCK") === "MOCK"
-      ? predictedCameraAt(t)
-      : null;
-  return { steps, predicted };
-}
-
-function stepTimes(steps, inc, nowMs) {
-  const startMs = Date.parse(inc?.created_at || inc?.peak_ts || "");
-  const span = Number.isNaN(startMs) ? 0 : Math.max(0, (nowMs - startMs) / 1000);
-  return steps.map((_, i) => {
-    if (steps.length === 1) return formatElapsedPlus(span);
-    return formatElapsedPlus(span * (i / (steps.length - 1)));
-  });
 }
 
 export function legendMarkup() {
@@ -199,128 +167,104 @@ export function mountSiteCamerasList(host, opts) {
 }
 
 /**
+ * Tracking bar: ONE line — "Tracking", then a chip per recent hop of the
+ * followed incident (tracking.js) with the time the data gives for it, the
+ * current camera filled with the severity colour, and the time since first
+ * seen on the right. No path yet: one muted line.
  * @param {HTMLElement} host
- * @param {{ store: object, vertical?: boolean }} opts
+ * @param {{ store: object }} opts
  */
 export function mountTrackingCard(host, opts) {
-  const { store, vertical = false } = opts;
-  /** Live time nodes of the current card, refreshed by the ticker. */
+  const { store } = opts;
+  // Keep the host's own classes (e.g. the Live stage's live-track).
+  const baseClass = host.className ? `${host.className} ` : "";
   let live = null;
+  let lastSig = null;
 
   function paintTimes(nowMs = now()) {
     if (!live) return;
-    setText(live.agoEl, formatRel(live.inc.created_at || live.inc.peak_ts, nowMs));
-    const times = stepTimes(live.steps, live.inc, nowMs);
-    live.timeEls.forEach((node, i) => setText(node, times[i]));
+    const start = Date.parse(live.inc.created_at || live.inc.peak_ts || "");
+    setText(live.nowEl, Number.isNaN(start) ? "" : formatElapsedPlus((nowMs - start) / 1000));
   }
+
+  const camShort = (id) => cameraLabel(id).replace(/^Camera\b/, "Cam");
 
   function paint(state) {
+    const inc = followedIncident(state);
+    const { hops, earlier } = pathHops(state, inc);
+    const sig = inc
+      ? [inc.incident_id, inc.severity, inc.camera_id, earlier, ...hops.map((h) => `${h.cameraId}@${h.at || ""}`)].join("|")
+      : "none";
+    if (sig === lastSig) return;
+    lastSig = sig;
+
     clear(host);
     live = null;
-    host.classList.add(
-      "site-track",
-      ...(vertical ? ["site-track--vertical"] : []),
-    );
-    if (!vertical) host.classList.remove("site-track--vertical");
-    const inc = trackingIncident(state);
+    host.className = `${baseClass}site-track`;
     if (!inc) {
-      host.classList.add("card", "card--compact");
-      const empty = el("p", { className: "site-track__empty" });
-      empty.appendChild(
-        el("span", {
-          className: "site-track__empty-dot",
-          attrs: { "aria-hidden": "true" },
-        }),
+      host.classList.add("site-track--empty");
+      host.appendChild(
+        el("span", { className: "site-track__slim", text: "Tracking starts when the person moves to another camera" }),
       );
-      empty.appendChild(
-        el("span", { text: "No active tracking" }),
-      );
-      host.appendChild(empty);
       return;
     }
+    host.classList.add("site-track--active", inc.severity === "SEVERE" ? "is-severe" : "is-minor");
+    host.setAttribute("aria-label", `Tracking ${classLabel(inc.class_token)}`);
+    host.appendChild(el("span", { className: "site-track__label", text: "Tracking" }));
 
-    host.classList.add("card", "card--compact", "site-track--active");
-    const head = el("div", { className: "site-track__head" });
-    const titles = el("div", { className: "site-track__titles" });
-    const typeRow = el("div", { className: "site-track__type-row" });
-    typeRow.appendChild(
-      el("span", {
-        className: "site-track__type",
-        text: classLabel(inc.class_token),
-      }),
-    );
-    typeRow.appendChild(
-      el("span", {
-        className: `card-chip card-chip--${inc.severity === "SEVERE" ? "severe" : "minor"}`,
-        text: severityLabel(inc.severity),
-      }),
-    );
-    titles.appendChild(typeRow);
-    head.appendChild(titles);
-    const agoEl = el("div", { className: "site-track__ago mono" });
-    head.appendChild(agoEl);
-    host.appendChild(head);
-
-    const { steps, predicted } = pursuitRoute(state, inc);
-    const timeEls = [];
-    const route = el("div", {
-      className: vertical ? "site-track__route site-track__route--v" : "site-track__route",
-    });
-
-    steps.forEach((camId, i) => {
-      if (i > 0) {
-        const arrow = el("span", {
-          className: "site-track__arrow",
-          attrs: { "aria-hidden": "true" },
-        });
-        arrow.appendChild(el("span", { className: "site-track__arrow-line" }));
-        arrow.appendChild(
-          el("span", { className: "site-track__arrow-chev", text: "›" }),
-        );
-        route.appendChild(arrow);
-      }
-      const step = el("div", {
-        className:
-          "site-track__step" +
-          (camId === inc.camera_id ? " is-current" : ""),
-      });
-      const mark = el("span", { className: "site-track__cam" });
-      setText(mark, cameraLabel(camId));
-      step.appendChild(mark);
-      const timeEl = el("span", { className: "site-track__time mono" });
-      timeEls.push(timeEl);
-      step.appendChild(timeEl);
-      route.appendChild(step);
-    });
-
-    if (predicted && !steps.includes(predicted)) {
-      {
-        const arrow = el("span", {
-          className: "site-track__arrow",
-          attrs: { "aria-hidden": "true" },
-        });
-        arrow.appendChild(el("span", { className: "site-track__arrow-line" }));
-        arrow.appendChild(
-          el("span", { className: "site-track__arrow-chev", text: "›" }),
-        );
-        route.appendChild(arrow);
-      }
-      const pred = el("div", {
-        className: "site-track__step is-predicted",
-      });
-      const mark = el("span", { className: "site-track__cam" });
-      setText(mark, cameraLabel(predicted));
-      pred.appendChild(mark);
-      pred.appendChild(
-        el("span", { className: "site-track__time", text: "Next" }),
-      );
-      route.appendChild(pred);
+    const route = el("ol", { className: "site-track__route" });
+    if (earlier > 0) {
+      route.appendChild(el("li", { className: "site-track__chip is-earlier mono", text: `+${earlier} earlier` }));
     }
-
+    hops.forEach((h, i) => {
+      const current = i === hops.length - 1;
+      if (i > 0 || earlier > 0) {
+        route.appendChild(el("li", { className: "site-track__arrow", text: "→", attrs: { "aria-hidden": "true" } }));
+      }
+      const ms = h.at ? Date.parse(h.at) : NaN;
+      const when = current ? "now" : Number.isNaN(ms) ? "" : formatClock(ms);
+      const chip = el("li", {
+        className: `site-track__chip${current ? " is-current" : ""}`,
+        text: when ? `${camShort(h.cameraId)} · ${when}` : camShort(h.cameraId),
+        attrs: { title: cameraTitle(h.cameraId) },
+      });
+      route.appendChild(chip);
+    });
     host.appendChild(route);
-    live = { inc, steps, agoEl, timeEls };
+    const nowEl = el("span", { className: "site-track__elapsed mono" });
+    host.appendChild(nowEl);
+    live = { inc, nowEl };
     paintTimes();
+    fitRoute(route, earlier);
   }
+
+  /** One line only: fold the oldest hops into "+N earlier" until it fits. */
+  function fitRoute(route, earlier) {
+    if (!route.isConnected || !route.clientWidth) return;
+    let folded = earlier;
+    const hopChips = () => [...route.querySelectorAll(".site-track__chip:not(.is-earlier)")];
+    while (route.scrollWidth > route.clientWidth + 1 && hopChips().length > 1) {
+      const first = hopChips()[0];
+      const next = first.nextElementSibling;
+      if (next?.classList.contains("site-track__arrow")) next.remove();
+      first.remove();
+      folded += 1;
+      let chip = route.querySelector(".site-track__chip.is-earlier");
+      if (!chip) {
+        chip = el("li", { className: "site-track__chip is-earlier mono" });
+        route.insertBefore(el("li", { className: "site-track__arrow", text: "→", attrs: { "aria-hidden": "true" } }), route.firstChild);
+        route.insertBefore(chip, route.firstChild);
+      }
+      setText(chip, `+${folded} earlier`);
+    }
+  }
+
+  // Width changes (mode switch, resize): refit from the full route.
+  const ro = new ResizeObserver(() => {
+    lastSig = null;
+    paint(store.getState());
+  });
+  ro.observe(host);
 
   paint(store.getState());
   const unsub = store.subscribe(paint);
@@ -330,6 +274,7 @@ export function mountTrackingCard(host, opts) {
     destroy() {
       unsub();
       unsubTick();
+      ro.disconnect();
     },
   };
 }

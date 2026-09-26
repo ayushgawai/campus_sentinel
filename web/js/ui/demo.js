@@ -5,11 +5,11 @@
  * is not here: it plays automatically on every load and reload.
  */
 
-import { SCENARIOS } from "../mock.js?v=live2";
-import { clear, setText } from "../dom.js?v=live2";
-import { mountDemoCameraSources } from "./demoSources.js?v=live2";
-import * as cameraSources from "../cameraSources.js?v=live2";
-import { WALL_CAMERA_IDS } from "../site.js?v=live2";
+import { SCENARIOS } from "../mock.js?v=pro3";
+import { clear, setText } from "../dom.js?v=pro3";
+import { mountDemoCameraSources } from "./demoSources.js?v=pro3";
+import * as cameraSources from "../cameraSources.js?v=pro3";
+import { WALL_CAMERA_IDS } from "../site.js?v=pro3";
 
 const FOCUSABLE =
   'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -101,9 +101,9 @@ export function mountDemo(elRoot, store, actions) {
   elRoot.innerHTML = `
     <article class="demo3 surface-light" role="dialog" aria-modal="true" aria-labelledby="demo-title">
       <header class="demo3__head">
-        <h2 class="demo3__title" id="demo-title">Demo control</h2>
+        <h2 class="demo3__title" id="demo-title">Scenario control</h2>
         <span class="demo3__sub">Recording tools</span>
-        <button type="button" class="btn btn--secondary btn--icon demo3__close" data-close aria-label="Close demo control" title="Close">
+        <button type="button" class="btn btn--secondary btn--icon demo3__close" data-close aria-label="Close scenario control" title="Close">
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
             <path d="M4 4 12 12M12 4 4 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
           </svg>
@@ -114,7 +114,7 @@ export function mountDemo(elRoot, store, actions) {
         ${section("sources", "Camera sources", '<div data-camera-sources></div>')}
       </div>
       <footer class="demo3__foot">
-        <span class="demo3__source" data-source>Source: Mock</span>
+        <span class="demo3__source" data-source>Source: Playback</span>
         <button type="button" class="btn btn--primary" data-reset>
           <span>Reset</span><kbd class="demo3__kbd">Shift R</kbd>
         </button>
@@ -226,7 +226,7 @@ export function mountDemo(elRoot, store, actions) {
   function render(state) {
     const mode = window.__transport?.mode || "MOCK";
     for (const row of mockRows) row.hidden = mode !== "MOCK";
-    setText(sourceEl, mode === "MOCK" ? "Source: Mock" : "Source: Live");
+    setText(sourceEl, mode === "MOCK" ? "Source: Playback" : "Source: Live");
 
     const warm = Boolean(state.health?.models_resident);
     warmDot.className = warm ? "dot dot--ok" : "dot dot--warn";
@@ -246,7 +246,7 @@ export function mountDemo(elRoot, store, actions) {
 
     const scenario = state.demo?.scenario || "full";
     if (scenarioEl.value !== scenario) scenarioEl.value = scenario;
-    const scenarioName = SCENARIOS.find((s) => s.id === scenario)?.name || "Full demo";
+    const scenarioName = SCENARIOS.find((s) => s.id === scenario)?.name || "Full scenario";
     const follow = Boolean(state.demo?.autoFollow);
     autoFollowEl.checked = follow;
     setText(summaries.playback, `${scenarioName} · Auto follow ${follow ? "on" : "off"}`);

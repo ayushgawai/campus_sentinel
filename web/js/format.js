@@ -1,12 +1,12 @@
 /** Display helpers — never show raw enums, dashes, or nullish junk. */
 
-import { SITE, cameraLabel as siteCameraLabel } from "./site.js?v=live2";
-import { now } from "./clock.js?v=live2";
+import { SITE, cameraLabel as siteCameraLabel } from "./site.js?v=pro3";
+import { now } from "./clock.js?v=pro3";
 
-export { cameraLabel } from "./site.js?v=live2";
+export { cameraLabel } from "./site.js?v=pro3";
 
 /** The one fallback for a value that has not arrived yet (never a dash). */
-export const PENDING = "Pending";
+export const PENDING = "No data yet";
 
 export function awaiting() {
   return PENDING;
@@ -278,6 +278,32 @@ export function compareIncidents(a, b) {
   const sa = SEVERITY_RANK[a?.severity] ?? 9;
   const sb = SEVERITY_RANK[b?.severity] ?? 9;
   if (sa !== sb) return sa - sb;
+  const ta = Date.parse(a?.updated_at || a?.created_at || a?.peak_ts || 0) || 0;
+  const tb = Date.parse(b?.updated_at || b?.created_at || b?.peak_ts || 0) || 0;
+  return tb - ta;
+}
+
+/** Live hero order within a severity: further along the response first. */
+export const HERO_STATE_RANK = {
+  TRACKING: 0,
+  DISPATCHED: 1,
+  DISPATCH_PENDING: 2,
+  ALERTED: 3,
+  NEW: 4,
+};
+
+/**
+ * Live hero choice among open incidents: SEVERE before MINOR, then by state
+ * (TRACKING, DISPATCHED, DISPATCH_PENDING, ALERTED, NEW), then most recently
+ * updated.
+ */
+export function compareHeroIncidents(a, b) {
+  const sa = SEVERITY_RANK[a?.severity] ?? 9;
+  const sb = SEVERITY_RANK[b?.severity] ?? 9;
+  if (sa !== sb) return sa - sb;
+  const ra = HERO_STATE_RANK[a?.state] ?? 9;
+  const rb = HERO_STATE_RANK[b?.state] ?? 9;
+  if (ra !== rb) return ra - rb;
   const ta = Date.parse(a?.updated_at || a?.created_at || a?.peak_ts || 0) || 0;
   const tb = Date.parse(b?.updated_at || b?.created_at || b?.peak_ts || 0) || 0;
   return tb - ta;

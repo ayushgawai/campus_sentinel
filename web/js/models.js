@@ -8,6 +8,8 @@
  *   router   health.strip p95_ms measured (detection step has run)
  *   asr/tts  /voice/status in live
  * `core` rows decide the header chip; voice rows never do.
+ * The Text to speech row and the footer follow the active phone TTS
+ * provider from /voice/status (modelStatus.js: ttsProvider).
  */
 
 export const MODELS = [
@@ -54,6 +56,5 @@ export const MODELS = [
   },
 ];
 
-export const MODELS_TITLE = "On-device AI";
-export const MODELS_SUBTITLE = "Served by HP Z Runtime";
-export const MODELS_FOOTER = "All inference runs on this device. No cloud AI.";
+export const MODELS_TITLE = "AI models";
+export const MODELS_SUBTITLE = "";

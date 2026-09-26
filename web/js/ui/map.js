@@ -12,13 +12,14 @@ import {
   fromCameraMap,
   getCamera,
   mapMode,
-} from "../site.js?v=live2";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=live2";
-import { clear, setText } from "../dom.js?v=live2";
-import { themeColors } from "../theme.js?v=live2";
-import { classLabel, formatElapsedPlus } from "../format.js?v=live2";
-import { now, subscribeTick } from "../clock.js?v=live2";
-import { cameraStatus } from "../cameraStatus.js?v=live2";
+} from "../site.js?v=pro3";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=pro3";
+import { clear, setText } from "../dom.js?v=pro3";
+import { themeColors } from "../theme.js?v=pro3";
+import { classLabel, formatElapsedPlus } from "../format.js?v=pro3";
+import { subscribeTick } from "../clock.js?v=pro3";
+import { cameraStatus } from "../cameraStatus.js?v=pro3";
+import { followedIncident, pathHops, secondsSinceStart } from "../tracking.js?v=pro3";
 
 const LEVEL_RANK = { none: 0, minor: 1, severe: 2 };
 
@@ -45,6 +46,8 @@ function pinsForMode() {
 }
 
 let activePins = pinsForMode();
+/** Unique ids for each map instance's SVG defs. */
+let mapSeq = 0;
 /** Working copy of the walkway bends (?mapedit=1 moves them). */
 const activeEdges = EDGES.map((e) => ({ a: e.a, b: e.b, via: e.via.map((p) => p.slice()) }));
 const pinById = () => new Map(activePins.map((p) => [p.id, p]));
@@ -127,10 +130,68 @@ function polylineMid(pts) {
   return { x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2, dx: b[0] - a[0], dy: b[1] - a[1] };
 }
 
-function computeViewBox(fit = "default") {
+/** Margin around the pins for the "pins" fit (map units). */
+const PINS_MARGIN = PIN_HIT_R * 2;
+
+/** Tight crop around the pins only (expanded map: pins far enough apart). */
+function pinsViewBox() {
+  if (!activePins.length) return IMAGE ? imageViewBox() : planViewBox();
+  const xs = activePins.map((p) => p.x);
+  const ys = activePins.map((p) => p.y);
+  const x = Math.min(...xs) - PINS_MARGIN;
+  const y = Math.min(...ys) - PINS_MARGIN;
+  return {
+    x,
+    y,
+    w: Math.max(...xs) + PINS_MARGIN - x,
+    h: Math.max(...ys) + PINS_MARGIN - y,
+  };
+}
+
+function computeViewBox(fit = "default", aspect = 0, insetLeft = 0, insetTop = 1) {
   if (fit === "circle") return circleViewBox();
-  if (IMAGE) return imageViewBox();
-  return planViewBox();
+  if (fit === "pins") return pinsViewBox();
+  const base = IMAGE ? imageViewBox() : planViewBox();
+  if (fit === "rect" && aspect > 0) return aspectViewBox(base, aspect, insetLeft, insetTop);
+  return base;
+}
+
+/**
+ * The site crop widened to the container's aspect (width / height), so a
+ * rounded-rectangle map fills without an empty band. An overlay card covers
+ * the top-left `insetLeft` × `insetTop` share of the view: the site is
+ * placed right of it, and the view is kept inside the image where no pin
+ * then falls under the card.
+ */
+function aspectViewBox(base, aspect, insetLeft = 0, insetTop = 1) {
+  const f = Math.min(0.6, Math.max(0, insetLeft));
+  let w = base.w / (1 - f);
+  let h = base.h;
+  if (w / h < aspect) w = h * aspect;
+  else h = w / aspect;
+  const cx = base.x + base.w / 2;
+  let x = cx - f * w - ((1 - f) * w) / 2;
+  let y = base.y + base.h / 2 - h / 2;
+  if (IMAGE) {
+    const iw = Number(IMAGE.width);
+    const ih = Number(IMAGE.height);
+    // Only shift while the site still clears the inset.
+    if (w <= iw) {
+      const lo = Math.max(0, base.x + base.w - w);
+      const hi = Math.min(iw - w, base.x - f * w);
+      if (lo <= hi) x = Math.min(Math.max(x, lo), hi);
+      else if (x < 0 || x > iw - w) {
+        // No empty band at the side if no pin lands under the card.
+        const x0 = x < 0 ? 0 : iw - w;
+        const cardR = x0 + f * w + PIN_HIT_R;
+        const cardB = y + Math.min(1, insetTop) * h + PIN_HIT_R;
+        const covered = activePins.some((p) => p.x < cardR && p.y < cardB);
+        if (!covered) x = x0;
+      }
+    }
+    if (h <= ih) y = Math.min(Math.max(y, 0), ih - h);
+  }
+  return { x, y, w, h };
 }
 
 /** Room around the pins inside the round Live watch disc (map units). */
@@ -237,12 +298,6 @@ function activeSeverityForCamera(state, cameraId) {
   return st.inc ? { sev: st.inc.severity, inc: st.inc } : null;
 }
 
-function trackingIncidents(state) {
-  return state.order
-    .map((id) => state.incidents[id])
-    .filter((inc) => inc && inc.state === "TRACKING");
-}
-
 function headingOf(pin) {
   if (typeof pin.heading === "number") return pin.heading;
   return 180;
@@ -342,6 +397,7 @@ export function mountMap(el, store, actions, opts = {}) {
   const showHeader = opts.showHeader !== false;
   const vb = computeViewBox();
   const par = "xMidYMid meet";
+  const arrowIdFor = `cmap-arrow-${mapSeq + 1}`;
 
   el.innerHTML = `
     <article class="panel cmap cmap--fill${fillHeight ? " cmap--grow" : ""}${showHeader ? "" : " cmap--bare"}">
@@ -368,6 +424,11 @@ export function mountMap(el, store, actions, opts = {}) {
             </g>
             ${chromeMarkup(vb)}
             <g class="cmap__fovs" data-fovs></g>
+            <defs>
+              <marker id="${arrowIdFor}" class="cmap__arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse" markerUnits="strokeWidth">
+                <path d="M0 0 L10 5 L0 10 z"/>
+              </marker>
+            </defs>
             <g class="cmap__paths" data-paths></g>
             <g class="cmap__predicted" data-predicted></g>
             <g class="cmap__waypoints" data-waypoints></g>
@@ -399,6 +460,11 @@ export function mountMap(el, store, actions, opts = {}) {
     setText(el.querySelector("[data-map-attr]"), IMAGE.attribution || "");
   }
 
+  /** Last drawn followed path (incident + hops), so it redraws on change. */
+  let pursuitSig = "";
+  let pinPx = false;
+  let pinScale = 1;
+  const arrowId = `cmap-arrow-${++mapSeq}`;
   const pursuitSeq = new Map();
   const pursuitLast = new Map();
   const pursuitStartT = new Map();
@@ -452,7 +518,7 @@ export function mountMap(el, store, actions, opts = {}) {
       const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
       g.classList.add("cmap-pin");
       g.dataset.cameraId = pin.id;
-      g.setAttribute("transform", `translate(${pin.x} ${pin.y})`);
+      g.setAttribute("transform", pinTransform(pin));
       g.setAttribute("tabindex", "0");
       g.setAttribute("role", "button");
       g.setAttribute("aria-label", cameraTitle(pin.id));
@@ -537,6 +603,78 @@ export function mountMap(el, store, actions, opts = {}) {
     applyPinHighlight();
   }
 
+  function pinTransform(pin) {
+    const k = pinScale !== 1 ? ` scale(${pinScale.toFixed(3)})` : "";
+    return `translate(${pin.x} ${pin.y})${k}`;
+  }
+
+  /** With setPinPx, counter the view's zoom so pins keep their px size. */
+  function refreshPinScale() {
+    let next = 1;
+    if (pinPx) {
+      const ctm = el.querySelector(".cmap__svg")?.getScreenCTM?.();
+      if (ctm && ctm.a > 0) next = 1 / ctm.a;
+    }
+    if (Math.abs(next - pinScale) >= 0.001) {
+      pinScale = next;
+      const by = pinById();
+      for (const [id, g] of pinEls) {
+        const p = by.get(id);
+        if (p) g.setAttribute("transform", pinTransform(p));
+      }
+      for (const wp of waypointsLayer.children) placeWaypoint(wp);
+    }
+    declutterLabels();
+  }
+
+  function placeWaypoint(wp) {
+    const k = pinScale !== 1 ? ` scale(${pinScale.toFixed(3)})` : "";
+    wp.setAttribute("transform", `translate(${wp.dataset.x} ${wp.dataset.y})${k}`);
+  }
+
+  /**
+   * Hop-time labels: hide any that would collide with a pin or with a label
+   * already kept (only where pins have a fixed size, i.e. the expanded view).
+   */
+  function declutterLabels() {
+    const wps = [...waypointsLayer.children];
+    for (const wp of wps) wp.removeAttribute("visibility");
+    if (!pinPx) return;
+    const hit = (a, b) => !(a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top);
+    // Pins with a little clearance (their flash pulse grows the dot).
+    const pad = 5;
+    const taken = [...pinEls.values()]
+      .map((g) => g.querySelector(".cmap-pin__dot")?.getBoundingClientRect())
+      .filter(Boolean)
+      .map((r) => ({ left: r.left - pad, right: r.right + pad, top: r.top - pad, bottom: r.bottom + pad }));
+    const stage = el.querySelector(".cmap__svg")?.getBoundingClientRect();
+    // Newest hop first: the latest label wins a collision. Each label tries
+    // a few spots along its segment's normal (screen px) before hiding.
+    const ctm = el.querySelector(".cmap__svg")?.getScreenCTM?.();
+    const unit = ctm && ctm.a > 0 ? 1 / ctm.a : 1;
+    for (const wp of wps.reverse()) {
+      const { mx, my, nx, ny } = wp.dataset;
+      const spots = mx == null ? [0] : [22, -22, 40, -40, 58, -58];
+      let placed = false;
+      for (const d of spots) {
+        if (mx != null) {
+          wp.dataset.x = String(Number(mx) + Number(nx) * d * unit);
+          wp.dataset.y = String(Number(my) + Number(ny) * d * unit);
+          placeWaypoint(wp);
+        }
+        const r = wp.getBoundingClientRect();
+        const outside =
+          stage && (r.left < stage.left || r.right > stage.right || r.top < stage.top || r.bottom > stage.bottom);
+        if (!outside && !taken.some((t) => hit(r, t))) {
+          taken.push(r);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) wp.setAttribute("visibility", "hidden");
+    }
+  }
+
   function pinPoint(id) {
     return pinById().get(id) ?? null;
   }
@@ -552,7 +690,9 @@ export function mountMap(el, store, actions, opts = {}) {
     path.setAttribute("d", pointsToD(route));
     path.setAttribute("fill", "none");
     path.setAttribute("pathLength", "1");
+    path.setAttribute("marker-end", `url(#${arrowId})`);
     pathsLayer.appendChild(path);
+    if (elapsedSec == null) return;
 
     const c = themeColors();
     const mid = polylineMid(route);
@@ -565,7 +705,14 @@ export function mountMap(el, store, actions, opts = {}) {
     const ox = (-dy / len) * 20;
     const oy = (dx / len) * 20;
     const wp = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    wp.setAttribute("transform", `translate(${mx + ox} ${my + oy})`);
+    wp.dataset.x = String(mx + ox);
+    wp.dataset.y = String(my + oy);
+    // Kept for decluttering: the segment midpoint and its unit normal.
+    wp.dataset.mx = String(mx);
+    wp.dataset.my = String(my);
+    wp.dataset.nx = String(-dy / len);
+    wp.dataset.ny = String(dx / len);
+    placeWaypoint(wp);
     const label = formatElapsedPlus(elapsedSec);
     const pw = Math.max(40, label.length * 7.4);
     const pill = document.createElementNS("http://www.w3.org/2000/svg", "rect");
@@ -593,43 +740,26 @@ export function mountMap(el, store, actions, opts = {}) {
     waypointsLayer.appendChild(wp);
   }
 
+  /**
+   * The followed incident's recent path (tracking.js), drawn red with an
+   * arrowhead per hop. A hop label (time since first seen) only where the
+   * data has the hop time.
+   */
   function syncPursuit(state) {
-    const t = now() / 1000;
-    for (const inc of trackingIncidents(state)) {
-      const path = state.cameraPath?.[inc.incident_id];
-      if (Array.isArray(path) && path.length >= 2) {
-        if (!pursuitStartT.has(inc.incident_id)) {
-          pursuitStartT.set(inc.incident_id, Math.max(0, t - 12));
-        }
-        const start = pursuitStartT.get(inc.incident_id) ?? t;
-        for (let i = 1; i < path.length; i++) {
-          ensureSegment(
-            path[i - 1],
-            path[i],
-            (t - start) * (i / (path.length - 1)),
-          );
-        }
-        pursuitLast.set(inc.incident_id, path[path.length - 1]);
-        pursuitSeq.set(inc.incident_id, path.slice());
-        continue;
-      }
-      const cam = inc.camera_id;
-      if (!cam) continue;
-      const last = pursuitLast.get(inc.incident_id);
-      if (!last) {
-        pursuitLast.set(inc.incident_id, cam);
-        pursuitSeq.set(inc.incident_id, [cam]);
-        pursuitStartT.set(inc.incident_id, t);
-        continue;
-      }
-      if (last === cam) continue;
-      const seq = pursuitSeq.get(inc.incident_id) ?? [last];
-      seq.push(cam);
-      pursuitSeq.set(inc.incident_id, seq);
-      pursuitLast.set(inc.incident_id, cam);
-      const start = pursuitStartT.get(inc.incident_id) ?? t;
-      ensureSegment(last, cam, t - start);
+    const inc = followedIncident(state);
+    const { hops } = pathHops(state, inc);
+    const sig = inc
+      ? `${inc.incident_id}|${hops.map((h) => `${h.cameraId}@${h.at || ""}`).join(",")}`
+      : "";
+    if (sig === pursuitSig) return;
+    pursuitSig = sig;
+    clear(pathsLayer);
+    clear(waypointsLayer);
+    drawnSeg.clear();
+    for (let i = 1; i < hops.length; i++) {
+      ensureSegment(hops[i - 1].cameraId, hops[i].cameraId, secondsSinceStart(inc, hops[i].at));
     }
+    declutterLabels();
   }
 
   function levelOf(hit) {
@@ -727,16 +857,20 @@ export function mountMap(el, store, actions, opts = {}) {
     clear(pathsLayer);
     clear(waypointsLayer);
     drawnSeg.clear();
+    pursuitSig = "";
     pursuitSeq.clear();
     pursuitLast.clear();
     pursuitStartT.clear();
   }
 
-  /** "default" (cropped to the site) or "circle" (Live watch disc). */
+  /** "default" (cropped to the site), "circle" or "rect" (aspect-filled). */
   let fit = "default";
+  let fitAspect = 0;
+  let fitInset = 0;
+  let fitInsetTop = 1;
 
   function refreshViewBox() {
-    const next = computeViewBox(fit);
+    const next = computeViewBox(fit, fitAspect, fitInset, fitInsetTop);
     currentVb = next;
     const svg = el.querySelector(".cmap__svg");
     if (!svg || !stage) return;
@@ -777,14 +911,30 @@ export function mountMap(el, store, actions, opts = {}) {
     clearPursuit,
     setFocus,
     setHover,
-    setFit(next) {
-      const kind = next === "circle" ? "circle" : "default";
-      if (kind === fit) return;
+    setFit(next, fitOpts = {}) {
+      const kind = next === "circle" || next === "rect" || next === "pins" ? next : "default";
+      const aspect = kind === "rect" ? Number(fitOpts.aspect) || 0 : 0;
+      const inset = kind === "rect" ? Number(fitOpts.insetLeft) || 0 : 0;
+      const insetTop = kind === "rect" ? Number(fitOpts.insetTop) || 1 : 1;
+      if (kind === fit && aspect === fitAspect && inset === fitInset && insetTop === fitInsetTop) return;
       fit = kind;
+      fitAspect = aspect;
+      fitInset = inset;
+      fitInsetTop = insetTop;
       refreshViewBox();
       el.querySelector(".cmap")?.classList.toggle("cmap--circle", kind === "circle");
       render(store.getState());
+      refreshPinScale();
     },
+    /**
+     * Fixed on-screen pin size (24 px dot, 32 px hit area) whatever the
+     * zoom; off returns pins to map units.
+     */
+    setPinPx(on) {
+      pinPx = Boolean(on);
+      refreshPinScale();
+    },
+    refreshPinScale,
     /** Client (viewport) position of a camera pin, or null. */
     pinClientPoint(id) {
       const pin = pinPoint(id);
@@ -793,6 +943,8 @@ export function mountMap(el, store, actions, opts = {}) {
       if (!pin || !ctm) return null;
       return new DOMPoint(pin.x, pin.y).matrixTransform(ctm);
     },
+    /** The current view box (map units): its aspect sizes a container. */
+    getViewBox: () => ({ ...currentVb }),
     getFocus: () => focusId,
     getHover: () => hoverId,
     setPins(pins) {

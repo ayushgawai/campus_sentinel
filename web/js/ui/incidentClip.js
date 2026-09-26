@@ -2,8 +2,8 @@
  * Mock-only: looping 8s clip ending at incident time from a loaded camera video.
  */
 
-import * as cameraSources from "../cameraSources.js?v=live2";
-import { mockSecondsFromIso } from "../clock.js?v=live2";
+import * as cameraSources from "../cameraSources.js?v=pro3";
+import { mockSecondsFromIso } from "../clock.js?v=pro3";
 
 /**
  * @param {HTMLElement} host

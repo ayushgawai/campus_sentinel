@@ -1,21 +1,21 @@
 /** Header: mark + SENTINEL | nav | health | clock · reconnecting only */
 
-import { ROUTES, navigate, getRoute, subscribeRoute } from "../router.js?v=live2";
+import { ROUTES, navigate, getRoute, subscribeRoute } from "../router.js?v=pro3";
 import {
   awaiting,
   formatHeaderClock,
   formatInt,
   formatMs,
   formatPct,
-} from "../format.js?v=live2";
-import { el as h, setText } from "../dom.js?v=live2";
-import { MODELS_SUBTITLE, MODELS_TITLE } from "../models.js?v=live2";
-import { STATUS_DOT, STATUS_LABEL, subscribeModelStatus } from "../modelStatus.js?v=live2";
-import { createModelsTable } from "./modelsTable.js?v=live2";
-import { LOGO_MARK } from "../logo.js?v=live2";
-import { now, subscribeTick } from "../clock.js?v=live2";
-import { WALL_CAMERA_IDS } from "../site.js?v=live2";
-import { cameraStatus, onlineCount } from "../cameraStatus.js?v=live2";
+} from "../format.js?v=pro3";
+import { el as h, setText } from "../dom.js?v=pro3";
+import { MODELS_SUBTITLE, MODELS_TITLE } from "../models.js?v=pro3";
+import { STATUS_DOT, STATUS_LABEL, subscribeModelStatus } from "../modelStatus.js?v=pro3";
+import { createModelsTable } from "./modelsTable.js?v=pro3";
+import { LOGO_MARK } from "../logo.js?v=pro3";
+import { now, subscribeTick } from "../clock.js?v=pro3";
+import { WALL_CAMERA_IDS } from "../site.js?v=pro3";
+import { cameraStatus, onlineCount } from "../cameraStatus.js?v=pro3";
 
 export function mountTopbar(el, store, actions, layoutCtl) {
   el.innerHTML = `
@@ -38,6 +38,7 @@ export function mountTopbar(el, store, actions, layoutCtl) {
 
       <div class="topbar__right">
         <span class="topbar__reconnect" data-reconnect hidden>Reconnecting</span>
+        <span class="ochip ochip--state topbar__playback" data-playback hidden>Playback</span>
         <time class="topbar__clock metric mono" data-clock></time>
       </div>
     </div>
@@ -75,6 +76,7 @@ export function mountTopbar(el, store, actions, layoutCtl) {
   const screenedEl = $("[data-screened]");
   const escalatedEl = $("[data-escalated]");
   const reconnectEl = $("[data-reconnect]");
+  const playbackEl = $("[data-playback]");
   const clockEl = $("[data-clock]");
 
   let screenedDisplay = 0;
@@ -109,7 +111,7 @@ export function mountTopbar(el, store, actions, layoutCtl) {
     if (clockEl.dateTime !== iso) clockEl.dateTime = iso;
   }
 
-  const modelsCard = mountModelsCard(modelsBtn);
+  const modelsCard = mountModelsCard(modelsBtn, store);
   const unsubModels = subscribeModelStatus(() => render(store.getState()));
 
   function render(state) {
@@ -155,6 +157,8 @@ export function mountTopbar(el, store, actions, layoutCtl) {
     const status = state.connection?.status ?? "MOCK";
     const showReconnect = status === "RECONNECTING";
     reconnectEl.hidden = !showReconnect;
+    // Local playback timeline (no ?ws=): one neutral chip.
+    playbackEl.hidden = status !== "MOCK";
   }
 
   tickClock();
@@ -181,7 +185,7 @@ export function mountNav() {
  * Anchored "On-device AI" card under the Models button. Esc, a click
  * outside or the button again closes it; focus returns to the button.
  */
-function mountModelsCard(btn) {
+function mountModelsCard(btn, store) {
   const card = h("div", {
     className: "mcard surface-light",
     id: "models-card",
@@ -191,9 +195,15 @@ function mountModelsCard(btn) {
   card.tabIndex = -1;
   const head = h("div", { className: "mcard__head" });
   head.appendChild(h("h2", { className: "mcard__title", id: "models-card-title", text: MODELS_TITLE }));
-  head.appendChild(h("p", { className: "mcard__sub", text: MODELS_SUBTITLE }));
+  if (MODELS_SUBTITLE) head.appendChild(h("p", { className: "mcard__sub", text: MODELS_SUBTITLE }));
   card.appendChild(head);
-  const table = createModelsTable({ className: "mtable--card" });
+  const table = createModelsTable({ className: "mtable--card", store });
+  // Same summary as the System table ("N active · M ready").
+  const sum = h("span", { className: "mcard__sum mono" });
+  head.appendChild(sum);
+  table.onChange(() => {
+    sum.textContent = table.summary();
+  });
   card.appendChild(table.el);
   document.body.appendChild(card);
 

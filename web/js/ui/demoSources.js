@@ -4,9 +4,9 @@
  * grid of camera cards.
  */
 
-import { WALL_CAMERA_IDS, cameraLabel } from "../site.js?v=live2";
-import { clear, el, setText, svgEl } from "../dom.js?v=live2";
-import * as cameraSources from "../cameraSources.js?v=live2";
+import { WALL_CAMERA_IDS, cameraLabel } from "../site.js?v=pro3";
+import { clear, el, setText, svgEl } from "../dom.js?v=pro3";
+import * as cameraSources from "../cameraSources.js?v=pro3";
 
 function formatDur(sec) {
   if (sec == null || !Number.isFinite(sec) || sec < 0) return "";
@@ -79,7 +79,7 @@ export function mountDemoCameraSources(host, opts = {}) {
   const removeAllBtn = el("button", { type: "button", className: "btn btn--secondary", text: "Remove all" });
   const confirmAllBtn = el("button", { type: "button", className: "btn btn--danger", text: "Confirm remove all" });
   confirmAllBtn.hidden = true;
-  const loadSixBtn = el("button", { type: "button", className: "btn btn--primary", text: "Load six videos" });
+  const loadSixBtn = el("button", { type: "button", className: "btn btn--primary", text: "Upload video" });
   tools.appendChild(removeAllBtn);
   tools.appendChild(confirmAllBtn);
   tools.appendChild(loadSixBtn);

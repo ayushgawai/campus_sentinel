@@ -1,6 +1,6 @@
 /** Call Console — single chat thread + tool cards. No floating overlay. */
 
-import { now, subscribeTick } from "../clock.js?v=live2";
+import { now, subscribeTick } from "../clock.js?v=pro3";
 import {
   awaiting,
   classLabel,
@@ -17,12 +17,14 @@ import {
   HIDDEN_TOOL_KEYS,
   isOpenIncident,
   severityLabel,
-} from "../format.js?v=live2";
-import { redactPlaces, cameraTitle } from "../site.js?v=live2";
-import { clear, el, setText } from "../dom.js?v=live2";
-import { OP_STATUS_EVENT, operatorActions, actionBar } from "./operator.js?v=live2";
-import { isDispatchedOrLater } from "../actions.js?v=live2";
-import { phoneCallsLive, subscribeModelStatus } from "../modelStatus.js?v=live2";
+  formatClock,
+} from "../format.js?v=pro3";
+import { redactPlaces, cameraTitle } from "../site.js?v=pro3";
+import { clear, el, setText } from "../dom.js?v=pro3";
+import { OP_STATUS_EVENT, operatorActions, actionBar } from "./operator.js?v=pro3";
+import { isDispatchedOrLater } from "../actions.js?v=pro3";
+import { subscribeModelStatus } from "../modelStatus.js?v=pro3";
+import { renderConversation } from "./conversation.js?v=pro3";
 
 const STREAM_MERGE_MS = 700;
 const CALL_STATES = new Set([
@@ -54,7 +56,7 @@ function timelineTs(inc, states) {
 }
 
 /** Call start: the incident's DISPATCHED timeline ts, else the backend's call start. */
-function dispatchedTs(inc, state) {
+export function dispatchedTs(inc, state) {
   const fromTimeline = timelineTs(inc, new Set(["DISPATCHED"]));
   if (fromTimeline) return fromTimeline;
   if (state?.call?.dispatchedAt && state.call.incidentId === inc?.incident_id) {
@@ -80,7 +82,7 @@ export function callElapsedMs(inc, state, nowMs = now()) {
   return Math.max(0, end - start);
 }
 
-function callTimerText(inc, state, nowMs) {
+export function callTimerText(inc, state, nowMs) {
   const ms = inc ? callElapsedMs(inc, state, nowMs) : null;
   return ms == null ? "00:00" : formatCallTimer(ms);
 }
@@ -105,10 +107,8 @@ export function findCallIncident(state) {
  */
 export function callNoteText(state) {
   const inc = findCallIncident(state);
-  const phone = inc ? state.call?.provider === "signalwire" : phoneCallsLive();
-  if (!phone) return "Simulated call · verified teammate";
-  if (inc && state.call?.providerError) return "SignalWire call failed · verified teammate";
-  return "SignalWire call · verified teammate";
+  if (inc && state.call?.providerError) return "Call not connected";
+  return "Connected to on-call responder";
 }
 
 /**
@@ -191,13 +191,16 @@ function appendDl(parent, obj, rawHost) {
 export function mountCallHost(host, store, actions) {
   host.innerHTML = `
     <div class="call-console">
-      <header class="card call-head-card" data-head>
-        <div class="call-head-card__title-row">
-          <h2 class="call-head-card__title" data-class>No active call</h2>
-          <span class="call-sim-note">Simulated call · verified teammate</span>
+      <header class="card call-head-card lc-headcard" data-head>
+        <div class="lc-head">
+          <h2 class="lc-title" data-class>Emergency Call</h2>
+          <div class="lc-timer" data-timerbox hidden>
+            <span class="lc-timer__t mono" data-timer>00:00</span>
+            <span class="lc-timer__live mono" data-live><span class="lc-timer__dot" aria-hidden="true"></span>LIVE</span>
+          </div>
         </div>
-        <span class="call-head-card__timer mono" data-timer>00:00</span>
-        <p class="call-head-card__meta" data-meta></p>
+        <p class="lc-meta" data-meta>No active call</p>
+        <p class="ochip ochip--state lc-sim">Connected to on-call responder</p>
         <div class="call-head-card__action" data-action hidden></div>
       </header>
 
@@ -217,7 +220,10 @@ export function mountCallHost(host, store, actions) {
   const chatScroll = host.querySelector("[data-chat]");
   const toolsHost = host.querySelector("[data-tools]");
   const actionEl = host.querySelector("[data-action]");
-  const noteEl = host.querySelector(".call-sim-note");
+  const noteEl = host.querySelector(".lc-sim");
+  const timerBox = host.querySelector("[data-timerbox]");
+  const liveEl = host.querySelector("[data-live]");
+  let metaSig = null;
 
   let lastThreadLen = -1;
   let lastToolCount = -1;
@@ -232,7 +238,6 @@ export function mountCallHost(host, store, actions) {
 
   function paintAction(cand) {
     const key = cand && actions ? `${cand.incident_id}|${cand.severity}|${opVersion}` : "";
-    timerEl.hidden = Boolean(key);
     actionEl.hidden = !key;
     if (key === actionKey) return;
     actionKey = key;
@@ -274,16 +279,15 @@ export function mountCallHost(host, store, actions) {
       const row = el("div", {
         className: `chat-msg chat-msg--${u.speaker}`,
       });
-      row.appendChild(
-        el("div", {
-          className: "chat-msg__who",
-          text: u.speaker === "dispatcher" ? "Dispatcher" : "Sentinel",
-        }),
-      );
+      const who = el("div", { className: "chat-msg__who mono" });
+      who.appendChild(el("span", { text: u.speaker === "dispatcher" ? "Dispatcher" : "Sentinel" }));
+      const ms = u.ts ? Date.parse(u.ts) : NaN;
+      if (!Number.isNaN(ms)) who.appendChild(el("span", { text: formatClock(ms) }));
+      row.appendChild(who);
       row.appendChild(
         el("div", {
           className: "chat-msg__bubble",
-          text: redactPlaces(u.text),
+          text: maskPhones(redactPlaces(u.text)),
         }),
       );
       chatScroll.appendChild(row);
@@ -340,22 +344,16 @@ export function mountCallHost(host, store, actions) {
 
   function paintTimes(state, nowMs = now()) {
     const inc = findCallIncident(state);
-    setText(timerEl, callTimerText(inc, state, nowMs));
-    if (!inc) {
-      const cand = callCandidate(state);
-      setText(
-        metaEl,
-        cand
-          ? `${cameraLabel(cand.camera_id)} · ${severityLabel(cand.severity)} · ${stateLabel(cand.state)} · ${formatRel(cand.created_at || cand.peak_ts, nowMs)}`
-          : "",
-      );
-      return;
+    timerBox.hidden = !inc;
+    if (inc) {
+      setText(timerEl, callTimerText(inc, state, nowMs));
+      liveEl.hidden = ENDED_CALL_STATES.has(inc.state);
     }
-    const started = formatRel(
-      dispatchedTs(inc, state) || inc.created_at || inc.peak_ts,
-      nowMs,
-    );
-    setText(metaEl, `${cameraTitle(inc.camera_id)} · Started ${started}`);
+    const sig = inc ? `${inc.incident_id}|${callDescription(inc, state)}|${startedText(inc, state)}` : "";
+    if (sig !== metaSig) {
+      metaSig = sig;
+      paintCallMeta(metaEl, inc, state);
+    }
   }
 
   function render(state) {
@@ -365,7 +363,7 @@ export function mountCallHost(host, store, actions) {
     const cand = inc ? null : callCandidate(state);
     paintAction(cand);
     if (!inc) {
-      setText(classEl, cand ? classLabel(cand.class_token) : "No active call");
+      setText(classEl, "Emergency Call");
       // -2 = "no call" empty state, distinct from a call with no lines yet.
       if (lastThreadLen !== -2) {
         renderChat([]);
@@ -378,7 +376,7 @@ export function mountCallHost(host, store, actions) {
       return;
     }
 
-    setText(classEl, `${classLabel(inc.class_token)} call`);
+    setText(classEl, "Emergency Call");
 
     const all = (state.call?.transcript || []).filter(
       (t) => !state.call.incidentId || t.incident_id === inc.incident_id,
@@ -413,6 +411,199 @@ export function mountCallHost(host, store, actions) {
   };
 }
 
+/**
+ * "Weapon call · Camera 1, 2, 3": the cameras on this incident's path in
+ * order of first appearance, without repeats; one camera → "Camera 1".
+ */
+export function callDescription(inc, state) {
+  const path = Array.isArray(state?.cameraPath?.[inc.incident_id]) ? state.cameraPath[inc.incident_id] : [];
+  const ids = [];
+  for (const id of [...path, inc.camera_id]) if (id && !ids.includes(id)) ids.push(id);
+  const nums = ids.map((id, i) => (i === 0 ? cameraLabel(id) : cameraLabel(id).replace(/^Camera\s+/, "")));
+  return nums.length ? `${classLabel(inc.class_token)} call · ${nums.join(", ")}` : `${classLabel(inc.class_token)} call`;
+}
+
+/** " · started 14:02:11" for a call, or "" when the start is unknown. */
+function startedText(inc, state) {
+  const ms = Date.parse(dispatchedTs(inc, state) || "");
+  return Number.isNaN(ms) ? "" : ` · started ${formatClock(ms)}`;
+}
+
+/** Fill a header description line: plain description + muted mono start. */
+function paintCallMeta(metaEl, inc, state) {
+  clear(metaEl);
+  if (!inc) {
+    metaEl.appendChild(document.createTextNode("No active call"));
+    return;
+  }
+  metaEl.appendChild(document.createTextNode(callDescription(inc, state)));
+  const started = startedText(inc, state);
+  if (started) metaEl.appendChild(el("span", { className: "lc-meta__start mono", text: started }));
+}
+
+/** Past-tense line for a tool event chip in the Live transcript. */
+const TOOL_CHIP_TEXT = {
+  lookup_location: "Looked up location",
+  get_person_description: "Checked person description",
+  get_elapsed_time: "Checked elapsed time",
+  get_suspect_status: "Checked suspect status",
+  repeat_last: "Repeated last update",
+};
+
+/**
+ * Never show a phone number on Live: mask digit runs with 10 or more digits
+ * (dates and times have fewer).
+ */
+export function maskPhones(text) {
+  return String(text ?? "").replace(/\+?\d[\d\s().-]{7,}\d/g, (m) =>
+    (m.match(/\d/g) || []).length >= 10 ? "[number hidden]" : m,
+  );
+}
+
+export function toolChipText(tool) {
+  return TOOL_CHIP_TEXT[String(tool || "")] || toolNameLabel(tool);
+}
+
+/**
+ * Live right-column call section: eyebrow + "<Class> call" with the mm:ss
+ * timer and a LIVE dot, "Camera N · place · started hh:mm:ss", the call
+ * provider pill, then one transcript with tool events as inline chips and
+ * the existing call action pinned at the bottom. Same data and actions as
+ * mountCallHost (the Call Console page keeps that one).
+ */
+export function mountLiveCall(host, store, actions) {
+  host.innerHTML = `
+    <section class="card lc" aria-label="Call">
+      <header class="lc-head">
+        <h2 class="lc-title" data-title>Emergency Call</h2>
+        <div class="lc-timer" data-timerbox hidden>
+          <span class="lc-timer__t mono" data-timer>00:00</span>
+          <span class="lc-timer__live mono" data-live><span class="lc-timer__dot" aria-hidden="true"></span>LIVE</span>
+        </div>
+      </header>
+      <p class="lc-meta" data-meta>No active call</p>
+      <p class="ochip ochip--state lc-sim" data-note>Connected to on-call responder</p>
+      <div class="lc-thread" data-thread role="log" aria-live="polite" aria-label="Call transcript"></div>
+      <div class="lc-actions is-empty" data-action></div>
+    </section>
+  `;
+  const titleEl = host.querySelector("[data-title]");
+  const timerBox = host.querySelector("[data-timerbox]");
+  const liveEl = host.querySelector("[data-live]");
+  const timerEl = host.querySelector("[data-timer]");
+  const metaEl = host.querySelector("[data-meta]");
+  const noteEl = host.querySelector("[data-note]");
+  const threadEl = host.querySelector("[data-thread]");
+  const actionEl = host.querySelector("[data-action]");
+
+  let threadSig = null;
+  let metaSig = null;
+  let actionKey = "";
+  let opVersion = 0;
+  let stick = true;
+
+  threadEl.addEventListener("scroll", () => {
+    stick = threadEl.scrollHeight - threadEl.scrollTop - threadEl.clientHeight < 48;
+  });
+
+  /** No call yet: the selected open incident, if it can still be dispatched. */
+  function callCandidate(state) {
+    const inc = state.selectedId ? state.incidents[state.selectedId] : null;
+    return inc && isOpenIncident(inc) && !isDispatchedOrLater(inc) ? inc : null;
+  }
+
+  function paintAction(cand) {
+    const key = cand && actions ? `${cand.incident_id}|${cand.severity}|${opVersion}` : "";
+    // Never hidden: the row also keeps room for the docked Assist button.
+    actionEl.classList.toggle("is-empty", !key);
+    if (key === actionKey) return;
+    actionKey = key;
+    clear(actionEl);
+    if (key) actionEl.appendChild(actionBar(cand, actions, { review: false, card: false }));
+  }
+
+  function paintTimes(state, nowMs = now()) {
+    const inc = findCallIncident(state);
+    timerBox.hidden = !inc;
+    if (inc) {
+      setText(timerEl, callTimerText(inc, state, nowMs));
+      liveEl.hidden = ENDED_CALL_STATES.has(inc.state);
+    }
+    const sig = inc ? `${inc.incident_id}|${callDescription(inc, state)}|${startedText(inc, state)}` : "";
+    if (sig !== metaSig) {
+      metaSig = sig;
+      paintCallMeta(metaEl, inc, state);
+    }
+  }
+
+  function bubble(u) {
+    const who = u.speaker === "dispatcher" ? "dispatcher" : "sentinel";
+    const row = el("div", { className: `lc-msg lc-msg--${who}` });
+    const head = el("div", { className: "lc-msg__who mono" });
+    head.appendChild(el("span", { text: who === "dispatcher" ? "Dispatcher" : "Sentinel" }));
+    const ms = u.ts ? Date.parse(u.ts) : NaN;
+    if (!Number.isNaN(ms)) head.appendChild(el("span", { text: formatClock(ms) }));
+    row.appendChild(head);
+    row.appendChild(el("div", { className: "lc-msg__bubble", text: maskPhones(redactPlaces(u.text)) }));
+    return row;
+  }
+
+  function toolChip(t) {
+    return el("div", { className: "lc-tool mono", text: `↳ ${toolChipText(t.tool)}` });
+  }
+
+  function renderThread(inc, thread, tools) {
+    renderConversation(threadEl, {
+      lines: thread,
+      tools,
+      compact: true,
+      live: Boolean(inc) && !ENDED_CALL_STATES.has(inc.state),
+      nowMs: now(),
+      empty: inc ? "Connecting the call." : "Calls appear here when help is dispatched.",
+    });
+  }
+
+  function render(state) {
+    const inc = findCallIncident(state);
+    setText(noteEl, callNoteText(state));
+    paintTimes(state);
+    const cand = inc ? null : callCandidate(state);
+    paintAction(cand);
+    setText(titleEl, "Emergency Call");
+    const all = inc
+      ? (state.call?.transcript || []).filter((t) => !state.call.incidentId || t.incident_id === inc.incident_id)
+      : [];
+    const tools = inc
+      ? (state.call?.tools || []).filter((t) => !state.call.incidentId || t.incident_id === inc.incident_id)
+      : [];
+    const thread = buildThread(all);
+    const last = thread[thread.length - 1];
+    const sig = `${inc?.incident_id || ""}|${thread.length}|${last ? last.text.length : 0}|${tools.length}`;
+    if (sig !== threadSig) {
+      threadSig = sig;
+      renderThread(inc, thread, tools);
+    }
+    if (stick) threadEl.scrollTop = threadEl.scrollHeight;
+  }
+
+  const onOp = () => {
+    opVersion += 1;
+    render(store.getState());
+  };
+  document.addEventListener(OP_STATUS_EVENT, onOp);
+  render(store.getState());
+  const unsub = store.subscribe(render);
+  const unsubTick = subscribeTick((nowMs) => paintTimes(store.getState(), nowMs));
+  const unsubVoice = subscribeModelStatus(() => render(store.getState()));
+
+  return () => {
+    unsub();
+    unsubTick();
+    unsubVoice();
+    document.removeEventListener(OP_STATUS_EVENT, onOp);
+  };
+}
+
 /** @deprecated overlay removed — keep export for autofollow import. */
 export function mountCall() {
   return () => {};
@@ -436,7 +627,7 @@ export function mountCallPanel(root, store, actions) {
     <div class="sidebar callpanel">
       <header class="sidebar__head">
         <span class="callpanel__label">Call</span>
-        <span class="call-sim-note">Simulated call · verified teammate</span>
+        <span class="call-sim-note">Connected to on-call responder</span>
         <button type="button" class="btn btn--ghost" data-close aria-label="Close call panel">Close</button>
       </header>
       <div class="sidebar__body">
@@ -534,16 +725,15 @@ export function mountCallPanel(root, store, actions) {
     }
     for (const u of thread) {
       const row = el("div", { className: `chat-msg chat-msg--${u.speaker}` });
-      row.appendChild(
-        el("div", {
-          className: "chat-msg__who",
-          text: u.speaker === "dispatcher" ? "Dispatcher" : "Sentinel",
-        }),
-      );
+      const who = el("div", { className: "chat-msg__who mono" });
+      who.appendChild(el("span", { text: u.speaker === "dispatcher" ? "Dispatcher" : "Sentinel" }));
+      const ms = u.ts ? Date.parse(u.ts) : NaN;
+      if (!Number.isNaN(ms)) who.appendChild(el("span", { text: formatClock(ms) }));
+      row.appendChild(who);
       row.appendChild(
         el("div", {
           className: "chat-msg__bubble",
-          text: redactPlaces(u.text),
+          text: maskPhones(redactPlaces(u.text)),
         }),
       );
       chatHost.appendChild(row);
@@ -623,7 +813,7 @@ export function mountCallPanel(root, store, actions) {
     }
 
     const ended = ENDED_CALL_STATES.has(inc.state);
-    setText(classEl, `${classLabel(inc.class_token)} call`);
+    setText(classEl, "Emergency Call");
     headCamEl.hidden = false;
     setText(headCamEl, cameraTitle(inc.camera_id));
 

@@ -14,14 +14,14 @@ import {
   audienceText,
   isDispatchedOrLater,
   isOperatorReported,
-} from "../actions.js?v=live2";
-import { WALL_CAMERA_IDS, cameraLabel, cameraTitle } from "../site.js?v=live2";
-import { classLabel, formatPct } from "../format.js?v=live2";
-import { clear, el, setText } from "../dom.js?v=live2";
-import { icon } from "../icons.js?v=live2";
-import { subscribeTick } from "../clock.js?v=live2";
-import { callElapsedMs, formatCallTimer } from "./call.js?v=live2";
-import { phoneCallsLive } from "../modelStatus.js?v=live2";
+} from "../actions.js?v=pro3";
+import { WALL_CAMERA_IDS, cameraLabel, cameraTitle } from "../site.js?v=pro3";
+import { classLabel, formatPct } from "../format.js?v=pro3";
+import { clear, el, setText } from "../dom.js?v=pro3";
+import { icon } from "../icons.js?v=pro3";
+import { subscribeTick } from "../clock.js?v=pro3";
+import { callElapsedMs, formatCallTimer } from "./call.js?v=pro3";
+import { phoneCallsLive } from "../modelStatus.js?v=pro3";
 
 export const OP_REPORT_EVENT = "sentinel:op-report";
 export const OP_CALL_EVENT = "sentinel:op-call";
@@ -67,7 +67,7 @@ export function confidenceLong(inc) {
 
 let storeRef = null;
 
-function dispatchedText(inc, state, nowMs) {
+export function dispatchedText(inc, state, nowMs) {
   if (!inc) return "";
   if (inc.state === "DISPATCH_PENDING") return "Dispatch pending";
   const ms = callElapsedMs(inc, state, nowMs);
@@ -499,9 +499,7 @@ export function mountOperator(root, store, actions) {
     body.appendChild(
       el("p", {
         className: "dismiss__lead",
-        text: phoneCallsLive()
-          ? "SignalWire phone call to a verified teammate. No emergency number is dialed."
-          : "Simulated call to a verified teammate. No emergency number is dialed.",
+        text: "Calls the on-call responder. No emergency number is dialed.",
       }),
     );
     if (inc.severity !== "SEVERE") {

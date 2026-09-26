@@ -4,7 +4,7 @@
  * when there is something to play), timeline card. All text via textContent.
  */
 
-import { cameraTitle } from "../site.js?v=live2";
+import { cameraTitle } from "../site.js?v=pro3";
 import {
   classLabel,
   cameraLabel,
@@ -15,12 +15,12 @@ import {
   ruleLabel,
   severityLabel,
   stateLabel,
-} from "../format.js?v=live2";
-import { el, setText } from "../dom.js?v=live2";
-import { now, subscribeTick } from "../clock.js?v=live2";
-import { isOperatorReported } from "../actions.js?v=live2";
-import * as cameraSources from "../cameraSources.js?v=live2";
-import { mountIncidentClip } from "./incidentClip.js?v=live2";
+} from "../format.js?v=pro3";
+import { el, setText } from "../dom.js?v=pro3";
+import { now, subscribeTick } from "../clock.js?v=pro3";
+import { isOperatorReported } from "../actions.js?v=pro3";
+import * as cameraSources from "../cameraSources.js?v=pro3";
+import { mountIncidentClip } from "./incidentClip.js?v=pro3";
 
 /** Timeline notes the UI wrote while the server had not confirmed an action. */
 const UNCONFIRMED_RE = /\s*·\s*(pending server confirmation|not confirmed by server)\s*$/i;
@@ -42,8 +42,9 @@ function reportUnconfirmed(inc) {
 }
 
 /**
- * Header card: optional back link, type + chips, meta line
- * "Camera 3 · 27 s ago · Reported by operator [· Pending server confirmation]".
+ * Header card: "← All incidents" (small ghost link), the class title with
+ * severity + state chips on the same baseline, the camera line, then the
+ * relative time on its own mono line.
  */
 export function detailHeaderCard(inc, { onBack = null } = {}) {
   const card = el("div", { className: "card detail-card inc-head" });
@@ -52,7 +53,7 @@ export function detailHeaderCard(inc, { onBack = null } = {}) {
     card.appendChild(
       el("button", {
         type: "button",
-        className: "inc-head__back",
+        className: "btn btn--ghost btn--sm inc-head__back",
         text: "← All incidents",
         attrs: { "data-focus-key": "back" },
         onClick: onBack,
@@ -65,63 +66,99 @@ export function detailHeaderCard(inc, { onBack = null } = {}) {
   const chips = el("div", { className: "inc-head__chips" });
   chips.appendChild(
     el("span", {
-      className: `card-chip card-chip--${inc.severity === "SEVERE" ? "severe" : "minor"}`,
+      className: `chip chip--${inc.severity === "SEVERE" ? "severe" : "minor"}`,
       text: severityLabel(inc.severity),
     }),
   );
-  chips.appendChild(el("span", { className: "card-chip", text: stateLabel(inc.state) }));
+  chips.appendChild(el("span", { className: "chip chip--state", text: stateLabel(inc.state) }));
   row.appendChild(chips);
   card.appendChild(row);
 
-  const meta = el("p", { className: "inc-head__meta" });
-  meta.appendChild(document.createTextNode(`${cameraTitle(inc.camera_id)} · `));
+  card.appendChild(el("p", { className: "inc-head__meta", text: cameraTitle(inc.camera_id) }));
+
+  const time = el("p", { className: "inc-head__time mono" });
   const iso = inc.created_at || inc.peak_ts || "";
   const ago = el("span", { dataset: { agoIso: iso } });
   setText(ago, formatRel(iso, now()));
-  meta.appendChild(ago);
+  time.appendChild(ago);
   if (isOperatorReported(inc)) {
-    meta.appendChild(document.createTextNode(" · Reported by operator"));
+    time.appendChild(document.createTextNode(" · Reported by operator"));
     if (reportUnconfirmed(inc)) {
-      meta.appendChild(document.createTextNode(" · "));
-      meta.appendChild(unconfirmedTag());
+      time.appendChild(document.createTextNode(" · "));
+      time.appendChild(unconfirmedTag());
     }
   }
-  card.appendChild(meta);
+  card.appendChild(time);
   return card;
 }
 
-/** One "Details" card: two-column definition list, empty rows hidden. */
+/** Internal tags such as "[zrt-cached]": display names for the tiny chip. */
+const TAG_RE = /\s*\[([a-z0-9_:.-]+)\]\s*/gi;
+function tagLabel(tag) {
+  const t = String(tag).toLowerCase();
+  const last = t.split(/[-_:.]/).filter(Boolean).pop() || t;
+  return last;
+}
+
+/** Observation text without "[tags]" (display only), plus the tags found. */
+export function splitTags(text) {
+  const tags = [];
+  const clean = String(text || "")
+    .replace(TAG_RE, (_m, tag) => {
+      tags.push(tagLabel(tag));
+      return " ";
+    })
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return { clean, tags };
+}
+
+/** One "Details" card: fixed 96 px label column, hairline rows. */
 export function detailsCard(inc) {
   const card = el("div", { className: "card detail-card" });
   card.appendChild(el("h3", { className: "inc-section-title", text: "Details" }));
-  const dl = el("dl", { className: "inc-dl" });
+  const dl = el("dl", { className: "kv inc-dl" });
   const operator = isOperatorReported(inc);
 
   const row = (label, value) => {
-    dl.appendChild(el("dt", { text: label }));
-    const dd = el("dd");
+    const wrap = el("div", { className: "kv__row" });
+    wrap.appendChild(el("dt", { className: "kv__k", text: label }));
+    const dd = el("dd", { className: "kv__v" });
     if (typeof value === "string") dd.textContent = value;
     else dd.appendChild(value);
-    dl.appendChild(dd);
+    wrap.appendChild(dd);
+    dl.appendChild(wrap);
   };
 
   const desc = String(inc.description || "").trim();
-  if (desc || operator) row("Observation", desc || "Reported by operator");
+  if (desc || operator) {
+    const { clean, tags } = splitTags(desc);
+    if (tags.length) {
+      const v = el("span", { className: "inc-dl__obs" });
+      v.appendChild(document.createTextNode(clean || "Reported by operator"));
+      for (const t of tags) v.appendChild(el("span", { className: "chip chip--tag mono", text: t }));
+      row("Observation", v);
+    } else {
+      row("Observation", clean || "Reported by operator");
+    }
+  }
 
   const person = String(inc.person_description || "").trim();
   if (person) row("Person", person);
 
   // Hidden when there is no score (operator reports, or not scored yet).
   if (inc.fused_prob != null) {
+    const pct = Math.max(0, Math.min(100, Math.round(pctNumber(inc.fused_prob) || 0)));
     const wrap = el("div", { className: "inc-dl__conf" });
     wrap.appendChild(el("span", { className: "mono", text: formatPct(inc.fused_prob) }));
-    const bar = el("progress", {
-      className: "detail__conf-progress inc-dl__bar",
-      attrs: { max: "100", "aria-label": "Confidence" },
+    const track = el("span", {
+      className: "conf-bar",
+      attrs: { role: "meter", "aria-label": "Confidence", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(pct) },
     });
-    bar.max = 100;
-    bar.value = Math.round(pctNumber(inc.fused_prob) || 0);
-    wrap.appendChild(bar);
+    const fill = el("span", { className: "conf-bar__fill" });
+    fill.style.width = `${pct}%`;
+    track.appendChild(fill);
+    wrap.appendChild(track);
     row("Confidence", wrap);
   }
 
@@ -132,7 +169,7 @@ export function detailsCard(inc) {
     .filter(Boolean);
   if (rules.length) {
     const chips = el("div", { className: "inc-dl__chips" });
-    for (const r of rules) chips.appendChild(el("span", { className: "card-chip", text: r }));
+    for (const r of rules) chips.appendChild(el("span", { className: "chip", text: r }));
     row("Rules", chips);
   }
 
@@ -170,7 +207,26 @@ export function clipCard(inc) {
   return card;
 }
 
-/** Timeline: one row per entry — time | state chip | note (hanging indent). */
+/** Sentence case for display: "CALL STARTED" → "Call started"; mixed case kept. */
+function sentenceCase(text) {
+  const t = String(text || "").trim();
+  if (!t) return t;
+  const letters = t.replace(/[^A-Za-z]/g, "");
+  const base = letters && letters === letters.toUpperCase() ? t.toLowerCase() : t;
+  return base.charAt(0).toUpperCase() + base.slice(1);
+}
+
+/** True when a note only repeats its state ("ALERTED" beside Alerted). */
+function repeatsState(note, state) {
+  const n = String(note || "").trim().toLowerCase().replace(/[_\s]+/g, " ");
+  if (!n) return true;
+  return n === String(state || "").toLowerCase().replace(/_/g, " ") || n === stateLabel(state).toLowerCase();
+}
+
+/**
+ * Timeline: time (72 px, with a connector line and dot) | state chip
+ * (96 px, same width for all) | note (hidden when it only repeats the state).
+ */
 export function timelineCard(inc) {
   const card = el("div", { className: "card detail-card" });
   card.appendChild(el("h3", { className: "inc-section-title", text: "Timeline" }));
@@ -178,13 +234,14 @@ export function timelineCard(inc) {
   for (const ev of Array.isArray(inc.timeline) ? inc.timeline : []) {
     const li = el("li", { className: "inc-tl__row" });
     li.appendChild(el("span", { className: "inc-tl__time mono", text: formatTimeLocal(ev.ts) }));
-    li.appendChild(el("span", { className: "card-chip inc-tl__state", text: stateLabel(ev.state) }));
+    li.appendChild(el("span", { className: "chip chip--state inc-tl__state", text: stateLabel(ev.state) }));
     const note = el("span", { className: "inc-tl__note" });
     const raw = String(ev.note || "");
     const unconfirmed = UNCONFIRMED_RE.test(raw);
-    note.appendChild(document.createTextNode(raw.replace(UNCONFIRMED_RE, "")));
+    const text = raw.replace(UNCONFIRMED_RE, "");
+    if (!repeatsState(text, ev.state)) note.appendChild(document.createTextNode(sentenceCase(text)));
     if (unconfirmed) {
-      note.appendChild(document.createTextNode(" "));
+      if (note.childNodes.length) note.appendChild(document.createTextNode(" "));
       note.appendChild(unconfirmedTag());
     }
     li.appendChild(note);
