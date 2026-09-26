@@ -15,12 +15,15 @@ import json
 import os
 import struct
 from pathlib import Path
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import unquote
 
 from contracts import CameraOnline, event_to_dict, utcnow
 from contracts import incident_to_dict
 from services.brain.call_brief import load_camera_map
+
+from services import activity
 
 from .history import History
 from .hub import WALL_CAMS, DemoHub, dumps
@@ -129,6 +132,7 @@ class ApiServer:
         self.host = host
         self.port = port
         self.clients: set[WsClient] = set()
+        self._viewers = 0  # open /mjpeg streams from the vision loop
         self.hub = DemoHub(
             broadcast=self.broadcast,
             camera_ready=lambda camera_id: (
@@ -332,6 +336,24 @@ class ApiServer:
         except RuntimeError as exc:
             await self._http_json(writer, 409, {"error": str(exc)})
 
+    def _usage_history(self) -> list[dict[str, Any]]:
+        """Stored usage as 5-minute usage.tick windows (last 8 days), then the
+        all-time total, so every browser draws the same history."""
+        history = self.hub.history
+        if history is None:
+            return [self.hub.usage_total()]
+        since = (datetime.now(timezone.utc) - timedelta(days=8)).isoformat()
+        try:
+            buckets = history.usage_buckets(since)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[api] usage history failed: {exc}", flush=True)
+            buckets = []
+        ticks = [
+            {"type": "usage.tick", "window_s": 300, "by_model": by, "ts": ts}
+            for ts, by in buckets
+        ]
+        return [*ticks, self.hub.usage_total()]
+
     async def _ws(
         self,
         reader: asyncio.StreamReader,
@@ -368,6 +390,8 @@ class ApiServer:
                     dumps(event_to_dict(CameraOnline(camera_id=camera_id, online=True, ts=now)))
                 )
             for envelope in self.hub.replay_events():
+                await client.send_text(dumps(envelope))
+            for envelope in self._usage_history():
                 await client.send_text(dumps(envelope))
             if first:
                 await self.hub.seed()
@@ -546,6 +570,8 @@ class ApiServer:
         """Stream the exact frames YOLO saw: boxes and video share one clock,
         and Reset rewinds the picture for every viewer."""
         assert self.vision is not None
+        self._viewers += 1
+        activity.pulse("stream", self._viewers)
         writer.write(
             b"HTTP/1.1 200 OK\r\n"
             b"Content-Type: multipart/x-mixed-replace; boundary=frame\r\n"
@@ -567,9 +593,11 @@ class ApiServer:
                     + b"\r\n"
                 )
                 await writer.drain()
-        except (ConnectionResetError, BrokenPipeError):
-            pass
+        except (ConnectionResetError, BrokenPipeError, TimeoutError):
+            pass  # viewer went away or its network stalled
         finally:
+            self._viewers -= 1
+            activity.pulse("stream", self._viewers)
             try:
                 writer.close()
             except Exception:

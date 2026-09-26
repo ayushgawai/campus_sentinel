@@ -18,6 +18,8 @@ from pathlib import Path
 
 from .decode import Frame
 from .tracker import Track
+from services import activity
+from services.usage import add as usage_add
 
 WEIGHTS_DIR = Path(__file__).resolve().parent / "weights"
 DEFAULT_CLIP = WEIGHTS_DIR / "clip-vit-b-16.pt"
@@ -105,7 +107,8 @@ class VadClip:
         prev = self._last.get(key)
         if prev is not None and (t - prev[0]) < (1.0 / self.hz):
             return prev[1]
-        out = self._infer(frame, track)
+        with activity.busy("clip"):
+            out = self._infer(frame, track)
         self._last[key] = (t, out)
         return out
 
@@ -197,6 +200,7 @@ class VadClip:
         tens = self._preprocess(pil).unsqueeze(0).to(self._device)
         with torch.no_grad():
             vis = self._model.encode_image(tens)
+            usage_add("clip-vit-b-16", frames=1)
             vis = vis / vis.norm(dim=-1, keepdim=True)
             # Raw cosine, not CLIP's logit_scale=100 softmax. That turn
             # a 0.02 edge into a 0.9 "theft" on walking crops.

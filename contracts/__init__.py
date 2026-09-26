@@ -14,6 +14,7 @@ from .events import (
     OverlayBoxes,
     SocketEvent,
     ToolCallLive,
+    UsageTick,
     event_to_dict,
 )
 from .incident import (
@@ -43,6 +44,7 @@ __all__ = [
     "OverlayBoxes",
     "Severity",
     "SocketEvent",
+    "UsageTick",
     "TimelineEvent",
     "ToolCallLive",
     "call_brief_to_dict",

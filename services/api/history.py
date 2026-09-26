@@ -33,6 +33,11 @@ CREATE TABLE IF NOT EXISTS calls (
   run_id INTEGER NOT NULL,
   incident_id TEXT, call_sid TEXT, status TEXT NOT NULL, detail TEXT, ts TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS usage (
+  ts TEXT NOT NULL, model TEXT NOT NULL,
+  requests REAL, tokens_in REAL, tokens_out REAL, audio_s REAL, chars REAL, frames REAL, live REAL
+);
+CREATE INDEX IF NOT EXISTS usage_ts ON usage (ts);
 CREATE TABLE IF NOT EXISTS transcripts (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   run_id INTEGER NOT NULL,
@@ -101,8 +106,43 @@ class History:
             ),
         )
 
+    # Usage is never tied to a run: Reset does not touch it.
+    USAGE_FIELDS = ("requests", "tokens_in", "tokens_out", "audio_s", "chars", "frames", "live")
+
+    def save_usage(self, ts: str, by_model: dict[str, dict[str, float]]) -> None:
+        self.db.executemany(
+            "INSERT INTO usage VALUES (?,?,?,?,?,?,?,?,?)",
+            [
+                (ts, model, *(float(row.get(f) or 0) for f in self.USAGE_FIELDS))
+                for model, row in by_model.items()
+            ],
+        )
+
+    def usage_totals(self) -> dict[str, float]:
+        """All-time sums per field, across every model and run."""
+        cols = ", ".join(f"COALESCE(SUM({f}), 0)" for f in self.USAGE_FIELDS)
+        row = self.db.execute(f"SELECT {cols} FROM usage").fetchone()
+        return dict(zip(self.USAGE_FIELDS, row))
+
+    def usage_buckets(self, since_iso: str, bucket_s: int = 300) -> list[tuple[str, dict]]:
+        """Per-bucket, per-model sums since `since_iso`, oldest first."""
+        sums = ", ".join(f"SUM({f})" for f in self.USAGE_FIELDS)
+        rows = self.db.execute(
+            f"SELECT CAST(strftime(\"%s\", substr(ts, 1, 19)) / {bucket_s} AS INTEGER) * {bucket_s} AS b,"
+            f" model, {sums} FROM usage WHERE ts >= ? GROUP BY b, model ORDER BY b",
+            (since_iso,),
+        ).fetchall()
+        out: dict[int, dict] = {}
+        for b, model, *vals in rows:
+            out.setdefault(int(b), {})[model] = {
+                f: v for f, v in zip(self.USAGE_FIELDS, vals) if v
+            }
+        return [
+            (datetime.fromtimestamp(b, timezone.utc).isoformat(), by) for b, by in out.items()
+        ]
+
     def rows(self, table: str, run_id: int | None = None) -> list[tuple]:
-        assert table in {"runs", "incidents", "calls", "transcripts"}
+        assert table in {"runs", "incidents", "calls", "transcripts", "usage"}
         if run_id is None or table == "runs":
             return self.db.execute(f"SELECT * FROM {table}").fetchall()
         return self.db.execute(

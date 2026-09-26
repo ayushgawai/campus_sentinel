@@ -20,6 +20,9 @@ from io import BytesIO
 from typing import Any
 
 from contracts import IncidentClass
+from services import activity
+
+from services.usage import add as usage_add
 
 
 DEFAULT_BASE_URL = os.environ.get("ZRT_BASE_URL", "http://127.0.0.1:8000")
@@ -269,8 +272,19 @@ class ZRTClient:
             method="POST",
             headers={"Content-Type": "application/json"},
         )
-        with urllib.request.urlopen(req, timeout=self.timeout_s) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+        with activity.busy("qwen"), urllib.request.urlopen(req, timeout=self.timeout_s) as resp:
+            raw = json.loads(resp.read().decode("utf-8"))
+        # usage.tick: every real call (forced/scripted paths never post here).
+        use = raw.get("usage") if isinstance(raw, dict) else None
+        use = use if isinstance(use, dict) else {}
+        usage_add(
+            self.model,
+            requests=1,
+            live=1,
+            tokens_in=int(use.get("prompt_tokens") or 0),
+            tokens_out=int(use.get("completion_tokens") or 0),
+        )
+        return raw
 
 
 def _jpeg_data_url(image: Any) -> str:

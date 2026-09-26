@@ -6,7 +6,12 @@ SyntheticSource is the forced/demo decoder so the rest of the router can run.
 
 from __future__ import annotations
 
+import os
 import time
+
+# One decoder thread: FFmpeg frame threading aborted the whole API
+# ("Assertion fctx->async_lock failed", pthread_frame.c) on the 15 fps clips.
+os.environ.setdefault("OPENCV_FFMPEG_CAPTURE_OPTIONS", "threads;1")
 from dataclasses import dataclass
 from typing import Any
 from datetime import datetime, timedelta, timezone

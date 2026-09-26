@@ -29,6 +29,7 @@ class EventType(str, Enum):
     DEMO_CONTROL = "demo.control"
     CAMERA_ONLINE = "camera.online"
     CALL_BRIEF = "call.brief"  # additive 2026-09-25, approved by api owner
+    USAGE_TICK = "usage.tick"  # additive 2026-09-26, per-window AI usage counts
 
 
 @dataclass(frozen=True)
@@ -153,6 +154,19 @@ class CallBriefEvent:
         _opt_utc("ts", self.ts)
 
 
+@dataclass
+class UsageTick:
+    """Per-window AI usage (not running totals), keyed by model id."""
+
+    type: Literal["usage.tick"] = EventType.USAGE_TICK.value
+    window_s: int = 10
+    by_model: dict[str, dict[str, float]] = field(default_factory=dict)
+    ts: datetime | None = None
+
+    def __post_init__(self) -> None:
+        _opt_utc("ts", self.ts)
+
+
 SocketEvent = Union[
     IncidentUpsert,
     IncidentStateChange,
@@ -163,6 +177,7 @@ SocketEvent = Union[
     DemoControl,
     CameraOnline,
     CallBriefEvent,
+    UsageTick,
 ]
 
 

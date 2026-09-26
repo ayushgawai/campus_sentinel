@@ -49,6 +49,11 @@ from services.brain.guardrails import Guardrails
 
 from .elevenlabs import first_chunk_timeout_s, get_phone_tts
 from .parakeet import get_asr
+from services import activity
+from services.usage import add as usage_add
+
+# usage.tick keys: the model id of the provider that actually spoke.
+_TTS_IDS = {"elevenlabs": "eleven_flash_v2_5", "kokoro": "kokoro-82m"}
 
 SendFn = Callable[[str], Awaitable[None]]
 RecvFn = Callable[[], Awaitable[str | None]]
@@ -287,6 +292,7 @@ class MediaStreamBridge:
             filler_sent = True
         try:
             text = str(await asyncio.to_thread(self._asr.transcribe, pcm16) or "").strip()
+            usage_add("faster-whisper-base.en", requests=1, audio_s=len(pcm16) / 2 / 16000)
         except (OSError, TimeoutError):
             text = ""
         if not text and filler_sent and self.publish is not None:
@@ -343,15 +349,22 @@ class MediaStreamBridge:
                 break
         try:
             if self._remote is not None and hasattr(self._tts, "stream_remote"):
-                if await self._speak_streamed(text):
+                with activity.busy("elevenlabs"):
+                    streamed = await self._speak_streamed(text)
+                if streamed:
+                    usage_add(_TTS_IDS["elevenlabs"], requests=1, chars=len(text))
                     return
-                audio = await asyncio.to_thread(self._tts.kokoro_mulaw, text)
+                with activity.busy("kokoro"):
+                    audio = await asyncio.to_thread(self._tts.kokoro_mulaw, text)
             elif hasattr(self._tts, "synthesize_mulaw"):
                 audio = await asyncio.to_thread(self._tts.synthesize_mulaw, text)
             else:
                 pcm16 = await asyncio.to_thread(self._tts.synthesize, text)
                 audio = _pcm16_to_mulaw(pcm16, 16000)
-            if not audio:
+            if audio:
+                used = "kokoro" if self._remote is not None else getattr(self._tts, "last_provider", "") or "kokoro"
+                usage_add(_TTS_IDS.get(used, _TTS_IDS["kokoro"]), requests=1, chars=len(text))
+            else:
                 audio = tone_mulaw(min(0.6, max(0.25, len(text) / 40)))
             await self._send_media(audio)
         finally:

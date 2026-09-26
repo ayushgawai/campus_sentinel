@@ -607,7 +607,34 @@ async def main() -> None:
     assert vb._should_fire("cam-01", "t-cooldown") is True
     assert vb._should_fire("cam-01", "t-cooldown") is False
     assert vb._should_fire("cam-01", "t-other") is False
+    await _usage_check()
     print("api self-check OK")
+
+
+async def _usage_check() -> None:
+    """Usage is stored, survives Reset and restarts, and replays as buckets."""
+    from services import usage
+    from services.api.history import History
+    from services.api.hub import DemoHub
+
+    usage.swap()
+    sent: list[dict] = []
+
+    async def bc(env: dict) -> None:
+        sent.append(env)
+
+    h = History(":memory:")
+    hub = DemoHub(broadcast=bc, history=h)
+    usage.add("hf:Qwen", requests=1, tokens_in=100, tokens_out=20)
+    await hub._usage_tick()
+    await hub.reset()
+    usage.add("hf:Qwen", requests=1, tokens_in=50, tokens_out=5)
+    await hub._usage_tick()
+    assert hub.usage_total()["tokens"] == 175, hub.usage_total()
+    assert DemoHub(broadcast=bc, history=h).usage_total()["tokens"] == 175
+    buckets = h.usage_buckets("2000-01-01")
+    assert len(buckets) == 1 and buckets[0][1]["hf:Qwen"]["tokens_in"] == 150
+    assert [e["type"] for e in sent].count("usage.total") == 2
 
 
 if __name__ == "__main__":

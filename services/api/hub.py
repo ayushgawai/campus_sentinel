@@ -16,6 +16,7 @@ from typing import Any, Callable, Awaitable
 from contracts import (
     BBox,
     CallBriefEvent,
+    UsageTick,
     CallTranscriptDelta,
     CameraOnline,
     DemoControl,
@@ -35,6 +36,7 @@ from contracts import (
 from services.brain.adjudicate import EscalateRequest, adjudicate
 from services.brain.call_brief import assemble_call_brief, scene_facts
 from services.brain.guardrails import DEFAULT_GUARDRAILS
+from services import activity, usage
 from services.brain.zrt_client import ZRTClient
 from services.api import telemetry
 from services.api.history import History
@@ -57,6 +59,8 @@ SCENARIOS: dict[str, tuple[IncidentClass, str]] = {
     "medical": (IncidentClass.MEDICAL, "cam-01"),
     "benign": (IncidentClass.BENIGN, "cam-01"),
 }
+
+USAGE_WINDOW_S = 10
 
 BroadcastFn = Callable[[dict[str, Any]], Awaitable[None]]
 _REPLAY_TYPES = {
@@ -112,6 +116,7 @@ class DemoHub:
     # Durable incidents/calls/transcripts; None keeps the hub in-memory only.
     history: History | None = field(default=None, repr=False)
     _call_sid: str | None = field(default=None, repr=False)
+    _usage_sum: dict[str, float] | None = field(default=None, repr=False)
     camera_ready: Callable[[str], bool] | None = field(default=None, repr=False)
 
     async def publish(self, ev: Any) -> None:
@@ -358,9 +363,11 @@ class DemoHub:
 
         try:
             ok = await asyncio.to_thread(hangup_call, sid)
-        except Exception as exc:  # noqa: BLE001 — a finished call may 4xx
-            ok = False
-            print(f"[hub] hangup {sid} failed: {exc}", flush=True)
+        except Exception as exc:  # noqa: BLE001
+            # 422 = the call already ended (caller hung up); nothing to do.
+            ok = "422" in str(exc)
+            if not ok:
+                print(f"[hub] hangup {sid} failed: {exc}", flush=True)
         self._log_call("", "hung_up_on_reset" if ok else "hangup_failed", call_sid=sid)
 
     async def reset(self) -> None:
@@ -587,11 +594,71 @@ class DemoHub:
             ]
             await self.publish(OverlayBoxes(camera_id=cid, ts=now, boxes=boxes))
 
+    async def _activity_tick(self) -> None:
+        """`activity.tick`: every pipeline stage, in order, and what it is doing now."""
+        live_call = bool(self._call_sid and self._voice is not None and self._voice.busy())
+        activity.pulse("signalwire", int(live_call))
+        await self.broadcast(
+            {"type": "activity.tick", "ts": _utcnow().isoformat(), "stages": activity.snapshot()}
+        )
+
+    async def _usage_tick(self) -> None:
+        # Per-window counts since the last tick; nothing sent when idle.
+        by_model = usage.swap()
+        if by_model:
+            ts = _utcnow()
+            await self.publish(UsageTick(window_s=USAGE_WINDOW_S, by_model=by_model, ts=ts))
+            self._add_usage_total(ts.isoformat(), by_model)
+        await self.broadcast(self.usage_total())
+
+    def _add_usage_total(self, ts: str, by_model: dict[str, dict[str, Any]]) -> None:
+        """Persist the window and grow the all-time total (Reset never clears it)."""
+        totals = self._usage_totals()
+        for row in by_model.values():
+            for key, value in row.items():
+                if key in totals:
+                    totals[key] += float(value or 0)
+        if self.history is None:
+            return
+        try:
+            self.history.save_usage(ts, by_model)
+        except Exception as exc:  # noqa: BLE001 — usage must never break the demo
+            print(f"[hub] usage write failed: {exc}", flush=True)
+
+    def _usage_totals(self) -> dict[str, float]:
+        if self._usage_sum is None:
+            self._usage_sum = (
+                self.history.usage_totals()
+                if self.history is not None
+                else dict.fromkeys(History.USAGE_FIELDS, 0.0)
+            )
+        return self._usage_sum
+
+    def usage_total(self) -> dict[str, Any]:
+        """`usage.total`: all-time counts since the history database began."""
+        t = self._usage_totals()
+        return {
+            "type": "usage.total",
+            "tokens": int(t["tokens_in"] + t["tokens_out"]),
+            "tokens_in": int(t["tokens_in"]),
+            "tokens_out": int(t["tokens_out"]),
+            "requests": int(t["requests"]),
+            "frames": int(t["frames"]),
+            "audio_s": round(t["audio_s"], 1),
+            "chars": int(t["chars"]),
+            "ts": _utcnow().isoformat(),
+        }
+
     async def _health_loop(self) -> None:
         try:
+            tick = 0
             while True:
                 if not self.paused:
                     await self._health()
+                await self._activity_tick()
+                tick += 1
+                if tick % USAGE_WINDOW_S == 0:
+                    await self._usage_tick()
                 await asyncio.sleep(1.0)
         except asyncio.CancelledError:
             raise

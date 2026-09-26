@@ -16,6 +16,8 @@ from .ring import RingBuffer
 from .rules import evaluate
 from .state import TrackMemory, sample_from_track
 from .tracker import ByteTracker, Track
+from services import activity
+from services.usage import add as usage_add
 from .vadclip import WEAPON, VadClip, VadScore
 
 # Once CLIP sees a weapon on a person, keep that box red this long (s):
@@ -129,7 +131,12 @@ class VisionRouter:
         for fr in frames:
             self.ring.push(fr)
         fresh = [fr for fr in frames if self._changed(fr)]
+        activity.pulse("decode", len(frames))
         dets = self.detector.detect_batch(fresh) if fresh else []
+        if fresh:
+            activity.pulse("yolo", len(fresh))
+        if fresh and not getattr(self.detector, "forced", False):
+            usage_add("yolo26s-pose", frames=len(fresh))
         det_by = {fr.camera_id: d for fr, d in zip(fresh, dets)}
         self.last_escalations = []
         overlays: list[OverlayBoxes] = []
@@ -211,6 +218,10 @@ class VisionRouter:
             ov = tracks_to_overlay(fr.camera_id, fr.ts, tracks, fused_by, labels=label_by)
             self._last_overlay[fr.camera_id] = ov
             overlays.append(ov)
+        people = sum(len(o.boxes) for o in overlays)
+        activity.pulse("bytetrack", people)
+        if self.weapon_timeline is not None:
+            activity.pulse("weapons", sum(b.label == WEAPON for o in overlays for b in o.boxes))
         return overlays
 
     def bundle(
