@@ -12,14 +12,14 @@ import {
   fromCameraMap,
   getCamera,
   mapMode,
-} from "../site.js?v=pro3";
-import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=pro3";
-import { clear, setText } from "../dom.js?v=pro3";
-import { themeColors } from "../theme.js?v=pro3";
-import { classLabel, formatElapsedPlus } from "../format.js?v=pro3";
-import { subscribeTick } from "../clock.js?v=pro3";
-import { cameraStatus } from "../cameraStatus.js?v=pro3";
-import { followedIncident, pathHops, secondsSinceStart } from "../tracking.js?v=pro3";
+} from "../site.js?v=pro4";
+import { FOCUS_CAMERA_EVENT } from "./cameras.js?v=pro4";
+import { clear, setText } from "../dom.js?v=pro4";
+import { themeColors } from "../theme.js?v=pro4";
+import { classLabel, formatElapsedPlus } from "../format.js?v=pro4";
+import { subscribeTick } from "../clock.js?v=pro4";
+import { cameraStatus } from "../cameraStatus.js?v=pro4";
+import { followedIncident, pathHops, secondsSinceStart } from "../tracking.js?v=pro4";
 
 const LEVEL_RANK = { none: 0, minor: 1, severe: 2 };
 

@@ -4,14 +4,14 @@
  * list every incident.
  */
 
-import { cameraTitle } from "../site.js?v=pro3";
+import { cameraTitle } from "../site.js?v=pro4";
 import {
   classLabel,
   cameraLabel,
   severityLabel,
   stateLabel,
-} from "../format.js?v=pro3";
-import { clear, el } from "../dom.js?v=pro3";
+} from "../format.js?v=pro4";
+import { clear, el } from "../dom.js?v=pro4";
 
 /**
  * @param {HTMLElement} root

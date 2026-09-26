@@ -4,16 +4,16 @@
  * read-only for a saved call (Call history). Only store data is shown.
  */
 
-import { el, setText } from "../dom.js?v=pro3";
-import { now, subscribeTick } from "../clock.js?v=pro3";
-import { cameraLabel, classLabel, formatClock, severityLabel, stateLabel } from "../format.js?v=pro3";
-import { cameraTitle } from "../site.js?v=pro3";
-import { icon } from "../icons.js?v=pro3";
-import { pathHops } from "../tracking.js?v=pro3";
-import { subscribeModelStatus } from "../modelStatus.js?v=pro3";
-import { OP_STATUS_EVENT } from "./operator.js?v=pro3";
-import { incidentActions } from "./incidentActions.js?v=pro3";
-import { renderConversation, stickToBottom, toolLine } from "./conversation.js?v=pro3";
+import { el, setText } from "../dom.js?v=pro4";
+import { now, subscribeTick } from "../clock.js?v=pro4";
+import { cameraLabel, classLabel, formatClock, severityLabel, stateLabel } from "../format.js?v=pro4";
+import { cameraTitle } from "../site.js?v=pro4";
+import { icon } from "../icons.js?v=pro4";
+import { pathHops } from "../tracking.js?v=pro4";
+import { subscribeModelStatus } from "../modelStatus.js?v=pro4";
+import { OP_STATUS_EVENT } from "./operator.js?v=pro4";
+import { incidentActions } from "./incidentActions.js?v=pro4";
+import { renderConversation, stickToBottom, toolLine } from "./conversation.js?v=pro4";
 import {
   ENDED_CALL_STATES,
   buildThread,
@@ -23,7 +23,7 @@ import {
   dispatchedTs,
   findCallIncident,
   formatCallTimer,
-} from "./call.js?v=pro3";
+} from "./call.js?v=pro4";
 
 /** Build the console skeleton inside `host`; returns element refs. */
 function skeleton(host) {

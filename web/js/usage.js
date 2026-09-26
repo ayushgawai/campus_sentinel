@@ -16,9 +16,9 @@
  * period has bars. Mock data is never written to IndexedDB.
  */
 
-import { CLOUD_EQUIV } from "./config.js?v=pro3";
-import { now } from "./clock.js?v=pro3";
-import { subscribeModelStatus, ttsProvider } from "./modelStatus.js?v=pro3";
+import { CLOUD_EQUIV } from "./config.js?v=pro4";
+import { now } from "./clock.js?v=pro4";
+import { subscribeModelStatus, ttsProvider } from "./modelStatus.js?v=pro4";
 
 export const BUCKET_MS = 5 * 60 * 1000;
 const KEEP_MS = 8 * 24 * 60 * 60 * 1000;

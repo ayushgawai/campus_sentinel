@@ -4,7 +4,7 @@
  * when there is something to play), timeline card. All text via textContent.
  */
 
-import { cameraTitle } from "../site.js?v=pro3";
+import { cameraTitle } from "../site.js?v=pro4";
 import {
   classLabel,
   cameraLabel,
@@ -15,12 +15,12 @@ import {
   ruleLabel,
   severityLabel,
   stateLabel,
-} from "../format.js?v=pro3";
-import { el, setText } from "../dom.js?v=pro3";
-import { now, subscribeTick } from "../clock.js?v=pro3";
-import { isOperatorReported } from "../actions.js?v=pro3";
-import * as cameraSources from "../cameraSources.js?v=pro3";
-import { mountIncidentClip } from "./incidentClip.js?v=pro3";
+} from "../format.js?v=pro4";
+import { el, setText } from "../dom.js?v=pro4";
+import { now, subscribeTick } from "../clock.js?v=pro4";
+import { isOperatorReported } from "../actions.js?v=pro4";
+import * as cameraSources from "../cameraSources.js?v=pro4";
+import { mountIncidentClip } from "./incidentClip.js?v=pro4";
 
 /** Timeline notes the UI wrote while the server had not confirmed an action. */
 const UNCONFIRMED_RE = /\s*·\s*(pending server confirmation|not confirmed by server)\s*$/i;

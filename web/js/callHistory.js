@@ -6,8 +6,8 @@
  * (camera places redacted, phone-like digit runs hidden). Last 50 calls.
  */
 
-import { redactPlaces, cameraLabel, cameraPlace } from "./site.js?v=pro3";
-import { now } from "./clock.js?v=pro3";
+import { redactPlaces, cameraLabel, cameraPlace } from "./site.js?v=pro4";
+import { now } from "./clock.js?v=pro4";
 import {
   buildThread,
   callDescription,
@@ -17,7 +17,7 @@ import {
   ENDED_CALL_STATES,
   findCallIncident,
   maskPhones,
-} from "./ui/call.js?v=pro3";
+} from "./ui/call.js?v=pro4";
 
 const DB_NAME = "sentinel-call-history";
 const DB_VERSION = 1;

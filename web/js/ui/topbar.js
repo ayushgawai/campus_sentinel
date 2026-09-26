@@ -1,21 +1,21 @@
 /** Header: mark + SENTINEL | nav | health | clock · reconnecting only */
 
-import { ROUTES, navigate, getRoute, subscribeRoute } from "../router.js?v=pro3";
+import { ROUTES, navigate, getRoute, subscribeRoute } from "../router.js?v=pro4";
 import {
   awaiting,
   formatHeaderClock,
   formatInt,
   formatMs,
   formatPct,
-} from "../format.js?v=pro3";
-import { el as h, setText } from "../dom.js?v=pro3";
-import { MODELS_SUBTITLE, MODELS_TITLE } from "../models.js?v=pro3";
-import { STATUS_DOT, STATUS_LABEL, subscribeModelStatus } from "../modelStatus.js?v=pro3";
-import { createModelsTable } from "./modelsTable.js?v=pro3";
-import { LOGO_MARK } from "../logo.js?v=pro3";
-import { now, subscribeTick } from "../clock.js?v=pro3";
-import { WALL_CAMERA_IDS } from "../site.js?v=pro3";
-import { cameraStatus, onlineCount } from "../cameraStatus.js?v=pro3";
+} from "../format.js?v=pro4";
+import { el as h, setText } from "../dom.js?v=pro4";
+import { MODELS_SUBTITLE, MODELS_TITLE } from "../models.js?v=pro4";
+import { STATUS_DOT, STATUS_LABEL, subscribeModelStatus } from "../modelStatus.js?v=pro4";
+import { createModelsTable } from "./modelsTable.js?v=pro4";
+import { LOGO_MARK } from "../logo.js?v=pro4";
+import { now, subscribeTick } from "../clock.js?v=pro4";
+import { WALL_CAMERA_IDS } from "../site.js?v=pro4";
+import { cameraStatus, onlineCount } from "../cameraStatus.js?v=pro4";
 
 export function mountTopbar(el, store, actions, layoutCtl) {
   el.innerHTML = `

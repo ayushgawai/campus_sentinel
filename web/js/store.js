@@ -1,7 +1,7 @@
 /** Single app state + event reducers. Mirrors contracts/events.py + incident.py. */
 
-import { compareIncidents, isOpenIncident, preferredIncidentId } from "./format.js?v=pro3";
-import { isConfiguredCamera, redactPlaces } from "./site.js?v=pro3";
+import { compareIncidents, isOpenIncident, preferredIncidentId } from "./format.js?v=pro4";
+import { isConfiguredCamera, redactPlaces } from "./site.js?v=pro4";
 
 const warnedCameras = new Set();
 
@@ -386,6 +386,16 @@ export function createStore() {
         const q = state.usageTicks || { seq: 0, items: [] };
         const seq = q.seq + 1;
         state.usageTicks = { seq, items: [...q.items, { seq, event }].slice(-500) };
+        break;
+      }
+      case "usage.total": {
+        // All-time AI usage from the api history database; Reset never clears it.
+        state.usageTotal = event;
+        break;
+      }
+      case "activity.tick": {
+        // Every pipeline stage in order and what it is doing right now.
+        state.activity = { ts: event.ts ?? null, stages: event.stages || [] };
         break;
       }
       case "camera.online": {

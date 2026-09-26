@@ -12,8 +12,8 @@
  * When usage.tick is flowing it is preferred for every model it covers.
  */
 
-import { now } from "./clock.js?v=pro3";
-import { ttsProvider, voiceReadiness } from "./modelStatus.js?v=pro3";
+import { now } from "./clock.js?v=pro4";
+import { ttsProvider, voiceReadiness } from "./modelStatus.js?v=pro4";
 
 const ACTIVE_MS = 10000;
 const HEALTH_STALE_MS = 15000;

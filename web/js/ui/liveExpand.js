@@ -8,8 +8,8 @@
  * comes from the store and updates on each handoff without reopening.
  */
 
-import { WALL_CAMERA_IDS, cameraLabel, cameraPlace } from "../site.js?v=pro3";
-import { onlineCount } from "../cameraStatus.js?v=pro3";
+import { WALL_CAMERA_IDS, cameraLabel, cameraPlace } from "../site.js?v=pro4";
+import { onlineCount } from "../cameraStatus.js?v=pro4";
 import {
   classLabel,
   compareHeroIncidents,
@@ -17,10 +17,10 @@ import {
   isOpenIncident,
   severityLabel,
   stateLabel,
-} from "../format.js?v=pro3";
-import { clear, el, setText, svgEl } from "../dom.js?v=pro3";
-import { now, subscribeTick } from "../clock.js?v=pro3";
-import { followedIncident, pathHops } from "../tracking.js?v=pro3";
+} from "../format.js?v=pro4";
+import { clear, el, setText, svgEl } from "../dom.js?v=pro4";
+import { now, subscribeTick } from "../clock.js?v=pro4";
+import { followedIncident, pathHops } from "../tracking.js?v=pro4";
 
 /** Ring slot per camera (same constant as the Part 2 ring). */
 const SLOT = {

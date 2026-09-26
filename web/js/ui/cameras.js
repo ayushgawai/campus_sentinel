@@ -1,7 +1,7 @@
 /** Camera wall — layout modes, VMS OSD, corner brackets. */
 
-import { WALL_CAMERA_IDS, cameraLabel, SITE, cameraTitle } from "../site.js?v=pro3";
-import { now, subscribeTick } from "../clock.js?v=pro3";
+import { WALL_CAMERA_IDS, cameraLabel, SITE, cameraTitle } from "../site.js?v=pro4";
+import { now, subscribeTick } from "../clock.js?v=pro4";
 import {
   classLabel,
   formatPct,
@@ -12,22 +12,22 @@ import {
   severityLabel,
   compareHeroIncidents,
   isOpenIncident,
-} from "../format.js?v=pro3";
-import { followedIncident, seenTimes } from "../tracking.js?v=pro3";
+} from "../format.js?v=pro4";
+import { followedIncident, seenTimes } from "../tracking.js?v=pro4";
 import {
   activeIncidentForCamera,
   cameraStatus,
   noteFrame,
   noteStream,
   onlineCount,
-} from "../cameraStatus.js?v=pro3";
-import { clear, el, setText } from "../dom.js?v=pro3";
-import { createCameraLayout } from "./cameraLayout.js?v=pro3";
-import { themeColors } from "../theme.js?v=pro3";
-import * as cameraSources from "../cameraSources.js?v=pro3";
-import { cameraStream } from "../transport.js?v=pro3";
-import { icon } from "../icons.js?v=pro3";
-import { OP_REPORT_EVENT, confidenceShort } from "./operator.js?v=pro3";
+} from "../cameraStatus.js?v=pro4";
+import { clear, el, setText } from "../dom.js?v=pro4";
+import { createCameraLayout } from "./cameraLayout.js?v=pro4";
+import { themeColors } from "../theme.js?v=pro4";
+import * as cameraSources from "../cameraSources.js?v=pro4";
+import { cameraStream } from "../transport.js?v=pro4";
+import { icon } from "../icons.js?v=pro4";
+import { OP_REPORT_EVENT, confidenceShort } from "./operator.js?v=pro4";
 
 export const FOCUS_CAMERA_EVENT = "sentinel:focus-camera";
 export const OPEN_SIDEBAR_EVENT = "sentinel:open-sidebar";

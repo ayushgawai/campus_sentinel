@@ -1,0 +1,83 @@
+/* Live pipeline strip (ui/activity.js): camera-to-phone stages in order. */
+.live-activity {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  padding: 6px var(--live-pad, 8px);
+  border-top: 1px solid var(--line);
+  background: var(--panel-bg);
+  font-size: var(--fs-12);
+  min-width: 0;
+}
+.act-tokens {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  padding-right: var(--gap);
+  border-right: 1px solid var(--line);
+  line-height: 1.2;
+}
+.act-tokens__label {
+  color: var(--card-text-3);
+  font-size: var(--fs-11);
+}
+.act-tokens__value {
+  font-family: var(--mono);
+  font-size: var(--fs-16);
+  color: var(--card-text);
+}
+.act-flow {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  min-width: 0;
+}
+.act-stage {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 5px;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control, 6px);
+  color: var(--card-text-3);
+  opacity: 0.6;
+}
+.act-stage__dot {
+  grid-row: 1 / span 2;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+.act-stage__name {
+  color: inherit;
+  white-space: nowrap;
+}
+.act-stage__count {
+  grid-column: 2;
+  font-family: var(--mono);
+  font-size: var(--fs-11);
+  white-space: nowrap;
+}
+.act-stage.is-active {
+  opacity: 1;
+  color: var(--card-text);
+  border-color: var(--ok-border);
+  background: var(--ok-bg);
+}
+.act-stage.is-active .act-stage__dot {
+  background: var(--ok);
+  animation: act-pulse 1s ease-in-out infinite;
+}
+@keyframes act-pulse {
+  50% { opacity: 0.35; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .act-stage.is-active .act-stage__dot { animation: none; }
+}

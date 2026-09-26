@@ -5,7 +5,7 @@
  * changes) and cameraPathAt (the time of each of those upserts).
  */
 
-import { compareHeroIncidents, isOpenIncident } from "./format.js?v=pro3";
+import { compareHeroIncidents, isOpenIncident } from "./format.js?v=pro4";
 
 /** Hops shown on the card, map and expand view (the rest is "+N earlier"). */
 export const RECENT_HOPS = 5;

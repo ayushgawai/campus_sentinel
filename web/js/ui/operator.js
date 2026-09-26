@@ -14,14 +14,14 @@ import {
   audienceText,
   isDispatchedOrLater,
   isOperatorReported,
-} from "../actions.js?v=pro3";
-import { WALL_CAMERA_IDS, cameraLabel, cameraTitle } from "../site.js?v=pro3";
-import { classLabel, formatPct } from "../format.js?v=pro3";
-import { clear, el, setText } from "../dom.js?v=pro3";
-import { icon } from "../icons.js?v=pro3";
-import { subscribeTick } from "../clock.js?v=pro3";
-import { callElapsedMs, formatCallTimer } from "./call.js?v=pro3";
-import { phoneCallsLive } from "../modelStatus.js?v=pro3";
+} from "../actions.js?v=pro4";
+import { WALL_CAMERA_IDS, cameraLabel, cameraTitle } from "../site.js?v=pro4";
+import { classLabel, formatPct } from "../format.js?v=pro4";
+import { clear, el, setText } from "../dom.js?v=pro4";
+import { icon } from "../icons.js?v=pro4";
+import { subscribeTick } from "../clock.js?v=pro4";
+import { callElapsedMs, formatCallTimer } from "./call.js?v=pro4";
+import { phoneCallsLive } from "../modelStatus.js?v=pro4";
 
 export const OP_REPORT_EVENT = "sentinel:op-report";
 export const OP_CALL_EVENT = "sentinel:op-call";

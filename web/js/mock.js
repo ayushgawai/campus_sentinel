@@ -1,5 +1,5 @@
-import { cameraLabel, WALL_CAMERA_IDS } from "./site.js?v=pro3";
-import { mockIso, setMockEpoch } from "./clock.js?v=pro3";
+import { cameraLabel, WALL_CAMERA_IDS } from "./site.js?v=pro4";
+import { mockIso, setMockEpoch } from "./clock.js?v=pro4";
 
 /**
  * Contract-shaped event helpers + deterministic mock timeline player.

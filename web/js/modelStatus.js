@@ -5,7 +5,7 @@
  * voice probe just leaves those rows Pending; nothing is shown as an error.
  */
 
-import { MODELS } from "./models.js?v=pro3";
+import { MODELS } from "./models.js?v=pro4";
 
 const VOICE_POLL_MS = 5000;
 const VOICE_TIMEOUT_MS = 5000;

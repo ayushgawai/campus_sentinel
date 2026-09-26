@@ -1,7 +1,7 @@
 /** Incidents page — list + full detail. Status via type weight, not badges. */
 
-import { cameraTitle } from "../site.js?v=pro3";
-import { now, subscribeTick } from "../clock.js?v=pro3";
+import { cameraTitle } from "../site.js?v=pro4";
+import { now, subscribeTick } from "../clock.js?v=pro4";
 import {
   classLabel,
   cameraLabel,
@@ -14,18 +14,18 @@ import {
   formatTimeLocal,
   pctNumber,
   isOpenIncident,
-} from "../format.js?v=pro3";
-import { clear, el, setText } from "../dom.js?v=pro3";
-import { OP_STATUS_EVENT, confidenceShort } from "./operator.js?v=pro3";
-import { incidentRow } from "./incidentRow.js?v=pro3";
-import { incidentActions } from "./incidentActions.js?v=pro3";
+} from "../format.js?v=pro4";
+import { clear, el, setText } from "../dom.js?v=pro4";
+import { OP_STATUS_EVENT, confidenceShort } from "./operator.js?v=pro4";
+import { incidentRow } from "./incidentRow.js?v=pro4";
+import { incidentActions } from "./incidentActions.js?v=pro4";
 import {
   detailHeaderCard,
   detailsCard,
   clipCard,
   timelineCard,
   emptyState,
-} from "./incidentDetail.js?v=pro3";
+} from "./incidentDetail.js?v=pro4";
 
 /** Same entries by identity (store replaces an incident object when it changes). */
 function sameSig(a, b) {

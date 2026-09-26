@@ -6,12 +6,12 @@
  * Closed rows are grey, not faded: chips and buttons keep full contrast.
  */
 
-import { cameraTitle } from "../site.js?v=pro3";
-import { classLabel, formatRel, isOpenIncident, severityLabel, stateLabel } from "../format.js?v=pro3";
-import { el } from "../dom.js?v=pro3";
-import { now } from "../clock.js?v=pro3";
-import { icon } from "../icons.js?v=pro3";
-import { incidentActions } from "./incidentActions.js?v=pro3";
+import { cameraTitle } from "../site.js?v=pro4";
+import { classLabel, formatRel, isOpenIncident, severityLabel, stateLabel } from "../format.js?v=pro4";
+import { el } from "../dom.js?v=pro4";
+import { now } from "../clock.js?v=pro4";
+import { icon } from "../icons.js?v=pro4";
+import { incidentActions } from "./incidentActions.js?v=pro4";
 
 function rowButton(text, cls, iconName, onClick, disabled = false) {
   const b = el("button", {

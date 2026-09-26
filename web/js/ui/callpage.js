@@ -5,17 +5,17 @@
  * transcript on the right in the same bubble style as the live call.
  */
 
-import { formatCallTimer } from "./call.js?v=pro3";
-import { mountCallConsole, renderSavedCall } from "./callConsole.js?v=pro3";
+import { formatCallTimer } from "./call.js?v=pro4";
+import { mountCallConsole, renderSavedCall } from "./callConsole.js?v=pro4";
 import {
   KEEP_CALLS,
   clearCalls,
   historyUnavailable,
   listCalls,
   subscribeHistory,
-} from "../callHistory.js?v=pro3";
-import { classLabel, formatClock } from "../format.js?v=pro3";
-import { clear, el } from "../dom.js?v=pro3";
+} from "../callHistory.js?v=pro4";
+import { classLabel, formatClock } from "../format.js?v=pro4";
+import { clear, el } from "../dom.js?v=pro4";
 
 function dateTime(iso) {
   const ms = Date.parse(iso || "");

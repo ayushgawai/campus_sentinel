@@ -8,10 +8,10 @@
  * Same handlers and events as the operator action bar.
  */
 
-import { el } from "../dom.js?v=pro3";
-import { now } from "../clock.js?v=pro3";
-import { isDispatchedOrLater } from "../actions.js?v=pro3";
-import { OP_BROADCAST_EVENT, OP_CALL_EVENT, dispatchedText, opButton } from "./operator.js?v=pro3";
+import { el } from "../dom.js?v=pro4";
+import { now } from "../clock.js?v=pro4";
+import { isDispatchedOrLater } from "../actions.js?v=pro4";
+import { OP_BROADCAST_EVENT, OP_CALL_EVENT, dispatchedText, opButton } from "./operator.js?v=pro4";
 
 function actionBtn({ text, iconName, cls, onClick, disabled, key }) {
   const b = opButton({
