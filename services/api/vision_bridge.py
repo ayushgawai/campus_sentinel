@@ -52,6 +52,12 @@ def _max_upserts_per_min() -> int:
     return int(os.environ.get("CS_VISION_MAX_UPSERTS_MIN", "1"))
 
 
+def _jpeg_quality() -> int:
+    # Wall JPEGs: q80 was ~1.5 MB/s per viewer for 3 cameras at 10 fps and
+    # stalled remote viewers (send timeouts over Tailscale).
+    return int(os.environ.get("CS_WALL_JPEG_QUALITY", "65"))
+
+
 def vision_enabled() -> bool:
     return os.environ.get("CS_VISION_SEVILLE", "").strip().lower() in {
         "1",
@@ -318,7 +324,7 @@ class VisionBridge:
             import cv2
 
             for cid, bgr in latest.items():
-                ok, buf = cv2.imencode(".jpg", bgr, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                ok, buf = cv2.imencode(".jpg", bgr, [cv2.IMWRITE_JPEG_QUALITY, _jpeg_quality()])
                 if ok:
                     self.jpeg[normalize_camera_id(cid)] = buf.tobytes()
         packed: list[tuple[str, Any, list[Any]]] = []
