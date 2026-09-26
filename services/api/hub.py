@@ -490,7 +490,7 @@ class DemoHub:
             await self.publish(IncidentUpsert(incident=rec))
         from services.voice.signalwire_bridge import send_sms, sos_call
 
-        text = f"SOS - Campus Sentinel: {message[:300]}"
+        text = f"SOS - Sentinel AI: {message[:300]}"
         try:
             sms = await asyncio.to_thread(send_sms, text)
         except Exception as exc:  # noqa: BLE001 — the broadcast itself still counts

@@ -143,14 +143,14 @@ async def _main() -> None:
     await live.start_live_call(rec, assemble_call_brief(rec))
     opener = getattr(live_events[-2], "text", "")
     assert opener == (
-        "Hi, this is Campus Sentinel AI at San Jose State. "
+        "Hi, this is Sentinel AI at San Jose State. "
         "I'm reporting armed people inside MacQuarrie Hall, One Washington Square."
     )
     # Fixed questions answer instantly from the scene script at the clip second.
     live.clock = lambda: 20.0
     ask = lambda q: live.answer_dispatcher(rec.incident_id, q)  # noqa: E731
     assert "armed people" in (await ask("911, what is your emergency?")).lower()
-    assert "Campus Sentinel" in await ask("Where are you calling from?")
+    assert "Sentinel AI" in await ask("Where are you calling from?")
     assert "One Washington Square" in await ask("What is the exact address?")
     assert await ask("How many people do you see?") == "Eight people in the ground-floor lobby; six of them armed."
     assert "handgun" in await ask("What weapons do they have?")

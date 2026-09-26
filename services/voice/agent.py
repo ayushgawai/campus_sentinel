@@ -41,7 +41,7 @@ class CallScriptStep:
 
 # Officer Q&A for WEAPON demo. Sentinel only speaks map/camera facts + tools.
 WEAPON_SCRIPT: list[CallScriptStep] = [
-    CallScriptStep(0.3, "sentinel", "Campus Sentinel on a simulated line with campus security dispatch."),
+    CallScriptStep(0.3, "sentinel", "Sentinel AI on a simulated line with campus security dispatch."),
     CallScriptStep(0.8, "dispatcher", "Go ahead — what are you reporting?"),
     CallScriptStep(
         0.6,
@@ -205,7 +205,7 @@ class VoiceAgent:
             ", CA ", ", California "
         )
         text = (
-            f"Hi, this is Campus Sentinel AI at "
+            f"Hi, this is Sentinel AI at "
             f"{site.get('spoken_name', site.get('name', 'San Jose State'))}. "
             f"I'm reporting armed people inside {self._building}, "
             "One Washington Square."
@@ -229,7 +229,7 @@ class VoiceAgent:
 
     async def answer_dispatcher(self, incident_id: str, question: str) -> str:
         if not self._live or incident_id != self._incident_id:
-            return "There is no active Campus Sentinel call for that incident."
+            return "There is no active Sentinel AI call for that incident."
         facts = scene_facts(self._camera)
         facts.update(
             camera_id=self._camera,

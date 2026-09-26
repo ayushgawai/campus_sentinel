@@ -174,7 +174,7 @@ def answer(question: str, t: float) -> str | None:
     people, w = int(s.get("people") or 0), s.get("weapons") or {}
     armed = sum(w.values())
     if kind == "identity":
-        return (f"This is Campus Sentinel, the automated camera security system at {SITE}. "
+        return (f"This is Sentinel AI, the automated camera security system at {SITE}. "
                 f"I'm calling from the building's camera network, {ADDRESS}.")
     if kind == "address":
         return f"{SITE}, {ADDRESS}. The armed people are in {location(s)}."

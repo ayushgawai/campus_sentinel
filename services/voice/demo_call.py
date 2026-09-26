@@ -13,7 +13,7 @@ DEMO_CALL: list[tuple[float, str, str]] = [
     (6, "dispatcher", "911, what's the address of your emergency?"),
     (9, "sentinel", "MacQuarrie Hall, San Jose State University, One Washington Square in San Jose. There are armed people in the ground-floor lobby."),
     (16, "dispatcher", "Okay. Who am I speaking with? Where are you calling from?"),
-    (19, "sentinel", "This is Campus Sentinel, the university's automated camera security system. I'm calling from the MacQuarrie Hall camera network."),
+    (19, "sentinel", "This is Sentinel AI, the university's automated camera security system. I'm calling from the MacQuarrie Hall camera network."),
     (26, "dispatcher", "How many people do you see?"),
     (28, "sentinel", "Eight people in the lobby. Five of them are armed."),
     (34, "dispatcher", "What weapons do they have?"),

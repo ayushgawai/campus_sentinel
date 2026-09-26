@@ -242,7 +242,7 @@ class ApiServer:
 
             from services.voice.signalwire_bridge import cxml_say
 
-            text = (parse_qs(urlparse(path).query).get("text") or ["Campus Sentinel alert."])[0]
+            text = (parse_qs(urlparse(path).query).get("text") or ["Sentinel AI alert."])[0]
             await self._http_raw(
                 writer, 200, cxml_say(text[:500]).encode(), extra={"Content-Type": "application/xml"}
             )
@@ -257,7 +257,7 @@ class ApiServer:
             if cfg is None:
                 xml = (
                     '<?xml version="1.0" encoding="UTF-8"?>'
-                    "<Response><Say>Campus Sentinel demo call is not configured.</Say>"
+                    "<Response><Say>Sentinel AI demo call is not configured.</Say>"
                     "<Hangup/></Response>"
                 )
             else:
