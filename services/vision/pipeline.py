@@ -16,7 +16,16 @@ from .ring import RingBuffer
 from .rules import evaluate
 from .state import TrackMemory, sample_from_track
 from .tracker import ByteTracker, Track
-from .vadclip import VadClip
+from .vadclip import WEAPON, VadClip, VadScore
+
+# Once CLIP sees a weapon on a person, keep that box red this long (s):
+# CLIP scores one crop per second and flickers between hits.
+ARMED_HOLD_S = 4.0
+# A frame repeats the last one when fewer than this share of sampled pixels
+# moved by more than PIXEL_DIFF (0-255). The Seville clips are 5 fps files
+# holding ~2 fps of real motion; codec noise on repeats stays far below this.
+PIXEL_DIFF = 20
+SAME_FRAME_SHARE = 0.001
 
 
 @dataclass
@@ -61,6 +70,7 @@ class VisionRouter:
         forced_rule: str | None = None,
         forced_vadclip: str | None = None,
         source=None,
+        weapon_timeline=None,
     ) -> None:
         self.source = source if source is not None else SyntheticSource(
             camera_ids, fps=fps
@@ -75,6 +85,9 @@ class VisionRouter:
         self.vadclip = VadClip(forced=forced, forced_label=forced_vadclip)
         self.fps = float(src_fps)
         self.forced_rule = forced_rule
+        # Who holds a weapon: precomputed per frame when given (see
+        # weapon_timeline.py), else CLIP's live per-person label.
+        self.weapon_timeline = weapon_timeline
         self.reset_tracking()
 
     def reset_tracking(self) -> None:
@@ -90,6 +103,24 @@ class VisionRouter:
         self._last_rules: dict[tuple[str, str], list[str]] = {}
         self._peak: dict[str, Escalation] = {}
         self.last_escalations: list[Escalation] = []
+        self._last_overlay: dict[str, OverlayBoxes] = {}
+        self._prev_small: dict[str, object] = {}
+        self._armed_until: dict[tuple[str, str], float] = {}
+
+    def _changed(self, fr) -> bool:
+        """False when this frame repeats the camera's previous one."""
+        img = getattr(fr, "image", None)
+        if img is None:
+            return True
+        import numpy as np
+
+        small = np.asarray(img[::10, ::10], dtype=np.int16)
+        prev = self._prev_small.get(fr.camera_id)
+        self._prev_small[fr.camera_id] = small
+        if prev is None or getattr(prev, "shape", None) != small.shape:
+            return True
+        moved = np.abs(small - prev) > PIXEL_DIFF
+        return float(moved.mean()) >= SAME_FRAME_SHARE
 
     def step(self) -> list[OverlayBoxes]:
         frames = self.source.next_frames()
@@ -97,12 +128,30 @@ class VisionRouter:
             return []
         for fr in frames:
             self.ring.push(fr)
-        dets = self.detector.detect_batch(frames)
+        fresh = [fr for fr in frames if self._changed(fr)]
+        dets = self.detector.detect_batch(fresh) if fresh else []
+        det_by = {fr.camera_id: d for fr, d in zip(fresh, dets)}
         self.last_escalations = []
         overlays: list[OverlayBoxes] = []
-        for fr, cam_dets in zip(frames, dets):
+        for fr in frames:
+            if fr.camera_id not in det_by:
+                # Repeated frame: same people, same boxes; no YOLO, no tracker tick.
+                last = self._last_overlay.get(fr.camera_id)
+                overlays.append(
+                    OverlayBoxes(
+                        camera_id=fr.camera_id,
+                        ts=fr.ts,
+                        boxes=list(last.boxes) if last is not None else [],
+                    )
+                )
+                continue
+            cam_dets = det_by[fr.camera_id]
             tracks = self._trackers[fr.camera_id].update(cam_dets)
             self._last_tracks[fr.camera_id] = tracks
+            armed_now: set[str] = set()
+            if self.weapon_timeline is not None:
+                clip_t = (int(getattr(self.source, "_i", 0)) - 1) / max(self.fps, 1.0)
+                armed_now = set(self.weapon_timeline.armed(fr.camera_id, clip_t, tracks))
             fused_by: dict[str, float] = {}
             label_by: dict[str, str] = {}
             for tr in tracks:
@@ -110,15 +159,29 @@ class VisionRouter:
                 mem = self._mem.setdefault(key, TrackMemory())
                 mem.push(sample_from_track(fr.ts, tr))
                 rules = evaluate(mem, fps=self.fps, forced=self.forced_rule)
-                vs = self.vadclip.score(fr, tr)
+                now_s = fr.ts.timestamp()
+                if self.weapon_timeline is not None:
+                    # The timeline decides who is armed; per-person CLIP would
+                    # only add 20-40 ms per person per step (video stalls).
+                    vs = VadScore(0.0, "")
+                    seen_armed = tr.track_id in armed_now
+                else:
+                    vs = self.vadclip.score(fr, tr)
+                    seen_armed = vs.label == WEAPON
+                if seen_armed:
+                    self._armed_until[key] = now_s + ARMED_HOLD_S
+                if self._armed_until.get(key, 0.0) > now_s:
+                    # An armed person escalates to Qwen through the weapon rule.
+                    rules = [*rules, WEAPON]
                 shown = list(rules)
-                if vs.label:
+                if vs.label and vs.label not in shown:
                     shown.append(vs.label)
                 self._last_rules[key] = shown
                 fused = fuse(tr.score, rules, vadclip=vs.score)
                 fused_by[tr.track_id] = fused
-                # Surface VadCLIP / rule hit on the box so the lab can show WEAPON.
-                if vs.label:
+                if self._armed_until.get(key, 0.0) > now_s:
+                    label_by[tr.track_id] = WEAPON
+                elif vs.label and vs.label != WEAPON:
                     label_by[tr.track_id] = f"{vs.label}"
                 elif rules:
                     label_by[tr.track_id] = str(rules[0])
@@ -145,11 +208,9 @@ class VisionRouter:
                             vadclip=vs.score,
                         )
                     )
-            overlays.append(
-                tracks_to_overlay(
-                    fr.camera_id, fr.ts, tracks, fused_by, labels=label_by
-                )
-            )
+            ov = tracks_to_overlay(fr.camera_id, fr.ts, tracks, fused_by, labels=label_by)
+            self._last_overlay[fr.camera_id] = ov
+            overlays.append(ov)
         return overlays
 
     def bundle(

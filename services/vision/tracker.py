@@ -42,14 +42,19 @@ class Track:
 class ByteTracker:
     """Minimal ByteTrack: high-score match, then low-score match, then birth.
 
-    Kalman is omitted on purpose — IoU association is enough for the demo
-    slice and keeps the forced path dependency-free.
+    Kalman is omitted on purpose; a constant-velocity step stands in for it.
+    The Seville clips move at ~2 real fps, so people jump far between frames:
+    matching uses the predicted box, then falls back to centre distance.
+    A new track is shown only after `min_hits` matches (no one-frame ghosts).
     """
 
     high_thresh: float = 0.5
     low_thresh: float = 0.1
     match_iou: float = 0.3
+    # Centre distance (in box heights) still accepted when IoU fails.
+    match_dist: float = 0.6
     max_age: int = 15
+    min_hits: int = 2
     _next: int = 1
     _tracks: list[Track] = field(default_factory=list)
 
@@ -69,14 +74,23 @@ class ByteTracker:
         ) -> tuple[list[tuple[Track, Detection]], list[Track], list[Detection]]:
             pairs: list[tuple[float, int, int]] = []
             for i, tr in enumerate(tracks):
+                pred = (tr.x + tr.vx, tr.y + tr.vy, tr.w, tr.h)
                 for j, det in enumerate(detections):
-                    pairs.append((_iou((tr.x, tr.y, tr.w, tr.h), _xywh(det)), i, j))
+                    iou = _iou(pred, _xywh(det))
+                    if iou >= self.match_iou:
+                        pairs.append((1.0 + iou, i, j))
+                        continue
+                    dx = (pred[0] + pred[2] / 2) - (det.x + det.w / 2)
+                    dy = (pred[1] + pred[3] / 2) - (det.y + det.h / 2)
+                    dist = (dx * dx + dy * dy) ** 0.5 / max(tr.h, det.h, 1.0)
+                    if dist <= self.match_dist:
+                        pairs.append((1.0 - dist, i, j))
             pairs.sort(reverse=True)
             used_t: set[int] = set()
             used_d: set[int] = set()
             matched: list[tuple[Track, Detection]] = []
-            for iou, i, j in pairs:
-                if iou < self.match_iou or i in used_t or j in used_d:
+            for _, i, j in pairs:
+                if i in used_t or j in used_d:
                     continue
                 used_t.add(i)
                 used_d.add(j)
@@ -113,7 +127,11 @@ class ByteTracker:
         self._tracks = [
             t for t in self._tracks if t.time_since_update <= self.max_age
         ]
-        return [t for t in self._tracks if t.time_since_update == 0]
+        return [
+            t
+            for t in self._tracks
+            if t.time_since_update == 0 and t.hits >= self.min_hits
+        ]
 
     def _apply(self, tr: Track, det: Detection) -> None:
         cx, cy = tr.x + tr.w / 2, tr.y + tr.h / 2

@@ -39,6 +39,9 @@ _PROMPTS: dict[str, tuple[str, ...]] = {
         "a person with a firearm in a hallway",
         "an armed intruder with a rifle",
         "someone carrying a visible weapon",
+        "a person holding a handgun",
+        "a person holding a knife",
+        "a person with a knife in their hand",
     ),
     FIGHT: (
         "a photo of people fighting",

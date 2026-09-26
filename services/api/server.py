@@ -22,6 +22,7 @@ from contracts import CameraOnline, event_to_dict, utcnow
 from contracts import incident_to_dict
 from services.brain.call_brief import load_camera_map
 
+from .history import History
 from .hub import WALL_CAMS, DemoHub, dumps
 from .vision_bridge import VisionBridge, vision_enabled
 
@@ -133,6 +134,7 @@ class ApiServer:
             camera_ready=lambda camera_id: (
                 CLIP_BY_CAM[camera_id][0] / CLIP_BY_CAM[camera_id][1]
             ).is_file(),
+            history=History(),
         )
         self.vision = VisionBridge(self.hub) if vision_enabled() else None
         # incident_id -> live SignalWire stream listeners (one per real phone
@@ -462,9 +464,9 @@ class ApiServer:
         if path is None or not path.is_file():
             await self._http_raw(writer, 404, b"no clip for camera\n")
             return
-        # First pane in a burst rewinds YOLO to t=0 with this ffmpeg -re.
-        if self.vision is not None:
-            self.vision.align_to_wall()
+        if self.vision is not None and camera_id in self.vision.cameras():
+            await self._mjpeg_vision(writer, camera_id)
+            return
         # Multipart MJPEG via ffmpeg. Falls back to 503 if ffmpeg missing.
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -540,6 +542,39 @@ class ApiServer:
             except Exception:
                 pass
 
+    async def _mjpeg_vision(self, writer: asyncio.StreamWriter, camera_id: str) -> None:
+        """Stream the exact frames YOLO saw: boxes and video share one clock,
+        and Reset rewinds the picture for every viewer."""
+        assert self.vision is not None
+        writer.write(
+            b"HTTP/1.1 200 OK\r\n"
+            b"Content-Type: multipart/x-mixed-replace; boundary=frame\r\n"
+            b"Access-Control-Allow-Origin: *\r\n"
+            b"Cache-Control: no-cache\r\n"
+            b"Connection: close\r\n"
+            b"\r\n"
+        )
+        try:
+            while True:
+                frame = await self.vision.next_jpeg(camera_id)
+                if not frame:
+                    continue
+                writer.write(
+                    b"--frame\r\nContent-Type: image/jpeg\r\nContent-Length: "
+                    + str(len(frame)).encode()
+                    + b"\r\n\r\n"
+                    + frame
+                    + b"\r\n"
+                )
+                await writer.drain()
+        except (ConnectionResetError, BrokenPipeError):
+            pass
+        finally:
+            try:
+                writer.close()
+            except Exception:
+                pass
+
     async def _media(
         self, writer: asyncio.StreamWriter, camera_id: str, range_header: str | None
     ) -> None:
@@ -577,16 +612,19 @@ class ApiServer:
             f"{key}: {value}" for key, value in headers.items()
         ]
         writer.write(("\r\n".join(lines) + "\r\n\r\n").encode())
-        with path.open("rb") as clip:
-            clip.seek(start)
-            remaining = length
-            while remaining:
-                chunk = clip.read(min(64 * 1024, remaining))
-                if not chunk:
-                    break
-                writer.write(chunk)
-                await writer.drain()
-                remaining -= len(chunk)
+        try:
+            with path.open("rb") as clip:
+                clip.seek(start)
+                remaining = length
+                while remaining:
+                    chunk = clip.read(min(64 * 1024, remaining))
+                    if not chunk:
+                        break
+                    writer.write(chunk)
+                    await writer.drain()
+                    remaining -= len(chunk)
+        except (ConnectionResetError, BrokenPipeError):
+            pass  # browsers abort range requests while seeking; not an error
         writer.close()
 
     async def _http_json(

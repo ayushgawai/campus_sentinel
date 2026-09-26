@@ -9,6 +9,9 @@ import json
 import os
 import struct
 import sys
+
+# Self-check never writes to the real history database.
+os.environ["CS_DB_PATH"] = ":memory:"
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -138,16 +141,16 @@ async def main() -> None:
         100,
     )
     assert [ev.camera_id for ev in shown] == ["cam-01", "cam-02", "cam-03"]
-    assert [len(ev.boxes) for ev in shown] == [1, 0, 0]
-    assert shown[0].boxes[0].track_id == "t-1"
-    assert shown[0].boxes[0].score == 0.9
+    # Every tracked person is shown with their own track id (voice counts them).
+    assert [len(ev.boxes) for ev in shown] == [2, 0, 0]
+    assert [b.track_id for b in shown[0].boxes] == ["t-8", "t-9"]
+    assert shown[0].boxes[1].score == 0.9
     router = _Router()
     router.last_escalations = [
         SimpleNamespace(camera_id="CAM-01", track_id="T-1", ts=None)
     ]
     _, work = bridge._step(router)
     assert work[0][0] == "classify"
-    bridge.align_to_wall()
     assert bridge._qwen_started, "camera-wall reconnect must not re-run Qwen"
     router.last_escalations = [
         SimpleNamespace(camera_id="CAM-02", track_id="T-9", ts=None)

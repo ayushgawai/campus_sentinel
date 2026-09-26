@@ -87,6 +87,29 @@ def place_call(incident_id: str, *, config: SignalWireConfig | None = None) -> d
     return {"ok": bool(sid), "call_sid": sid, "incident_id": incident_id}
 
 
+def hangup_call(call_sid: str, *, config: SignalWireConfig | None = None) -> bool:
+    """End a live call (Reset must leave no call running on the phone)."""
+    cfg = config if config is not None else load_config()
+    if cfg is None or not call_sid:
+        return False
+    endpoint = (
+        f"https://{cfg.space}/api/laml/2010-04-01/Accounts/"
+        f"{quote(cfg.project_id, safe='')}/Calls/{quote(call_sid, safe='')}.json"
+    )
+    auth = base64.b64encode(f"{cfg.project_id}:{cfg.api_token}".encode()).decode()
+    req = Request(
+        endpoint,
+        data=urlencode({"Status": "completed"}).encode(),
+        headers={
+            "Authorization": f"Basic {auth}",
+            "Content-Type": "application/x-www-form-urlencoded",
+        },
+        method="POST",
+    )
+    with urlopen(req, timeout=10) as response:
+        return 200 <= response.status < 300
+
+
 def service_ready(url: str) -> bool:
     """Probe the service's /health endpoint; configuration alone is not readiness."""
     if not url:

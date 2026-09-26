@@ -3,7 +3,7 @@
   CS_VISION_SEVILLE=1 services/vision/.venv/bin/python -m services.api
 
 Safety knobs (keep the ZGX stable — do NOT also run run_seville.py):
-  CS_VISION_STEP_S=0.5     sleep between router steps (default 0.5)
+  CS_VISION_STEP_S         seconds per router step (default: one clip frame)
   CS_VISION_COOLDOWN_S=600 min seconds between upserts per track
   CS_VISION_MAX_UPSERTS_MIN=1  hard cap live Qwen calls per rolling minute
 """
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
 ROOT = Path(__file__).resolve().parents[2]
 FEED = ROOT / "data" / "feeds" / "seville_option1_3cam_locked.json"
-DEMO_PERSON = "Adult in dark clothing carrying a long firearm."
+DEMO_PERSON = "Adult man in a red shirt and jeans carrying a handgun."
 # overlay.boxes label for a person with a detected weapon; the web draws it red.
 ARMED_LABEL = "weapon"
 
@@ -43,8 +43,9 @@ def _cooldown_s() -> float:
     return float(os.environ.get("CS_VISION_COOLDOWN_S", "600"))
 
 
-def _step_s() -> float:
-    return float(os.environ.get("CS_VISION_STEP_S", "0.5"))
+def _step_s(fps: float) -> float:
+    raw = os.environ.get("CS_VISION_STEP_S", "").strip()
+    return float(raw) if raw else 1.0 / max(fps, 1.0)
 
 
 def _max_upserts_per_min() -> int:
@@ -60,6 +61,11 @@ def vision_enabled() -> bool:
 
 
 def _resolve_media(feed: dict) -> Path:
+    # Same override as server.py, so the wall and YOLO read the same clips
+    # (e.g. the 15 fps motion-interpolated pack).
+    override = os.environ.get("CS_MEDIA_ROOT", "").strip()
+    if override and Path(override).is_dir():
+        return Path(override)
     roots = feed.get("media_root") or {}
     for key in ("zgx", "mac_mount"):
         raw = roots.get(key)
@@ -94,27 +100,21 @@ def _norm_boxes(boxes: list[Any], width: float, height: float) -> list[BBox]:
 def _display_overlays(
     camera_ids: list[str], overlays: list[Any], width: float, height: float
 ) -> list[OverlayBoxes]:
-    """Show one known demo subject and explicitly clear every inactive camera."""
+    """Every tracked person with their own track id; inactive cameras cleared."""
     by_camera = {ov.camera_id: ov for ov in overlays}
     ts = overlays[0].ts
-    shown: list[OverlayBoxes] = []
-    for camera_id in camera_ids:
-        ov = by_camera.get(camera_id)
-        boxes = list(ov.boxes) if ov is not None else []
-        if boxes:
-            strongest = max(boxes, key=lambda box: float(box.score or 0.0))
-            normalized = _norm_boxes([strongest], width, height)
-            normalized[0] = replace(normalized[0], track_id="t-1")
-        else:
-            normalized = []
-        shown.append(
-            OverlayBoxes(
-                camera_id=normalize_camera_id(camera_id),
-                ts=ov.ts if ov is not None else ts,
-                boxes=normalized,
-            )
+    return [
+        OverlayBoxes(
+            camera_id=normalize_camera_id(camera_id),
+            ts=by_camera[camera_id].ts if camera_id in by_camera else ts,
+            boxes=_norm_boxes(
+                list(by_camera[camera_id].boxes) if camera_id in by_camera else [],
+                width,
+                height,
+            ),
         )
-    return shown
+        for camera_id in camera_ids
+    ]
 
 
 class VisionBridge:
@@ -126,13 +126,17 @@ class VisionBridge:
         self._last_fire: dict[tuple[str, str], float] = {}
         self._upsert_times: list[float] = []
         self._need_align = False
-        self._last_align_req = 0.0
         self._pause_t: float | None = None
         self._src: Any = None
         self._qwen_started = False
         self._cached_record: Any = None
         self._last_camera: str | None = None
         self._pending_reuse: dict[str, Any] = {}
+        # Bumped on every reset/rewind; Qwen results from an older run are dropped.
+        self._gen = 0
+        # Latest JPEG per camera id + a tick that fires once per step.
+        self.jpeg: dict[str, bytes] = {}
+        self._tick = asyncio.Event()
         hub.on_reset = self.reset_demo
 
     def start(self) -> None:
@@ -140,19 +144,24 @@ class VisionBridge:
             return
         self._task = asyncio.create_task(self._run(), name="vision-seville")
 
-    def align_to_wall(self) -> None:
-        """ffmpeg -re just opened from t=0. Rewind YOLO to the same second."""
-        now = time.monotonic()
-        if now - self._last_align_req < 2.0:
-            return
-        self._last_align_req = now
-        self._need_align = True
+    def cameras(self) -> set[str]:
+        try:
+            feed = json.loads(FEED.read_text())
+        except (OSError, ValueError):
+            return set(self.jpeg)
+        return {normalize_camera_id(c["camera_id"]) for c in feed["cameras"]}
+
+    async def next_jpeg(self, camera_id: str) -> bytes | None:
+        """Wait for the next step, then return that camera's frame."""
+        await self._tick.wait()
+        return self.jpeg.get(camera_id)
 
     def reset_demo(self) -> None:
         self._reset_demo()
         self._need_align = True
 
     def _reset_demo(self) -> None:
+        self._gen += 1
         self._qwen_started = False
         self._cached_record = None
         self._last_camera = None
@@ -206,7 +215,12 @@ class VisionBridge:
         src = FileSource(paths, realtime=True, active_windows=windows)
         self._src = src
         # ONE VisionRouter for the process lifetime — recreating reloads YOLO.
-        router = VisionRouter(list(paths), forced=False, source=src)
+        from services.vision.weapon_timeline import load_default
+
+        timeline = load_default()
+        router = VisionRouter(
+            list(paths), forced=False, source=src, weapon_timeline=timeline
+        )
         zrt = ZRTClient(forced=False, timeout_s=90.0)
         self._classify_q = asyncio.Queue(maxsize=1)
         self._classify_task = asyncio.create_task(
@@ -214,11 +228,12 @@ class VisionBridge:
         )
         width = float(getattr(src, "width", 960) or 960)
         height = float(getattr(src, "height", 540) or 540)
-        step = _step_s()
+        step = _step_s(float(getattr(src, "fps", 5.0) or 5.0))
         print(
             f"[vision-bridge] started cams={list(paths)} {width:.0f}x{height:.0f} "
             f"step={step}s realtime=1 cooldown={_cooldown_s()}s "
-            f"max_upserts/min={_max_upserts_per_min()}",
+            f"max_upserts/min={_max_upserts_per_min()} "
+            f"weapons={'timeline' if timeline else 'clip'}",
             flush=True,
         )
         loop = asyncio.get_running_loop()
@@ -233,7 +248,7 @@ class VisionBridge:
                     src.shift_wall(time.monotonic() - self._pause_t)
                     self._pause_t = None
                 if self._need_align:
-                    print("[vision-bridge] align FileSource to ffmpeg -re t=0", flush=True)
+                    print("[vision-bridge] reset: rewind all cameras to t=0", flush=True)
                     src.rewind()
                     router.reset_tracking()
                     router.source = src
@@ -262,6 +277,8 @@ class VisionBridge:
                     await asyncio.sleep(1.0)
                     continue
                 telemetry.ROUTER_LATENCY.record(step_ms)
+                tick, self._tick = self._tick, asyncio.Event()
+                tick.set()
                 shown = _display_overlays(list(paths), ovs, width, height)
                 for remapped in shown:
                     await self.hub.publish(remapped)
@@ -277,11 +294,11 @@ class VisionBridge:
                     if self._classify_q is None:
                         break
                     try:
-                        self._classify_q.put_nowait((esc, frames))
+                        self._classify_q.put_nowait((esc, frames, self._gen))
                     except asyncio.QueueFull:
                         print("[vision-bridge] classify queue full — drop", flush=True)
                 self.hub.frames_screened += len(ovs)
-                await asyncio.sleep(step)
+                await asyncio.sleep(max(0.0, step - (time.perf_counter() - t0)))
         except asyncio.CancelledError:
             raise
         except Exception as exc:
@@ -296,6 +313,14 @@ class VisionBridge:
         self, router: Any
     ) -> tuple[list[Any], list[tuple[str, Any, list[Any]]]]:
         ovs = router.step()
+        latest = getattr(getattr(router, "source", None), "last_bgr", None)
+        if ovs and latest:
+            import cv2
+
+            for cid, bgr in latest.items():
+                ok, buf = cv2.imencode(".jpg", bgr, [cv2.IMWRITE_JPEG_QUALITY, 80])
+                if ok:
+                    self.jpeg[normalize_camera_id(cid)] = buf.tobytes()
         packed: list[tuple[str, Any, list[Any]]] = []
         for esc in router.last_escalations:
             cam = normalize_camera_id(esc.camera_id)
@@ -382,13 +407,16 @@ class VisionBridge:
             item = await self._classify_q.get()
             if item is None:
                 return
-            esc, frames = item
+            esc, frames, gen = item
             try:
                 result, live_ok = await loop.run_in_executor(
                     None, self._classify_one, zrt, esc, frames
                 )
             except Exception as exc:
                 print(f"[vision-bridge] classify failed: {exc}", flush=True)
+                continue
+            if gen != self._gen:
+                print("[vision-bridge] drop Qwen result from before reset", flush=True)
                 continue
             self.hub.frames_escalated += 1
             self._cached_record = result.record

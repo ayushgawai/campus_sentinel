@@ -6,6 +6,7 @@ Live YOLO is optional: skipped unless weights are on disk.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -41,7 +42,7 @@ def main() -> None:
     trackers = {c: ByteTracker() for c in cams}
 
     last_ids: dict[str, str] = {}
-    for _ in range(30):
+    for step in range(30):
         frames = src.next_frames()
         batch = det.detect_batch(frames)
         assert len(batch) == 2
@@ -51,6 +52,9 @@ def main() -> None:
             assert len(dets) == 1
             assert len(dets[0].keypoints) == N_KPTS
             tracks = trackers[fr.camera_id].update(dets)
+            if step == 0:
+                assert tracks == [], "a new track is shown only once confirmed"
+                continue
             assert len(tracks) == 1
             tid = tracks[0].track_id
             if fr.camera_id in last_ids:
@@ -59,6 +63,43 @@ def main() -> None:
             # After a few steps the synthetic person is moving right.
             if src._i > 3:
                 assert tracks[0].vx > 0
+
+    # Tracker: no one-frame ghosts; a 2 fps jump keeps the id; far = new person.
+    from services.vision.detector import Detection
+
+    bt = ByteTracker()
+    ghost = Detection(x=800, y=10, w=40, h=120, score=0.9)
+    assert bt.update([ghost]) == []
+    assert bt.update([]) == []
+    walker = [Detection(x=100 + 45 * i, y=200, w=60, h=200, score=0.9) for i in range(4)]
+    ids = [t.track_id for d in walker for t in bt.update([d])]
+    assert len(ids) == 3 and len(set(ids)) == 1, ids
+    far = Detection(x=700, y=200, w=60, h=200, score=0.9)
+    bt.update([walker[-1], far])
+    both = bt.update([walker[-1], far])
+    assert len({t.track_id for t in both}) == 2
+
+    # Weapon timeline: carries forward between distinct frames; the holder is armed.
+    import json as _json
+    import tempfile
+
+    from services.vision.weapon_timeline import WeaponTimeline
+
+    with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as fh:
+        _json.dump(
+            {"cameras": {"CAM-01": [
+                {"frame": 10, "t": 2.0, "weapons": [{"type": "handgun", "box": [120, 300, 140, 320], "holder": [100, 200, 160, 400]}]},
+                {"frame": 14, "t": 2.8, "weapons": []},
+            ]}},
+            fh,
+        )
+    wt = WeaponTimeline(fh.name)
+    holder = Track(track_id="t-3", x=100, y=200, w=60, h=200, score=0.9, keypoints=[])
+    other = Track(track_id="t-4", x=500, y=200, w=60, h=200, score=0.9, keypoints=[])
+    assert wt.weapons_at("cam-01", 1.8) == []
+    assert wt.armed("cam-01", 2.4, [other, holder]) == {"t-3": "handgun"}
+    assert wt.armed("cam-01", 2.8, [holder]) == {}
+    os.unlink(fh.name)
 
     # 8s window at 15 fps → at most ~120 frames, never older than 8s
     w = ring.window("cam-1")
@@ -117,6 +158,7 @@ def main() -> None:
     # A demo/video reset must restart person IDs without reloading YOLO.
     detector = router.detector
     router.reset_tracking()
+    assert router.step()[0].boxes == [], "unconfirmed on the first frame"
     reset_overlay = router.step()[0]
     assert reset_overlay.boxes[0].track_id == "t-1"
     assert router.detector is detector

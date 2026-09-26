@@ -16,3 +16,4 @@ __pycache__/
 .ruff_cache/
 node_modules/
 logs/
+data/runtime/

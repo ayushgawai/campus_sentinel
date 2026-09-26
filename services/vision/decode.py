@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
+from typing import Any
 from datetime import datetime, timedelta, timezone
 
 from contracts import utcnow
@@ -140,6 +141,9 @@ class FileSource:
         import cv2
 
         self._caps = {}
+        # Latest decoded BGR frame per camera (active or not): the MJPEG wall
+        # streams these, so video and boxes share one clock.
+        self.last_bgr: dict[str, Any] = {}
         self.fps = 15.0
         fps_locked = False
         for cid, path in self._paths.items():
@@ -197,13 +201,12 @@ class FileSource:
         out: list[Frame] = []
         active = active_camera_ids(self.active_windows, self._i * self._dt)
         for cid in self.camera_ids:
-            if active is not None and cid not in active:
-                if not self._caps[cid].grab():
-                    return []
-                continue
             ok, bgr = self._caps[cid].read()
             if not ok:
                 return []
+            self.last_bgr[cid] = bgr
+            if active is not None and cid not in active:
+                continue
             rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
             if getattr(self, "_upscale", 1.0) != 1.0:
                 rgb = cv2.resize(

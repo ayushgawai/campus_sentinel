@@ -16,6 +16,7 @@ from typing import Any, Callable, Awaitable
 from contracts import (
     BBox,
     CallBriefEvent,
+    CallTranscriptDelta,
     CameraOnline,
     DemoControl,
     HealthStrip,
@@ -36,6 +37,7 @@ from services.brain.call_brief import assemble_call_brief, scene_facts
 from services.brain.guardrails import DEFAULT_GUARDRAILS
 from services.brain.zrt_client import ZRTClient
 from services.api import telemetry
+from services.api.history import History
 from services.api.vision_bridge import ARMED_LABEL, vision_enabled
 from services.voice import VoiceAgent
 
@@ -107,6 +109,9 @@ class DemoHub:
     # Camera of the last call.brief per incident: one brief per real handoff.
     _brief_camera: dict[str, str] = field(default_factory=dict, repr=False)
     on_reset: Callable[[], None] | None = field(default=None, repr=False)
+    # Durable incidents/calls/transcripts; None keeps the hub in-memory only.
+    history: History | None = field(default=None, repr=False)
+    _call_sid: str | None = field(default=None, repr=False)
     camera_ready: Callable[[str], bool] | None = field(default=None, repr=False)
 
     async def publish(self, ev: Any) -> None:
@@ -130,6 +135,7 @@ class DemoHub:
                     TimelineEvent(ts=rec.updated_at, state=ev.state, note=ev.note)
                 )
         envelope = event_to_dict(ev)
+        self._persist(ev, envelope)
         if envelope.get("type") in _REPLAY_TYPES:
             # ponytail: in-memory demo replay; persist if sessions grow beyond one run.
             self._replay = [*self._replay, envelope][-200:]
@@ -137,6 +143,29 @@ class DemoHub:
         # Live Seville path publishes IncidentUpsert here — start 911 loop on SEVERE.
         if isinstance(ev, IncidentUpsert) and ev.incident is not None:
             await self._on_incident(ev.incident)
+
+    def _persist(self, ev: Any, envelope: dict[str, Any]) -> None:
+        if self.history is None:
+            return
+        try:
+            if isinstance(ev, IncidentUpsert) and envelope.get("incident"):
+                self.history.save_incident(envelope["incident"])
+            elif isinstance(ev, IncidentStateChange):
+                rec = self._incidents.get(ev.incident_id)
+                if rec is not None:
+                    self.history.save_incident(incident_to_dict(rec))
+            elif isinstance(ev, CallTranscriptDelta):
+                self.history.save_transcript(envelope)
+        except Exception as exc:  # noqa: BLE001 — history must never break the demo
+            print(f"[hub] history write failed: {exc}", flush=True)
+
+    def _log_call(self, incident_id: str, status: str, **kw: str) -> None:
+        if self.history is None:
+            return
+        try:
+            self.history.save_call(incident_id, status, **kw)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[hub] history write failed: {exc}", flush=True)
 
     async def _publish_brief(self, brief: Any, reason: str) -> None:
         self._brief_camera[brief.incident_id] = brief.camera_id
@@ -232,6 +261,7 @@ class DemoHub:
             await self._publish_brief(brief, "dispatch")
             if not signalwire:
                 await self._voice_agent().start_call(rec, brief)
+                self._log_call(rec.incident_id, "simulated")
                 return True
             await self._voice_agent().start_live_call(rec, brief)
             placed = False
@@ -239,6 +269,10 @@ class DemoHub:
                 result = await asyncio.to_thread(place_call, rec.incident_id, config=signalwire)
                 placed = bool(result.get("ok"))
                 if placed:
+                    self._call_sid = str(result.get("call_sid") or "") or None
+                    self._log_call(
+                        rec.incident_id, "placed", call_sid=self._call_sid or ""
+                    )
                     await self.publish(
                         DemoControl(
                             action="scenario",
@@ -247,6 +281,9 @@ class DemoHub:
                         )
                     )
                 elif not result.get("skipped"):
+                    self._log_call(
+                        rec.incident_id, "failed", detail=str(result.get("reason"))
+                    )
                     await self.publish(
                         DemoControl(
                             action="scenario",
@@ -255,6 +292,7 @@ class DemoHub:
                         )
                     )
             except Exception as exc:  # noqa: BLE001 — never break the voice script
+                self._log_call(rec.incident_id, "failed", detail=type(exc).__name__)
                 await self.publish(
                     DemoControl(
                         action="scenario",
@@ -311,7 +349,22 @@ class DemoHub:
             await self.start_loops()
         return self.paused
 
+    async def _hangup(self) -> None:
+        """Reset leaves no call running on the phone."""
+        sid, self._call_sid = self._call_sid, None
+        if not sid:
+            return
+        from services.voice.signalwire_bridge import hangup_call
+
+        try:
+            ok = await asyncio.to_thread(hangup_call, sid)
+        except Exception as exc:  # noqa: BLE001 — a finished call may 4xx
+            ok = False
+            print(f"[hub] hangup {sid} failed: {exc}", flush=True)
+        self._log_call("", "hung_up_on_reset" if ok else "hangup_failed", call_sid=sid)
+
     async def reset(self) -> None:
+        await self._hangup()
         if self._voice is not None:
             await self._voice.cancel()
         if self.on_reset is not None:
@@ -322,6 +375,8 @@ class DemoHub:
         self._incident_seq = 0
         DEFAULT_GUARDRAILS._dispatched.clear()
         DEFAULT_GUARDRAILS._hour_hits.clear()
+        if self.history is not None:
+            self.history.new_run()
         await self.publish(
             DemoControl(action="reset", scenario_id=None, ts=_utcnow())
         )

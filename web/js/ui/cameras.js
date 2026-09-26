@@ -579,10 +579,12 @@ export function mountCameras(root, store, actions, layout) {
     const placed = [];
     for (const box of boxes) {
       const r = toPanePx(box, w, h);
+      // Red for anyone vision sees holding a weapon, and for the tracked subject.
       const severeHit =
-        severity === "SEVERE" &&
-        highlightTrack &&
-        box.track_id === highlightTrack;
+        box.label === "weapon" ||
+        (severity === "SEVERE" &&
+          highlightTrack &&
+          box.track_id === highlightTrack);
       const color = severeHit
         ? c.severe
         : severity === "MINOR"
