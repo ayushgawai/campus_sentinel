@@ -1,0 +1,6215 @@
+{
+ "source": "YOLO counts, dataset weapon labels, Qwen3-VL descriptions every 5 s",
+ "seconds": [
+  {
+   "t": 0,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 0,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "unknown"
+    }
+   ],
+   "scene": "There are 0 people visible in the scene.",
+   "movement": "No movement detected."
+  },
+  {
+   "t": 1,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "unknown"
+    }
+   ],
+   "scene": "There are 0 people visible in the scene.",
+   "movement": "No movement detected."
+  },
+  {
+   "t": 2,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "handgun": 1,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "unknown"
+    }
+   ],
+   "scene": "There are 0 people visible in the scene.",
+   "movement": "No movement detected."
+  },
+  {
+   "t": 3,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "knife": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "unknown"
+    }
+   ],
+   "scene": "There are 0 people visible in the scene.",
+   "movement": "No movement detected."
+  },
+  {
+   "t": 4,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "handgun": 1,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "unknown"
+    }
+   ],
+   "scene": "There are 0 people visible in the scene.",
+   "movement": "No movement detected."
+  },
+  {
+   "t": 5,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "knife": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, blue t-shirt, dark pants, short dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark shorts, short dark hair"
+    }
+   ],
+   "scene": "Two males are walking through a lobby.",
+   "movement": "Moving from the entrance toward the center of the frame."
+  },
+  {
+   "t": 6,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, blue t-shirt, dark pants, short dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark shorts, short dark hair"
+    }
+   ],
+   "scene": "Two males are walking through a lobby.",
+   "movement": "Moving from the entrance toward the center of the frame."
+  },
+  {
+   "t": 7,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, blue t-shirt, dark pants, short dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark shorts, short dark hair"
+    }
+   ],
+   "scene": "Two males are walking through a lobby.",
+   "movement": "Moving from the entrance toward the center of the frame."
+  },
+  {
+   "t": 8,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 1,
+   "weapons": {
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, blue t-shirt, dark pants, short dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark shorts, short dark hair"
+    }
+   ],
+   "scene": "Two males are walking through a lobby.",
+   "movement": "Moving from the entrance toward the center of the frame."
+  },
+  {
+   "t": 9,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, blue t-shirt, dark pants, short dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark shorts, short dark hair"
+    }
+   ],
+   "scene": "Two males are walking through a lobby.",
+   "movement": "Moving from the entrance toward the center of the frame."
+  },
+  {
+   "t": 10,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, wearing a light blue shirt and dark pants"
+    }
+   ],
+   "scene": "Two males are standing in a lobby near a doorway, one holding a knife.",
+   "movement": "Standing near the doorway"
+  },
+  {
+   "t": 11,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "knife": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, wearing a light blue shirt and dark pants"
+    }
+   ],
+   "scene": "Two males are standing in a lobby near a doorway, one holding a knife.",
+   "movement": "Standing near the doorway"
+  },
+  {
+   "t": 12,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "handgun": 2,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, wearing a light blue shirt and dark pants"
+    }
+   ],
+   "scene": "Two males are standing in a lobby near a doorway, one holding a knife.",
+   "movement": "Standing near the doorway"
+  },
+  {
+   "t": 13,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "knife": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, wearing a light blue shirt and dark pants"
+    }
+   ],
+   "scene": "Two males are standing in a lobby near a doorway, one holding a knife.",
+   "movement": "Standing near the doorway"
+  },
+  {
+   "t": 14,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, wearing a light blue shirt and dark pants"
+    }
+   ],
+   "scene": "Two males are standing in a lobby near a doorway, one holding a knife.",
+   "movement": "Standing near the doorway"
+  },
+  {
+   "t": 15,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "knife": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, blue t-shirt, dark pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black shorts, short dark hair"
+    }
+   ],
+   "scene": "Two males are walking through a lobby, one holding a knife and the other holding a handgun.",
+   "movement": "Walking forward through the lobby"
+  },
+  {
+   "t": 16,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "handgun": 1,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, blue t-shirt, dark pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black shorts, short dark hair"
+    }
+   ],
+   "scene": "Two males are walking through a lobby, one holding a knife and the other holding a handgun.",
+   "movement": "Walking forward through the lobby"
+  },
+  {
+   "t": 17,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "handgun": 3,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, blue t-shirt, dark pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black shorts, short dark hair"
+    }
+   ],
+   "scene": "Two males are walking through a lobby, one holding a knife and the other holding a handgun.",
+   "movement": "Walking forward through the lobby"
+  },
+  {
+   "t": 18,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 5,
+   "weapons": {
+    "handgun": 2,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, blue t-shirt, dark pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black shorts, short dark hair"
+    }
+   ],
+   "scene": "Two males are walking through a lobby, one holding a knife and the other holding a handgun.",
+   "movement": "Walking forward through the lobby"
+  },
+  {
+   "t": 19,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, blue t-shirt, dark pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black shorts, short dark hair"
+    }
+   ],
+   "scene": "Two males are walking through a lobby, one holding a knife and the other holding a handgun.",
+   "movement": "Walking forward through the lobby"
+  },
+  {
+   "t": 20,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 8,
+   "weapons": {
+    "handgun": 5,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red polo shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue t-shirt, dark hair"
+    }
+   ],
+   "scene": "Eight people are standing and walking in a ground-floor lobby.",
+   "movement": "Moving towards the exit door."
+  },
+  {
+   "t": 21,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 8,
+   "weapons": {
+    "handgun": 4
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red polo shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue t-shirt, dark hair"
+    }
+   ],
+   "scene": "Eight people are standing and walking in a ground-floor lobby.",
+   "movement": "Moving towards the exit door."
+  },
+  {
+   "t": 22,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 7,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red polo shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue t-shirt, dark hair"
+    }
+   ],
+   "scene": "Eight people are standing and walking in a ground-floor lobby.",
+   "movement": "Moving towards the exit door."
+  },
+  {
+   "t": 23,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 7,
+   "weapons": {
+    "handgun": 4
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red polo shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue t-shirt, dark hair"
+    }
+   ],
+   "scene": "Eight people are standing and walking in a ground-floor lobby.",
+   "movement": "Moving towards the exit door."
+  },
+  {
+   "t": 24,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 8,
+   "weapons": {
+    "knife": 1,
+    "handgun": 4
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red polo shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue t-shirt, dark hair"
+    }
+   ],
+   "scene": "Eight people are standing and walking in a ground-floor lobby.",
+   "movement": "Moving towards the exit door."
+  },
+  {
+   "t": 25,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 7,
+   "weapons": {
+    "handgun": 4
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue polo shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark hair"
+    }
+   ],
+   "scene": "Seven people are standing in a group in a lobby area.",
+   "movement": "Standing in a group near the entrance."
+  },
+  {
+   "t": 26,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 7,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue polo shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark hair"
+    }
+   ],
+   "scene": "Seven people are standing in a group in a lobby area.",
+   "movement": "Standing in a group near the entrance."
+  },
+  {
+   "t": 27,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 7,
+   "weapons": {
+    "knife": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue polo shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark hair"
+    }
+   ],
+   "scene": "Seven people are standing in a group in a lobby area.",
+   "movement": "Standing in a group near the entrance."
+  },
+  {
+   "t": 28,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 7,
+   "weapons": {
+    "knife": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue polo shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark hair"
+    }
+   ],
+   "scene": "Seven people are standing in a group in a lobby area.",
+   "movement": "Standing in a group near the entrance."
+  },
+  {
+   "t": 29,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 7,
+   "weapons": {
+    "knife": 1,
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue polo shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark hair"
+    }
+   ],
+   "scene": "Seven people are standing in a group in a lobby area.",
+   "movement": "Standing in a group near the entrance."
+  },
+  {
+   "t": 30,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 7,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing a dark shirt, holding a handgun"
+    }
+   ],
+   "scene": "Seven people are standing in a lobby area, with one person holding a handgun.",
+   "movement": "Standing near the entrance"
+  },
+  {
+   "t": 31,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 8,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing a dark shirt, holding a handgun"
+    }
+   ],
+   "scene": "Seven people are standing in a lobby area, with one person holding a handgun.",
+   "movement": "Standing near the entrance"
+  },
+  {
+   "t": 32,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "handgun": 1,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing a dark shirt, holding a handgun"
+    }
+   ],
+   "scene": "Seven people are standing in a lobby area, with one person holding a handgun.",
+   "movement": "Standing near the entrance"
+  },
+  {
+   "t": 33,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 7,
+   "weapons": {
+    "handgun": 3,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing a dark shirt, holding a handgun"
+    }
+   ],
+   "scene": "Seven people are standing in a lobby area, with one person holding a handgun.",
+   "movement": "Standing near the entrance"
+  },
+  {
+   "t": 34,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "handgun": 3,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing a dark shirt, holding a handgun"
+    }
+   ],
+   "scene": "Seven people are standing in a lobby area, with one person holding a handgun.",
+   "movement": "Standing near the entrance"
+  },
+  {
+   "t": 35,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "handgun": 3,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue t-shirt, light blue jeans"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red polo shirt, blue jeans"
+    }
+   ],
+   "scene": "Six people are standing in a lobby area, with three individuals holding weapons.",
+   "movement": "Standing in a group near the entrance."
+  },
+  {
+   "t": 36,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "knife": 1,
+    "handgun": 4
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue t-shirt, light blue jeans"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red polo shirt, blue jeans"
+    }
+   ],
+   "scene": "Six people are standing in a lobby area, with three individuals holding weapons.",
+   "movement": "Standing in a group near the entrance."
+  },
+  {
+   "t": 37,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "handgun": 5
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue t-shirt, light blue jeans"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red polo shirt, blue jeans"
+    }
+   ],
+   "scene": "Six people are standing in a lobby area, with three individuals holding weapons.",
+   "movement": "Standing in a group near the entrance."
+  },
+  {
+   "t": 38,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "knife": 1,
+    "handgun": 4
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue t-shirt, light blue jeans"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red polo shirt, blue jeans"
+    }
+   ],
+   "scene": "Six people are standing in a lobby area, with three individuals holding weapons.",
+   "movement": "Standing in a group near the entrance."
+  },
+  {
+   "t": 39,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "knife": 1,
+    "handgun": 5
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue t-shirt, light blue jeans"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red polo shirt, blue jeans"
+    }
+   ],
+   "scene": "Six people are standing in a lobby area, with three individuals holding weapons.",
+   "movement": "Standing in a group near the entrance."
+  },
+  {
+   "t": 40,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "knife": 1,
+    "handgun": 6
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, red polo shirt, blue jeans, balding"
+    }
+   ],
+   "scene": "Six people are standing and walking in a lobby area.",
+   "movement": "Moving towards the exit door on the left."
+  },
+  {
+   "t": 41,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 5,
+   "weapons": {
+    "handgun": 6
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, red polo shirt, blue jeans, balding"
+    }
+   ],
+   "scene": "Six people are standing and walking in a lobby area.",
+   "movement": "Moving towards the exit door on the left."
+  },
+  {
+   "t": 42,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 5,
+   "weapons": {
+    "knife": 1,
+    "handgun": 5
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, red polo shirt, blue jeans, balding"
+    }
+   ],
+   "scene": "Six people are standing and walking in a lobby area.",
+   "movement": "Moving towards the exit door on the left."
+  },
+  {
+   "t": 43,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "knife": 1,
+    "handgun": 5
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, red polo shirt, blue jeans, balding"
+    }
+   ],
+   "scene": "Six people are standing and walking in a lobby area.",
+   "movement": "Moving towards the exit door on the left."
+  },
+  {
+   "t": 44,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "knife": 1,
+    "handgun": 5
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, red polo shirt, blue jeans, balding"
+    }
+   ],
+   "scene": "Six people are standing and walking in a lobby area.",
+   "movement": "Moving towards the exit door on the left."
+  },
+  {
+   "t": 45,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "knife": 1,
+    "handgun": 5
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, build, white shirt, blue pants, dark hair"
+    }
+   ],
+   "scene": "Six people are standing in a lobby area, with five individuals holding handguns and one holding a knife.",
+   "movement": "Standing in a group near the entrance."
+  },
+  {
+   "t": 46,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "knife": 1,
+    "handgun": 5
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, build, white shirt, blue pants, dark hair"
+    }
+   ],
+   "scene": "Six people are standing in a lobby area, with five individuals holding handguns and one holding a knife.",
+   "movement": "Standing in a group near the entrance."
+  },
+  {
+   "t": 47,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "knife": 1,
+    "handgun": 5
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, build, white shirt, blue pants, dark hair"
+    }
+   ],
+   "scene": "Six people are standing in a lobby area, with five individuals holding handguns and one holding a knife.",
+   "movement": "Standing in a group near the entrance."
+  },
+  {
+   "t": 48,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 5,
+   "weapons": {
+    "knife": 1,
+    "handgun": 5
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, build, white shirt, blue pants, dark hair"
+    }
+   ],
+   "scene": "Six people are standing in a lobby area, with five individuals holding handguns and one holding a knife.",
+   "movement": "Standing in a group near the entrance."
+  },
+  {
+   "t": 49,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "handgun": 4
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, build, black t-shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, build, white shirt, blue pants, dark hair"
+    }
+   ],
+   "scene": "Six people are standing in a lobby area, with five individuals holding handguns and one holding a knife.",
+   "movement": "Standing in a group near the entrance."
+  },
+  {
+   "t": 50,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "handgun": 3
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black shorts, dark hair"
+    }
+   ],
+   "scene": "Six people are standing in a lobby near a doorway; three men are holding handguns.",
+   "movement": "Standing near the entrance."
+  },
+  {
+   "t": 51,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "knife": 1,
+    "handgun": 4
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black shorts, dark hair"
+    }
+   ],
+   "scene": "Six people are standing in a lobby near a doorway; three men are holding handguns.",
+   "movement": "Standing near the entrance."
+  },
+  {
+   "t": 52,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 5,
+   "weapons": {
+    "handgun": 6
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black shorts, dark hair"
+    }
+   ],
+   "scene": "Six people are standing in a lobby near a doorway; three men are holding handguns.",
+   "movement": "Standing near the entrance."
+  },
+  {
+   "t": 53,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 8,
+   "weapons": {
+    "handgun": 4
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black shorts, dark hair"
+    }
+   ],
+   "scene": "Six people are standing in a lobby near a doorway; three men are holding handguns.",
+   "movement": "Standing near the entrance."
+  },
+  {
+   "t": 54,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 7,
+   "weapons": {
+    "handgun": 4
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black shorts, dark hair"
+    }
+   ],
+   "scene": "Six people are standing in a lobby near a doorway; three men are holding handguns.",
+   "movement": "Standing near the entrance."
+  },
+  {
+   "t": 55,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 8,
+   "weapons": {
+    "handgun": 3
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, various builds, clothing colors including black, white, and blue shirts, holding a handgun in hand"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, various builds, clothing colors including black, white, and blue shirts, holding a handgun in hand"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, various builds, clothing colors including black, white, and blue shirts, holding a handgun in hand"
+    }
+   ],
+   "scene": "Eight people are standing in a group in a ground-floor lobby, with three individuals holding handguns.",
+   "movement": "Standing near the entrance, facing inward."
+  },
+  {
+   "t": 56,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 7,
+   "weapons": {
+    "handgun": 3,
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, various builds, clothing colors including black, white, and blue shirts, holding a handgun in hand"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, various builds, clothing colors including black, white, and blue shirts, holding a handgun in hand"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, various builds, clothing colors including black, white, and blue shirts, holding a handgun in hand"
+    }
+   ],
+   "scene": "Eight people are standing in a group in a ground-floor lobby, with three individuals holding handguns.",
+   "movement": "Standing near the entrance, facing inward."
+  },
+  {
+   "t": 57,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 5,
+   "weapons": {
+    "handgun": 3,
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, various builds, clothing colors including black, white, and blue shirts, holding a handgun in hand"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, various builds, clothing colors including black, white, and blue shirts, holding a handgun in hand"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, various builds, clothing colors including black, white, and blue shirts, holding a handgun in hand"
+    }
+   ],
+   "scene": "Eight people are standing in a group in a ground-floor lobby, with three individuals holding handguns.",
+   "movement": "Standing near the entrance, facing inward."
+  },
+  {
+   "t": 58,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "handgun": 2,
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, various builds, clothing colors including black, white, and blue shirts, holding a handgun in hand"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, various builds, clothing colors including black, white, and blue shirts, holding a handgun in hand"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, various builds, clothing colors including black, white, and blue shirts, holding a handgun in hand"
+    }
+   ],
+   "scene": "Eight people are standing in a group in a ground-floor lobby, with three individuals holding handguns.",
+   "movement": "Standing near the entrance, facing inward."
+  },
+  {
+   "t": 59,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 6,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, various builds, clothing colors including black, white, and blue shirts, holding a handgun in hand"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, various builds, clothing colors including black, white, and blue shirts, holding a handgun in hand"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, various builds, clothing colors including black, white, and blue shirts, holding a handgun in hand"
+    }
+   ],
+   "scene": "Eight people are standing in a group in a ground-floor lobby, with three individuals holding handguns.",
+   "movement": "Standing near the entrance, facing inward."
+  },
+  {
+   "t": 60,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is visible in the frame."
+  },
+  {
+   "t": 61,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is visible in the frame."
+  },
+  {
+   "t": 62,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is visible in the frame."
+  },
+  {
+   "t": 63,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is visible in the frame."
+  },
+  {
+   "t": 64,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "knife": 1,
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is visible in the frame."
+  },
+  {
+   "t": 65,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, blue shirt, black pants, dark hair"
+    }
+   ],
+   "scene": "Two people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 66,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 3,
+   "weapons": {
+    "knife": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, blue shirt, black pants, dark hair"
+    }
+   ],
+   "scene": "Two people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 67,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 3,
+   "weapons": {
+    "knife": 1,
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, blue shirt, black pants, dark hair"
+    }
+   ],
+   "scene": "Two people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 68,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, blue shirt, black pants, dark hair"
+    }
+   ],
+   "scene": "Two people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 69,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, blue shirt, black pants, dark hair"
+    }
+   ],
+   "scene": "Two people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 70,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing a light blue shirt and dark pants"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing a dark shirt and dark pants"
+    }
+   ],
+   "scene": "Two people are walking away from the camera down a corridor.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 71,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 4,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing a light blue shirt and dark pants"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing a dark shirt and dark pants"
+    }
+   ],
+   "scene": "Two people are walking away from the camera down a corridor.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 72,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 3,
+   "weapons": {
+    "handgun": 2,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing a light blue shirt and dark pants"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing a dark shirt and dark pants"
+    }
+   ],
+   "scene": "Two people are walking away from the camera down a corridor.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 73,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 3,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing a light blue shirt and dark pants"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing a dark shirt and dark pants"
+    }
+   ],
+   "scene": "Two people are walking away from the camera down a corridor.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 74,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 3,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing a light blue shirt and dark pants"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing a dark shirt and dark pants"
+    }
+   ],
+   "scene": "Two people are walking away from the camera down a corridor.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 75,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, blue jeans, dark hair"
+    }
+   ],
+   "scene": "Two males are walking down a hallway, one in the foreground and one further ahead.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 76,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, blue jeans, dark hair"
+    }
+   ],
+   "scene": "Two males are walking down a hallway, one in the foreground and one further ahead.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 77,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, blue jeans, dark hair"
+    }
+   ],
+   "scene": "Two males are walking down a hallway, one in the foreground and one further ahead.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 78,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, blue jeans, dark hair"
+    }
+   ],
+   "scene": "Two males are walking down a hallway, one in the foreground and one further ahead.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 79,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 3,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, blue jeans, dark hair"
+    }
+   ],
+   "scene": "Two males are walking down a hallway, one in the foreground and one further ahead.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 80,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Two people are walking down a hallway, each carrying a handgun.",
+   "movement": "Walking away from the camera down the corridor."
+  },
+  {
+   "t": 81,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Two people are walking down a hallway, each carrying a handgun.",
+   "movement": "Walking away from the camera down the corridor."
+  },
+  {
+   "t": 82,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Two people are walking down a hallway, each carrying a handgun.",
+   "movement": "Walking away from the camera down the corridor."
+  },
+  {
+   "t": 83,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Two people are walking down a hallway, each carrying a handgun.",
+   "movement": "Walking away from the camera down the corridor."
+  },
+  {
+   "t": 84,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Two people are walking down a hallway, each carrying a handgun.",
+   "movement": "Walking away from the camera down the corridor."
+  },
+  {
+   "t": 85,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, red shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 86,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, red shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 87,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, red shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 88,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, red shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 89,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, red shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 90,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, shorts, dark hair"
+    }
+   ],
+   "scene": "Two males are walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 91,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, shorts, dark hair"
+    }
+   ],
+   "scene": "Two males are walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 92,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, shorts, dark hair"
+    }
+   ],
+   "scene": "Two males are walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 93,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, shorts, dark hair"
+    }
+   ],
+   "scene": "Two males are walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 94,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, shorts, dark hair"
+    }
+   ],
+   "scene": "Two males are walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 95,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, blue shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light-colored t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Two people are walking away from the camera down a hallway.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 96,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "handgun": 1,
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, blue shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light-colored t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Two people are walking away from the camera down a hallway.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 97,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, blue shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light-colored t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Two people are walking away from the camera down a hallway.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 98,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, blue shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light-colored t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Two people are walking away from the camera down a hallway.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 99,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, blue shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light-colored t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Two people are walking away from the camera down a hallway.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 100,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {},
+   "armed": [],
+   "scene": "Two people are visible in the hallway; one is walking away from the camera in the distance, and the other is walking toward the camera in the foreground.",
+   "movement": "One person walking toward the camera, one person walking away from the camera"
+  },
+  {
+   "t": 101,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "Two people are visible in the hallway; one is walking away from the camera in the distance, and the other is walking toward the camera in the foreground.",
+   "movement": "One person walking toward the camera, one person walking away from the camera"
+  },
+  {
+   "t": 102,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "Two people are visible in the hallway; one is walking away from the camera in the distance, and the other is walking toward the camera in the foreground.",
+   "movement": "One person walking toward the camera, one person walking away from the camera"
+  },
+  {
+   "t": 103,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "Two people are visible in the hallway; one is walking away from the camera in the distance, and the other is walking toward the camera in the foreground.",
+   "movement": "One person walking toward the camera, one person walking away from the camera"
+  },
+  {
+   "t": 104,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "Two people are visible in the hallway; one is walking away from the camera in the distance, and the other is walking toward the camera in the foreground.",
+   "movement": "One person walking toward the camera, one person walking away from the camera"
+  },
+  {
+   "t": 105,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, grey shorts, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 106,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 1,
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, grey shorts, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 107,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, grey shorts, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 108,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, grey shorts, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 109,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 1,
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, grey shorts, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 110,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, black t-shirt, light-colored pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, dark shorts, dark hair"
+    }
+   ],
+   "scene": "Two people are walking down a hallway, one carrying a rifle and the other carrying a handgun.",
+   "movement": "Walking away from the camera down the corridor"
+  },
+  {
+   "t": 111,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, black t-shirt, light-colored pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, dark shorts, dark hair"
+    }
+   ],
+   "scene": "Two people are walking down a hallway, one carrying a rifle and the other carrying a handgun.",
+   "movement": "Walking away from the camera down the corridor"
+  },
+  {
+   "t": 112,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, black t-shirt, light-colored pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, dark shorts, dark hair"
+    }
+   ],
+   "scene": "Two people are walking down a hallway, one carrying a rifle and the other carrying a handgun.",
+   "movement": "Walking away from the camera down the corridor"
+  },
+  {
+   "t": 113,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, black t-shirt, light-colored pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, dark shorts, dark hair"
+    }
+   ],
+   "scene": "Two people are walking down a hallway, one carrying a rifle and the other carrying a handgun.",
+   "movement": "Walking away from the camera down the corridor"
+  },
+  {
+   "t": 114,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, black t-shirt, light-colored pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, dark shorts, dark hair"
+    }
+   ],
+   "scene": "Two people are walking down a hallway, one carrying a rifle and the other carrying a handgun.",
+   "movement": "Walking away from the camera down the corridor"
+  },
+  {
+   "t": 115,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, average build, black shirt, light-colored pants"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 116,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, average build, black shirt, light-colored pants"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 117,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, average build, black shirt, light-colored pants"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 118,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, average build, black shirt, light-colored pants"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 119,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, average build, black shirt, light-colored pants"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 120,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, blue shirt, black pants"
+    }
+   ],
+   "scene": "Two people are walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 121,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, blue shirt, black pants"
+    }
+   ],
+   "scene": "Two people are walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 122,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, blue shirt, black pants"
+    }
+   ],
+   "scene": "Two people are walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 123,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, blue shirt, black pants"
+    }
+   ],
+   "scene": "Two people are walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 124,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, blue shirt, black pants"
+    }
+   ],
+   "scene": "Two people are walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 125,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "Two people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 126,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [],
+   "scene": "Two people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 127,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "Two people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 128,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "Two people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 129,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "Two people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 130,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light-colored pants, dark hair"
+    }
+   ],
+   "scene": "Two people are visible in a hallway; one is standing and the other is walking away.",
+   "movement": "The person in the background is walking away from the camera down the corridor."
+  },
+  {
+   "t": 131,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light-colored pants, dark hair"
+    }
+   ],
+   "scene": "Two people are visible in a hallway; one is standing and the other is walking away.",
+   "movement": "The person in the background is walking away from the camera down the corridor."
+  },
+  {
+   "t": 132,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light-colored pants, dark hair"
+    }
+   ],
+   "scene": "Two people are visible in a hallway; one is standing and the other is walking away.",
+   "movement": "The person in the background is walking away from the camera down the corridor."
+  },
+  {
+   "t": 133,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light-colored pants, dark hair"
+    }
+   ],
+   "scene": "Two people are visible in a hallway; one is standing and the other is walking away.",
+   "movement": "The person in the background is walking away from the camera down the corridor."
+  },
+  {
+   "t": 134,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, black pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light-colored pants, dark hair"
+    }
+   ],
+   "scene": "Two people are visible in a hallway; one is standing and the other is walking away.",
+   "movement": "The person in the background is walking away from the camera down the corridor."
+  },
+  {
+   "t": 135,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, blue jeans, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 136,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, blue jeans, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 137,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, blue jeans, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 138,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, blue jeans, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 139,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, blue jeans, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 140,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 141,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 142,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 143,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 144,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 145,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, blue shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Two males are walking down a hallway, one carrying a rifle and the other carrying a handgun.",
+   "movement": "Walking away from the camera down the corridor"
+  },
+  {
+   "t": 146,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, blue shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Two males are walking down a hallway, one carrying a rifle and the other carrying a handgun.",
+   "movement": "Walking away from the camera down the corridor"
+  },
+  {
+   "t": 147,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, blue shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Two males are walking down a hallway, one carrying a rifle and the other carrying a handgun.",
+   "movement": "Walking away from the camera down the corridor"
+  },
+  {
+   "t": 148,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, blue shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Two males are walking down a hallway, one carrying a rifle and the other carrying a handgun.",
+   "movement": "Walking away from the camera down the corridor"
+  },
+  {
+   "t": 149,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, blue shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Two males are walking down a hallway, one carrying a rifle and the other carrying a handgun.",
+   "movement": "Walking away from the camera down the corridor"
+  },
+  {
+   "t": 150,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 151,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 152,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 153,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 154,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 155,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, dark shorts, dark shoes"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 156,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, dark shorts, dark shoes"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 157,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, dark shorts, dark shoes"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 158,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, dark shorts, dark shoes"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 159,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, dark shorts, dark shoes"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 160,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, average build, black shirt, beige pants"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 161,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, average build, black shirt, beige pants"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 162,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, average build, black shirt, beige pants"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 163,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, average build, black shirt, beige pants"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 164,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, average build, black shirt, beige pants"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 165,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 166,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 167,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 168,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 169,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 170,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 171,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 172,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 173,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 174,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 175,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 176,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 177,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 178,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 179,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 180,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are no people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 181,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are no people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 182,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are no people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 183,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are no people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 184,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are no people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 185,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 186,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 187,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 188,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 189,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are 0 people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 190,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are no people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 191,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are no people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 192,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are no people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 193,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are no people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 194,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "There are no people visible in the hallway.",
+   "movement": "No movement is observed in the frame."
+  },
+  {
+   "t": 195,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {
+    "knife": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, black shorts, black hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, average build, light blue t-shirt, dark pants, brown hair"
+    }
+   ],
+   "scene": "Two males are walking away from the camera down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 196,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {
+    "handgun": 2,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, black shorts, black hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, average build, light blue t-shirt, dark pants, brown hair"
+    }
+   ],
+   "scene": "Two males are walking away from the camera down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 197,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {
+    "handgun": 2,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, black shorts, black hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, average build, light blue t-shirt, dark pants, brown hair"
+    }
+   ],
+   "scene": "Two males are walking away from the camera down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 198,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, black shorts, black hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, average build, light blue t-shirt, dark pants, brown hair"
+    }
+   ],
+   "scene": "Two males are walking away from the camera down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 199,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, black shorts, black hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, average build, light blue t-shirt, dark pants, brown hair"
+    }
+   ],
+   "scene": "Two males are walking away from the camera down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 200,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {},
+   "armed": [],
+   "scene": "Two people are visible in the hallway; one is walking away from the camera and the other is walking towards a doorway on the left.",
+   "movement": "The person in the black shirt is walking down the hallway away from the camera."
+  },
+  {
+   "t": 201,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "Two people are visible in the hallway; one is walking away from the camera and the other is walking towards a doorway on the left.",
+   "movement": "The person in the black shirt is walking down the hallway away from the camera."
+  },
+  {
+   "t": 202,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "Two people are visible in the hallway; one is walking away from the camera and the other is walking towards a doorway on the left.",
+   "movement": "The person in the black shirt is walking down the hallway away from the camera."
+  },
+  {
+   "t": 203,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "Two people are visible in the hallway; one is walking away from the camera and the other is walking towards a doorway on the left.",
+   "movement": "The person in the black shirt is walking down the hallway away from the camera."
+  },
+  {
+   "t": 204,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "Two people are visible in the hallway; one is walking away from the camera and the other is walking towards a doorway on the left.",
+   "movement": "The person in the black shirt is walking down the hallway away from the camera."
+  },
+  {
+   "t": 205,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible in the hallway, walking away from the camera.",
+   "movement": "Moving down the hallway away from the camera"
+  },
+  {
+   "t": 206,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible in the hallway, walking away from the camera.",
+   "movement": "Moving down the hallway away from the camera"
+  },
+  {
+   "t": 207,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible in the hallway, walking away from the camera.",
+   "movement": "Moving down the hallway away from the camera"
+  },
+  {
+   "t": 208,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible in the hallway, walking away from the camera.",
+   "movement": "Moving down the hallway away from the camera"
+  },
+  {
+   "t": 209,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible in the hallway, walking away from the camera.",
+   "movement": "Moving down the hallway away from the camera"
+  },
+  {
+   "t": 210,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, red shirt, blue jeans, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 211,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, red shirt, blue jeans, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 212,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, red shirt, blue jeans, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 213,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, red shirt, blue jeans, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 214,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, red shirt, blue jeans, dark hair"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 215,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible in the hallway, walking away from the camera.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 216,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible in the hallway, walking away from the camera.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 217,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible in the hallway, walking away from the camera.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 218,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible in the hallway, walking away from the camera.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 219,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible in the hallway, walking away from the camera.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 220,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 3,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, dark pants"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black shirt, dark pants"
+    }
+   ],
+   "scene": "Three people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 221,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 3,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, dark pants"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black shirt, dark pants"
+    }
+   ],
+   "scene": "Three people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 222,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, dark pants"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black shirt, dark pants"
+    }
+   ],
+   "scene": "Three people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 223,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 3,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, dark pants"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black shirt, dark pants"
+    }
+   ],
+   "scene": "Three people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 224,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 3,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, dark pants"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black shirt, dark pants"
+    }
+   ],
+   "scene": "Three people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 225,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 4,
+   "weapons": {},
+   "armed": [],
+   "scene": "Four people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 226,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 3,
+   "weapons": {},
+   "armed": [],
+   "scene": "Four people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 227,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 2,
+   "weapons": {},
+   "armed": [],
+   "scene": "Four people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 228,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "Four people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 229,
+   "camera": "CAM-03",
+   "place": "the west corridor near the stairwell",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "Four people are walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 230,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 231,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 232,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 233,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 234,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Moving away from the camera"
+  },
+  {
+   "t": 235,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, white shirt, dark pants"
+    }
+   ],
+   "scene": "Two people are in a hallway; one is walking away from the camera and the other is further down the hall facing a door.",
+   "movement": "The person with the handgun is moving toward the door at the end of the hallway."
+  },
+  {
+   "t": 236,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 3,
+   "weapons": {
+    "handgun": 1,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, white shirt, dark pants"
+    }
+   ],
+   "scene": "Two people are in a hallway; one is walking away from the camera and the other is further down the hall facing a door.",
+   "movement": "The person with the handgun is moving toward the door at the end of the hallway."
+  },
+  {
+   "t": 237,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, white shirt, dark pants"
+    }
+   ],
+   "scene": "Two people are in a hallway; one is walking away from the camera and the other is further down the hall facing a door.",
+   "movement": "The person with the handgun is moving toward the door at the end of the hallway."
+  },
+  {
+   "t": 238,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, white shirt, dark pants"
+    }
+   ],
+   "scene": "Two people are in a hallway; one is walking away from the camera and the other is further down the hall facing a door.",
+   "movement": "The person with the handgun is moving toward the door at the end of the hallway."
+  },
+  {
+   "t": 239,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, white shirt, dark pants"
+    }
+   ],
+   "scene": "Two people are in a hallway; one is walking away from the camera and the other is further down the hall facing a door.",
+   "movement": "The person with the handgun is moving toward the door at the end of the hallway."
+  },
+  {
+   "t": 240,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible in the corridor, walking away from the camera.",
+   "movement": "Walking away from the camera down the hallway"
+  },
+  {
+   "t": 241,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible in the corridor, walking away from the camera.",
+   "movement": "Walking away from the camera down the hallway"
+  },
+  {
+   "t": 242,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "One person is visible in the corridor, walking away from the camera.",
+   "movement": "Walking away from the camera down the hallway"
+  },
+  {
+   "t": 243,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 3
+   },
+   "armed": [],
+   "scene": "One person is visible in the corridor, walking away from the camera.",
+   "movement": "Walking away from the camera down the hallway"
+  },
+  {
+   "t": 244,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 3,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [],
+   "scene": "One person is visible in the corridor, walking away from the camera.",
+   "movement": "Walking away from the camera down the hallway"
+  },
+  {
+   "t": 245,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 3,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, blue shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Three people are visible in a hallway; two are carrying weapons. One person in a red shirt is walking away from the camera, and two others are further down the hall.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 246,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 3,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, blue shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Three people are visible in a hallway; two are carrying weapons. One person in a red shirt is walking away from the camera, and two others are further down the hall.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 247,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, blue shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Three people are visible in a hallway; two are carrying weapons. One person in a red shirt is walking away from the camera, and two others are further down the hall.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 248,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, blue shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Three people are visible in a hallway; two are carrying weapons. One person in a red shirt is walking away from the camera, and two others are further down the hall.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 249,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, blue shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Three people are visible in a hallway; two are carrying weapons. One person in a red shirt is walking away from the camera, and two others are further down the hall.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 250,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, walking, dark clothing"
+    }
+   ],
+   "scene": "One person is visible in the corridor, walking away from the camera.",
+   "movement": "Moving away from the camera down the hallway"
+  },
+  {
+   "t": 251,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, walking, dark clothing"
+    }
+   ],
+   "scene": "One person is visible in the corridor, walking away from the camera.",
+   "movement": "Moving away from the camera down the hallway"
+  },
+  {
+   "t": 252,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, walking, dark clothing"
+    }
+   ],
+   "scene": "One person is visible in the corridor, walking away from the camera.",
+   "movement": "Moving away from the camera down the hallway"
+  },
+  {
+   "t": 253,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, walking, dark clothing"
+    }
+   ],
+   "scene": "One person is visible in the corridor, walking away from the camera.",
+   "movement": "Moving away from the camera down the hallway"
+  },
+  {
+   "t": 254,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, walking, dark clothing"
+    }
+   ],
+   "scene": "One person is visible in the corridor, walking away from the camera.",
+   "movement": "Moving away from the camera down the hallway"
+  },
+  {
+   "t": 255,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible in the hallway, walking away from the camera.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 256,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible in the hallway, walking away from the camera.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 257,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible in the hallway, walking away from the camera.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 258,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "One person is visible in the hallway, walking away from the camera.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 259,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "One person is visible in the hallway, walking away from the camera.",
+   "movement": "Moving away from the camera down the corridor"
+  },
+  {
+   "t": 260,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, grey shorts, black shoes"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 261,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, grey shorts, black shoes"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 262,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 2,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, grey shorts, black shoes"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 263,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, grey shorts, black shoes"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 264,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, average build, black t-shirt, grey shorts, black shoes"
+    }
+   ],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 265,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 266,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 267,
+   "camera": "CAM-02",
+   "place": "the east corridor",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 268,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 5,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 2
+   },
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 269,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "handgun": 2,
+    "rifle": 1
+   },
+   "armed": [],
+   "scene": "One person is walking down a hallway.",
+   "movement": "Walking away from the camera"
+  },
+  {
+   "t": 270,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 4,
+   "weapons": {
+    "handgun": 2,
+    "rifle": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark shorts, black hair"
+    },
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, black t-shirt, beige pants, black hair, ponytail"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red t-shirt, blue jeans, dark hair"
+    },
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, dark t-shirt, dark shorts, dark hair"
+    }
+   ],
+   "scene": "Four people are in a lobby, two holding rifles and two holding handguns.",
+   "movement": "Moving toward the doorway on the right."
+  },
+  {
+   "t": 271,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "rifle": 2,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark shorts, black hair"
+    },
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, black t-shirt, beige pants, black hair, ponytail"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red t-shirt, blue jeans, dark hair"
+    },
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, dark t-shirt, dark shorts, dark hair"
+    }
+   ],
+   "scene": "Four people are in a lobby, two holding rifles and two holding handguns.",
+   "movement": "Moving toward the doorway on the right."
+  },
+  {
+   "t": 272,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "handgun": 1,
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark shorts, black hair"
+    },
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, black t-shirt, beige pants, black hair, ponytail"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red t-shirt, blue jeans, dark hair"
+    },
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, dark t-shirt, dark shorts, dark hair"
+    }
+   ],
+   "scene": "Four people are in a lobby, two holding rifles and two holding handguns.",
+   "movement": "Moving toward the doorway on the right."
+  },
+  {
+   "t": 273,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark shorts, black hair"
+    },
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, black t-shirt, beige pants, black hair, ponytail"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red t-shirt, blue jeans, dark hair"
+    },
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, dark t-shirt, dark shorts, dark hair"
+    }
+   ],
+   "scene": "Four people are in a lobby, two holding rifles and two holding handguns.",
+   "movement": "Moving toward the doorway on the right."
+  },
+  {
+   "t": 274,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark shorts, black hair"
+    },
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, black t-shirt, beige pants, black hair, ponytail"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red t-shirt, blue jeans, dark hair"
+    },
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, dark t-shirt, dark shorts, dark hair"
+    }
+   ],
+   "scene": "Four people are in a lobby, two holding rifles and two holding handguns.",
+   "movement": "Moving toward the doorway on the right."
+  },
+  {
+   "t": 275,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, wearing white shirt, blue shorts, dark shoes"
+    }
+   ],
+   "scene": "Two people are entering through a glass door into a lobby.",
+   "movement": "Moving from the door towards the interior"
+  },
+  {
+   "t": 276,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "handgun": 1,
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, wearing white shirt, blue shorts, dark shoes"
+    }
+   ],
+   "scene": "Two people are entering through a glass door into a lobby.",
+   "movement": "Moving from the door towards the interior"
+  },
+  {
+   "t": 277,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, wearing white shirt, blue shorts, dark shoes"
+    }
+   ],
+   "scene": "Two people are entering through a glass door into a lobby.",
+   "movement": "Moving from the door towards the interior"
+  },
+  {
+   "t": 278,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 1,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, wearing white shirt, blue shorts, dark shoes"
+    }
+   ],
+   "scene": "Two people are entering through a glass door into a lobby.",
+   "movement": "Moving from the door towards the interior"
+  },
+  {
+   "t": 279,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 0,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, wearing white shirt, blue shorts, dark shoes"
+    }
+   ],
+   "scene": "Two people are entering through a glass door into a lobby.",
+   "movement": "Moving from the door towards the interior"
+  },
+  {
+   "t": 280,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 0,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing black t-shirt and dark shorts"
+    }
+   ],
+   "scene": "Three people are visible in the background near the entrance, with one person holding a handgun.",
+   "movement": "Entering through the glass door"
+  },
+  {
+   "t": 281,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 0,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing black t-shirt and dark shorts"
+    }
+   ],
+   "scene": "Three people are visible in the background near the entrance, with one person holding a handgun.",
+   "movement": "Entering through the glass door"
+  },
+  {
+   "t": 282,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing black t-shirt and dark shorts"
+    }
+   ],
+   "scene": "Three people are visible in the background near the entrance, with one person holding a handgun.",
+   "movement": "Entering through the glass door"
+  },
+  {
+   "t": 283,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing black t-shirt and dark shorts"
+    }
+   ],
+   "scene": "Three people are visible in the background near the entrance, with one person holding a handgun.",
+   "movement": "Entering through the glass door"
+  },
+  {
+   "t": 284,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 0,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, wearing black t-shirt and dark shorts"
+    }
+   ],
+   "scene": "Three people are visible in the background near the entrance, with one person holding a handgun.",
+   "movement": "Entering through the glass door"
+  },
+  {
+   "t": 285,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible standing outside the glass door of the lobby.",
+   "movement": "The person is standing still outside the door."
+  },
+  {
+   "t": 286,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "One person is visible standing outside the glass door of the lobby.",
+   "movement": "The person is standing still outside the door."
+  },
+  {
+   "t": 287,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 1,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [],
+   "scene": "One person is visible standing outside the glass door of the lobby.",
+   "movement": "The person is standing still outside the door."
+  },
+  {
+   "t": 288,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 0,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible standing outside the glass door of the lobby.",
+   "movement": "The person is standing still outside the door."
+  },
+  {
+   "t": 289,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is visible standing outside the glass door of the lobby.",
+   "movement": "The person is standing still outside the door."
+  },
+  {
+   "t": 290,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "knife": 1,
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, thin, black t-shirt, black shorts, grey shoes"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, thin, grey t-shirt, blue jeans, white shoes"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, thin, grey t-shirt, blue jeans, white shoes"
+    }
+   ],
+   "scene": "Two males are entering a building lobby through a glass door.",
+   "movement": "Walking from the door towards the interior of the lobby."
+  },
+  {
+   "t": 291,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, thin, black t-shirt, black shorts, grey shoes"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, thin, grey t-shirt, blue jeans, white shoes"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, thin, grey t-shirt, blue jeans, white shoes"
+    }
+   ],
+   "scene": "Two males are entering a building lobby through a glass door.",
+   "movement": "Walking from the door towards the interior of the lobby."
+  },
+  {
+   "t": 292,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "handgun": 2,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, thin, black t-shirt, black shorts, grey shoes"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, thin, grey t-shirt, blue jeans, white shoes"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, thin, grey t-shirt, blue jeans, white shoes"
+    }
+   ],
+   "scene": "Two males are entering a building lobby through a glass door.",
+   "movement": "Walking from the door towards the interior of the lobby."
+  },
+  {
+   "t": 293,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 4,
+   "weapons": {
+    "handgun": 2,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, thin, black t-shirt, black shorts, grey shoes"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, thin, grey t-shirt, blue jeans, white shoes"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, thin, grey t-shirt, blue jeans, white shoes"
+    }
+   ],
+   "scene": "Two males are entering a building lobby through a glass door.",
+   "movement": "Walking from the door towards the interior of the lobby."
+  },
+  {
+   "t": 294,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "handgun": 3,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, thin, black t-shirt, black shorts, grey shoes"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, thin, grey t-shirt, blue jeans, white shoes"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, thin, grey t-shirt, blue jeans, white shoes"
+    }
+   ],
+   "scene": "Two males are entering a building lobby through a glass door.",
+   "movement": "Walking from the door towards the interior of the lobby."
+  },
+  {
+   "t": 295,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "handgun": 3,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue t-shirt, dark pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt with graphic, dark pants, short dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue t-shirt, dark pants, short brown hair"
+    }
+   ],
+   "scene": "Three males are in a ground-floor lobby; one is entering through a doorway, and two are standing in the lobby.",
+   "movement": "The man in the light blue shirt is walking towards the center of the lobby."
+  },
+  {
+   "t": 296,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 4,
+   "weapons": {
+    "handgun": 3
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue t-shirt, dark pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt with graphic, dark pants, short dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue t-shirt, dark pants, short brown hair"
+    }
+   ],
+   "scene": "Three males are in a ground-floor lobby; one is entering through a doorway, and two are standing in the lobby.",
+   "movement": "The man in the light blue shirt is walking towards the center of the lobby."
+  },
+  {
+   "t": 297,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 4,
+   "weapons": {
+    "handgun": 3
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue t-shirt, dark pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt with graphic, dark pants, short dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue t-shirt, dark pants, short brown hair"
+    }
+   ],
+   "scene": "Three males are in a ground-floor lobby; one is entering through a doorway, and two are standing in the lobby.",
+   "movement": "The man in the light blue shirt is walking towards the center of the lobby."
+  },
+  {
+   "t": 298,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 5,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue t-shirt, dark pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt with graphic, dark pants, short dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue t-shirt, dark pants, short brown hair"
+    }
+   ],
+   "scene": "Three males are in a ground-floor lobby; one is entering through a doorway, and two are standing in the lobby.",
+   "movement": "The man in the light blue shirt is walking towards the center of the lobby."
+  },
+  {
+   "t": 299,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 5,
+   "weapons": {
+    "handgun": 2,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue t-shirt, dark pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark pants, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt with graphic, dark pants, short dark hair"
+    },
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue t-shirt, dark pants, short brown hair"
+    }
+   ],
+   "scene": "Three males are in a ground-floor lobby; one is entering through a doorway, and two are standing in the lobby.",
+   "movement": "The man in the light blue shirt is walking towards the center of the lobby."
+  },
+  {
+   "t": 300,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "handgun": 2,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue shirt, dark pants, short dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark pants, short dark hair"
+    }
+   ],
+   "scene": "Three males are entering a building lobby through a glass door.",
+   "movement": "Moving from the entrance towards the center of the lobby."
+  },
+  {
+   "t": 301,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "handgun": 4,
+    "knife": 1
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue shirt, dark pants, short dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark pants, short dark hair"
+    }
+   ],
+   "scene": "Three males are entering a building lobby through a glass door.",
+   "movement": "Moving from the entrance towards the center of the lobby."
+  },
+  {
+   "t": 302,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 5,
+   "weapons": {
+    "knife": 1,
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue shirt, dark pants, short dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark pants, short dark hair"
+    }
+   ],
+   "scene": "Three males are entering a building lobby through a glass door.",
+   "movement": "Moving from the entrance towards the center of the lobby."
+  },
+  {
+   "t": 303,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 5,
+   "weapons": {
+    "handgun": 3
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue shirt, dark pants, short dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark pants, short dark hair"
+    }
+   ],
+   "scene": "Three males are entering a building lobby through a glass door.",
+   "movement": "Moving from the entrance towards the center of the lobby."
+  },
+  {
+   "t": 304,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "knife",
+     "person": "male, medium build, light blue shirt, dark pants, short dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, light blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, light blue button-down shirt, dark pants, short dark hair"
+    }
+   ],
+   "scene": "Three males are entering a building lobby through a glass door.",
+   "movement": "Moving from the entrance towards the center of the lobby."
+  },
+  {
+   "t": 305,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 4,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, thin, black t-shirt, black pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, thin, black t-shirt, black pants, short brown hair"
+    }
+   ],
+   "scene": "Four people are in a ground-floor lobby; one man in a red shirt is entering through a glass door, a man in a black t-shirt is walking forward, a man is partially visible in the foreground, and a man is standing in the doorway.",
+   "movement": "The man in the black t-shirt is walking forward, and the man in the red shirt is entering the lobby."
+  },
+  {
+   "t": 306,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 4,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, thin, black t-shirt, black pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, thin, black t-shirt, black pants, short brown hair"
+    }
+   ],
+   "scene": "Four people are in a ground-floor lobby; one man in a red shirt is entering through a glass door, a man in a black t-shirt is walking forward, a man is partially visible in the foreground, and a man is standing in the doorway.",
+   "movement": "The man in the black t-shirt is walking forward, and the man in the red shirt is entering the lobby."
+  },
+  {
+   "t": 307,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 4,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, thin, black t-shirt, black pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, thin, black t-shirt, black pants, short brown hair"
+    }
+   ],
+   "scene": "Four people are in a ground-floor lobby; one man in a red shirt is entering through a glass door, a man in a black t-shirt is walking forward, a man is partially visible in the foreground, and a man is standing in the doorway.",
+   "movement": "The man in the black t-shirt is walking forward, and the man in the red shirt is entering the lobby."
+  },
+  {
+   "t": 308,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, thin, black t-shirt, black pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, thin, black t-shirt, black pants, short brown hair"
+    }
+   ],
+   "scene": "Four people are in a ground-floor lobby; one man in a red shirt is entering through a glass door, a man in a black t-shirt is walking forward, a man is partially visible in the foreground, and a man is standing in the doorway.",
+   "movement": "The man in the black t-shirt is walking forward, and the man in the red shirt is entering the lobby."
+  },
+  {
+   "t": 309,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, thin, black t-shirt, black pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, thin, black t-shirt, black pants, short brown hair"
+    }
+   ],
+   "scene": "Four people are in a ground-floor lobby; one man in a red shirt is entering through a glass door, a man in a black t-shirt is walking forward, a man is partially visible in the foreground, and a man is standing in the doorway.",
+   "movement": "The man in the black t-shirt is walking forward, and the man in the red shirt is entering the lobby."
+  },
+  {
+   "t": 310,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 5,
+   "weapons": {
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    }
+   ],
+   "scene": "Five people are in a ground-floor lobby; two are entering through a glass door, one is walking left, one is walking toward the camera, and one is walking away from the camera.",
+   "movement": "People are entering and moving through the lobby."
+  },
+  {
+   "t": 311,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 4,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    }
+   ],
+   "scene": "Five people are in a ground-floor lobby; two are entering through a glass door, one is walking left, one is walking toward the camera, and one is walking away from the camera.",
+   "movement": "People are entering and moving through the lobby."
+  },
+  {
+   "t": 312,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 4,
+   "weapons": {
+    "handgun": 3
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    }
+   ],
+   "scene": "Five people are in a ground-floor lobby; two are entering through a glass door, one is walking left, one is walking toward the camera, and one is walking away from the camera.",
+   "movement": "People are entering and moving through the lobby."
+  },
+  {
+   "t": 313,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 5,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    }
+   ],
+   "scene": "Five people are in a ground-floor lobby; two are entering through a glass door, one is walking left, one is walking toward the camera, and one is walking away from the camera.",
+   "movement": "People are entering and moving through the lobby."
+  },
+  {
+   "t": 314,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 5,
+   "weapons": {
+    "handgun": 3,
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark hair"
+    }
+   ],
+   "scene": "Five people are in a ground-floor lobby; two are entering through a glass door, one is walking left, one is walking toward the camera, and one is walking away from the camera.",
+   "movement": "People are entering and moving through the lobby."
+  },
+  {
+   "t": 315,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 5,
+   "weapons": {
+    "handgun": 3
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, beige shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Five people are entering the lobby through a glass door.",
+   "movement": "Moving from the entrance towards the center of the frame."
+  },
+  {
+   "t": 316,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 4,
+   "weapons": {
+    "handgun": 2,
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, beige shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Five people are entering the lobby through a glass door.",
+   "movement": "Moving from the entrance towards the center of the frame."
+  },
+  {
+   "t": 317,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "handgun": 1,
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, beige shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Five people are entering the lobby through a glass door.",
+   "movement": "Moving from the entrance towards the center of the frame."
+  },
+  {
+   "t": 318,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, beige shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Five people are entering the lobby through a glass door.",
+   "movement": "Moving from the entrance towards the center of the frame."
+  },
+  {
+   "t": 319,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, red shirt, blue jeans, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, beige shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark pants, dark hair"
+    }
+   ],
+   "scene": "Five people are entering the lobby through a glass door.",
+   "movement": "Moving from the entrance towards the center of the frame."
+  },
+  {
+   "t": 320,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, young, white t-shirt, blue shorts"
+    }
+   ],
+   "scene": "Three people are in a lobby; one man in a white t-shirt and blue shorts is holding a rifle, another man in a light blue shirt is walking, and a third person is partially visible in the foreground.",
+   "movement": "The man with the rifle is walking toward the center of the lobby."
+  },
+  {
+   "t": 321,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 2
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, young, white t-shirt, blue shorts"
+    }
+   ],
+   "scene": "Three people are in a lobby; one man in a white t-shirt and blue shorts is holding a rifle, another man in a light blue shirt is walking, and a third person is partially visible in the foreground.",
+   "movement": "The man with the rifle is walking toward the center of the lobby."
+  },
+  {
+   "t": 322,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, young, white t-shirt, blue shorts"
+    }
+   ],
+   "scene": "Three people are in a lobby; one man in a white t-shirt and blue shorts is holding a rifle, another man in a light blue shirt is walking, and a third person is partially visible in the foreground.",
+   "movement": "The man with the rifle is walking toward the center of the lobby."
+  },
+  {
+   "t": 323,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, young, white t-shirt, blue shorts"
+    }
+   ],
+   "scene": "Three people are in a lobby; one man in a white t-shirt and blue shorts is holding a rifle, another man in a light blue shirt is walking, and a third person is partially visible in the foreground.",
+   "movement": "The man with the rifle is walking toward the center of the lobby."
+  },
+  {
+   "t": 324,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 4,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, young, white t-shirt, blue shorts"
+    }
+   ],
+   "scene": "Three people are in a lobby; one man in a white t-shirt and blue shorts is holding a rifle, another man in a light blue shirt is walking, and a third person is partially visible in the foreground.",
+   "movement": "The man with the rifle is walking toward the center of the lobby."
+  },
+  {
+   "t": 325,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 4,
+   "weapons": {
+    "handgun": 2,
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, light-colored shorts, dark hair"
+    },
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, dark hair"
+    }
+   ],
+   "scene": "Four people are in a lobby; two are holding handguns and one is holding a rifle.",
+   "movement": "Moving from the entrance towards the center of the lobby."
+  },
+  {
+   "t": 326,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "handgun": 1,
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, light-colored shorts, dark hair"
+    },
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, dark hair"
+    }
+   ],
+   "scene": "Four people are in a lobby; two are holding handguns and one is holding a rifle.",
+   "movement": "Moving from the entrance towards the center of the lobby."
+  },
+  {
+   "t": 327,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "handgun": 1,
+    "rifle": 2
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, light-colored shorts, dark hair"
+    },
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, dark hair"
+    }
+   ],
+   "scene": "Four people are in a lobby; two are holding handguns and one is holding a rifle.",
+   "movement": "Moving from the entrance towards the center of the lobby."
+  },
+  {
+   "t": 328,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 4,
+   "weapons": {
+    "handgun": 1,
+    "rifle": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, light-colored shorts, dark hair"
+    },
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, dark hair"
+    }
+   ],
+   "scene": "Four people are in a lobby; two are holding handguns and one is holding a rifle.",
+   "movement": "Moving from the entrance towards the center of the lobby."
+  },
+  {
+   "t": 329,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 3,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, dark shorts, dark hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, dark t-shirt, light-colored shorts, dark hair"
+    },
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, white t-shirt, dark hair"
+    }
+   ],
+   "scene": "Four people are in a lobby; two are holding handguns and one is holding a rifle.",
+   "movement": "Moving from the entrance towards the center of the lobby."
+  },
+  {
+   "t": 330,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, black t-shirt, beige pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, blue shorts, short dark hair"
+    }
+   ],
+   "scene": "Two people are visible in the lobby; one is walking toward the camera while the other walks away from the camera.",
+   "movement": "One person walks toward the camera, the other walks away from the camera toward the right side of the frame."
+  },
+  {
+   "t": 331,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, black t-shirt, beige pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, blue shorts, short dark hair"
+    }
+   ],
+   "scene": "Two people are visible in the lobby; one is walking toward the camera while the other walks away from the camera.",
+   "movement": "One person walks toward the camera, the other walks away from the camera toward the right side of the frame."
+  },
+  {
+   "t": 332,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "rifle": 1,
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, black t-shirt, beige pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, blue shorts, short dark hair"
+    }
+   ],
+   "scene": "Two people are visible in the lobby; one is walking toward the camera while the other walks away from the camera.",
+   "movement": "One person walks toward the camera, the other walks away from the camera toward the right side of the frame."
+  },
+  {
+   "t": 333,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {},
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, black t-shirt, beige pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, blue shorts, short dark hair"
+    }
+   ],
+   "scene": "Two people are visible in the lobby; one is walking toward the camera while the other walks away from the camera.",
+   "movement": "One person walks toward the camera, the other walks away from the camera toward the right side of the frame."
+  },
+  {
+   "t": 334,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 2,
+   "weapons": {
+    "handgun": 1
+   },
+   "armed": [
+    {
+     "weapon": "rifle",
+     "person": "male, medium build, black t-shirt, beige pants, short brown hair"
+    },
+    {
+     "weapon": "handgun",
+     "person": "male, medium build, black t-shirt, blue shorts, short dark hair"
+    }
+   ],
+   "scene": "Two people are visible in the lobby; one is walking toward the camera while the other walks away from the camera.",
+   "movement": "One person walks toward the camera, the other walks away from the camera toward the right side of the frame."
+  },
+  {
+   "t": 335,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 1,
+   "weapons": {},
+   "armed": [],
+   "scene": "One person is standing in the lobby facing away from the camera.",
+   "movement": "The person is standing still."
+  },
+  {
+   "t": 336,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 1,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [],
+   "scene": "One person is standing in the lobby facing away from the camera.",
+   "movement": "The person is standing still."
+  },
+  {
+   "t": 337,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 1,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [],
+   "scene": "One person is standing in the lobby facing away from the camera.",
+   "movement": "The person is standing still."
+  },
+  {
+   "t": 338,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 1,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [],
+   "scene": "One person is standing in the lobby facing away from the camera.",
+   "movement": "The person is standing still."
+  },
+  {
+   "t": 339,
+   "camera": "CAM-01",
+   "place": "the ground-floor lobby",
+   "people": 1,
+   "weapons": {
+    "rifle": 1
+   },
+   "armed": [],
+   "scene": "One person is standing in the lobby facing away from the camera.",
+   "movement": "The person is standing still."
+  }
+ ]
+}

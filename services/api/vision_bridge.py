@@ -144,11 +144,19 @@ class VisionBridge:
         self.jpeg: dict[str, bytes] = {}
         self._tick = asyncio.Event()
         hub.on_reset = self.reset_demo
+        hub.clip_time = self.clip_time
 
     def start(self) -> None:
         if self._task is not None:
             return
         self._task = asyncio.create_task(self._run(), name="vision-seville")
+
+    def clip_time(self) -> float:
+        """Seconds into the demo clip the wall is showing (0 after Reset)."""
+        src = self._src
+        if src is None:
+            return 0.0
+        return float(getattr(src, "_i", 0)) / max(float(getattr(src, "fps", 5.0) or 5.0), 1.0)
 
     def cameras(self) -> set[str]:
         try:

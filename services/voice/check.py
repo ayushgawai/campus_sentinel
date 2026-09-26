@@ -146,88 +146,51 @@ async def _main() -> None:
         "Hi, this is Campus Sentinel AI at San Jose State. "
         "I'm reporting an armed person at MacQuarrie Hall, One Washington Square."
     )
-    assert await live.answer_dispatcher(rec.incident_id, "911, what is your emergency?") == (
-        "I'm reporting an armed person at MacQuarrie Hall."
-    )
-    address = await live.answer_dispatcher(rec.incident_id, "What is the exact address?")
-    assert address == "One Washington Square, San Jose, California 95192."
-    assert await live.answer_dispatcher(rec.incident_id, "Repeat the address.") == address
-    assert "long firearm" in await live.answer_dispatcher(rec.incident_id, "What weapon do you see?")
-    assert await live.answer_dispatcher(rec.incident_id, "Is anyone hurt?") == (
-        "I can't verify their medical condition from this camera."
-    )
-    assert await live.answer_dispatcher(rec.incident_id, "Are they breathing?") == (
-        "I can't verify their medical condition from this camera."
-    )
-    assert await live.answer_dispatcher(rec.incident_id, "Where is the person now?") == (
-        "The person is in the ground-floor lobby."
-    )
-    assert await live.answer_dispatcher(
-        rec.incident_id, "Where are you seeing the person now?"
-    ) == "The person is in the ground-floor lobby."
-    assert "toward the east corridor" in await live.answer_dispatcher(rec.incident_id, "Direction of travel?")
-    assert qwen.calls == 0
+    # Fixed questions answer instantly from the scene script at the clip second.
+    live.clock = lambda: 20.0
+    ask = lambda q: live.answer_dispatcher(rec.incident_id, q)  # noqa: E731
+    assert "armed people" in (await ask("911, what is your emergency?")).lower()
+    assert "Campus Sentinel" in await ask("Where are you calling from?")
+    assert "One Washington Square" in await ask("What is the exact address?")
+    assert await ask("How many people do you see?") == "Eight people in the ground-floor lobby; six of them armed."
+    assert "handgun" in await ask("What weapons do they have?")
+    assert "red polo shirt" in await ask("Describe the persons")
+    assert "No one appears injured" in await ask("Is anyone harmed?")
+    live.clock = lambda: 130.0
+    assert "west corridor" in await ask("Where are they now?")
+    assert "lobby to the east corridor to the west corridor" in await ask("Where did they move?")
+    # Camera handoff on a live call: place names only, from -> to.
     event_count = len(live_events)
     await live.notify_whereabouts("cam-01", assemble_call_brief(rec).address)
     assert len(live_events) == event_count
     await live.notify_whereabouts("cam-02", assemble_call_brief(rec).address)
     spoken = [getattr(e, "text", "") for e in live_events[event_count:]]
-    # Handoff speaks a place name only: no camera id, no map/curb notes.
-    assert "Update: the person has moved to the east corridor. Campus security has been re-alerted." in spoken
+    assert (
+        "Update: they have moved from the ground-floor lobby into the east corridor on the ground floor."
+        in spoken
+    ), spoken
     assert not any("cam-" in line or "curb" in line or "(" in line for line in spoken)
-    assert await live.answer_dispatcher(rec.incident_id, "Where is the person now?") == (
-        "The person is in the east corridor."
-    )
-    # Person count comes from the live tracker overlay, not scene_facts.
-    live.update_visual("cam-02", True, people=3, armed=1)
-    assert await live.answer_dispatcher(rec.incident_id, "How many people are there?") == (
-        "The current camera shows 3 people; one of them is armed."
-    )
-    live.update_visual("cam-02", True, people=1, armed=1)
-    assert await live.answer_dispatcher(rec.incident_id, "How many people?") == (
-        "The current camera shows one person, and they are armed."
-    )
-    live.update_visual("cam-02", False, people=0, armed=0)
-    assert "don't see anyone" in await live.answer_dispatcher(rec.incident_id, "How many people?")
-    live.update_visual("cam-02", True, people=2, armed=0)
-    assert await live.answer_dispatcher(rec.incident_id, "Number of people?") == (
-        "The current camera shows 2 people."
-    )
-    assert qwen.calls == 0
-    live.update_visual("cam-02", False)
-    assert "don't see the person" in await live.answer_dispatcher(rec.incident_id, "Where is the person now?")
-    assert "aren't visible" in await live.answer_dispatcher(rec.incident_id, "What weapon do you see?")
-    live.update_visual("cam-02", True)
+    # Anything else gets an instant fallback, never a Qwen round-trip.
+    assert await ask("Is the door locked?") == "I don't see that on the current camera."
     event_count = len(live_events)
-    assert await live.answer_dispatcher(rec.incident_id, "Is the door locked?") == (
-        "I don't see that on the current camera."
-    )
-    assert qwen.calls == 1
-    new_lines = [getattr(event, "text", "") for event in live_events[event_count:]]
-    assert new_lines == ["I don't see that on the current camera."]
-    assert await live.answer_dispatcher(rec.incident_id, "Is there smoke?") == (
-        "That isn't visible in the current camera view."
-    )
-    assert qwen.calls == 2
-    assert await live.answer_dispatcher(rec.incident_id, "Please repeat that.") == (
-        "That isn't visible in the current camera view."
-    )
-    assert qwen.calls == 2
-    assert await live.answer_dispatcher(rec.incident_id, "What color is the door?") == (
-        "The door appears gray."
-    )
-    assert qwen.calls == 3
-    assert await live.answer_dispatcher(
-        rec.incident_id, "What is happening near the door?"
-    ) == "The person is moving east, but I cannot confirm their destination."
-    assert qwen.calls == 4
-    event_count = len(live_events)
-    assert await live.answer_dispatcher(rec.incident_id, "Okay.") == ""
-    assert len(live_events) == event_count and qwen.calls == 4
-    assert await live.answer_dispatcher(
-        rec.incident_id, "really go and all the pressure clear."
-    ) == ""
-    assert len(live_events) == event_count and qwen.calls == 4
+    assert await ask("Okay.") == ""
+    assert await ask("really go and all the pressure clear.") == ""
+    assert len(live_events) == event_count and qwen.calls == 0
+
+    # Scripted demo call: the opening is always spoken, then lines by clip second.
+    scripted_events: list[object] = []
+
+    async def scripted_pub(ev: object) -> None:
+        scripted_events.append(ev)
+
+    demo = VoiceAgent(scripted_pub, zrt=qwen)  # type: ignore[arg-type]
+    demo.clock = lambda: 331.5
+    await demo.start_scripted_call(rec)
+    await asyncio.sleep(3.8)
+    await demo.cancel()
+    said = [(getattr(e, "speaker", ""), getattr(e, "text", "")) for e in scripted_events]
+    assert said[0][0] == "dispatcher" and said[1][1].startswith("MacQuarrie Hall"), said
+    assert said[-1][1].startswith("Understood."), said
 
     from services.voice.media_bridge import MediaStreamBridge
 

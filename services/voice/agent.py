@@ -24,6 +24,8 @@ from contracts import (
 from services.brain.call_brief import scene_facts, site_config
 from services.brain.zrt_client import ZRTClient
 
+from . import scene
+from .demo_call import DEMO_CALL, OPENING
 from .tools import TOOL_HANDLERS, ToolName
 
 PublishFn = Callable[[Any], Awaitable[None]]
@@ -101,6 +103,8 @@ class VoiceAgent:
 
     def __init__(self, publish: PublishFn, *, zrt: ZRTClient | None = None) -> None:
         self.publish = publish
+        # Clip clock of the camera wall (seconds); answers describe that moment.
+        self.clock: Callable[[], float] = lambda: 0.0
         self._zrt = zrt or ZRTClient()
         self._task: asyncio.Task[None] | None = None
         self._live = False
@@ -149,6 +153,39 @@ class VoiceAgent:
             self._run(rec, brief, script or WEAPON_SCRIPT),
             name=f"call-{rec.incident_id}",
         )
+
+    async def start_scripted_call(self, rec: IncidentRecord) -> None:
+        """Demo recording: the scripted 911 call, each line at its clip second."""
+        if self.busy():
+            return
+        self._incident_id = rec.incident_id
+        self._camera = rec.camera_id
+        self._task = asyncio.create_task(
+            self._run_scripted(rec.incident_id), name=f"demo-call-{rec.incident_id}"
+        )
+
+    async def _run_scripted(self, incident_id: str) -> None:
+        start = self.clock()
+        lines = [
+            line for i, line in enumerate(DEMO_CALL) if i < OPENING or line[0] >= start
+        ]
+        try:
+            for i, (at_s, speaker, text) in enumerate(lines):
+                # The opening is always spoken; later lines wait for their second.
+                wait = 1.5 if i < OPENING and at_s < start else at_s - self.clock()
+                if wait > 0:
+                    await asyncio.sleep(wait)
+                await self.publish(
+                    CallTranscriptDelta(
+                        incident_id=incident_id,
+                        speaker=speaker,  # type: ignore[arg-type]
+                        text=text,
+                        ts=utcnow(),
+                    )
+                )
+            await asyncio.sleep(3600)  # stay "on the line" until Reset
+        finally:
+            self._incident_id = None
 
     async def start_live_call(self, rec: IncidentRecord, brief: CallBrief) -> None:
         if self.busy():
@@ -207,6 +244,16 @@ class VoiceAgent:
             "ok", "okay", "copy", "got it", "understood", "thanks", "thank you"
         }:
             return ""
+        # Fixed questions answer instantly from the scene script at this clip second.
+        fixed = scene.answer(question, self.clock())
+        if fixed:
+            self._last_answer = fixed
+            await self.publish(
+                CallTranscriptDelta(
+                    incident_id=incident_id, speaker="sentinel", text=fixed, ts=utcnow()
+                )
+            )
+            return fixed
         if "repeat" in q or "say that again" in q:
             if "address" in q:
                 answer = f"{self._site_address}."
@@ -253,10 +300,7 @@ class VoiceAgent:
                 )
             ):
                 return ""
-            try:
-                answer = await asyncio.to_thread(self._zrt.answer_dispatcher, facts, question)
-            except Exception:
-                answer = ""
+            answer = ""  # no model round-trip on the call: instant fallback below
             refusal = answer.strip().lower()
             if not answer or refusal.startswith(
                 ("the cameras do not confirm", "i cannot confirm", "i can't confirm")
@@ -311,6 +355,7 @@ class VoiceAgent:
         self._incident_id = None
 
     async def _publish_update(self, camera_id: str, address: str) -> None:
+        previous = self._camera
         self._camera = camera_id
         self._address = address
         self._visible = True
@@ -321,7 +366,7 @@ class VoiceAgent:
             CallTranscriptDelta(
                 incident_id=self._incident_id or "",
                 speaker="sentinel",
-                text=handoff_line(camera_id, self._building),
+                text=scene.update_line(previous.upper(), camera_id.upper()),
                 ts=utcnow(),
             )
         )

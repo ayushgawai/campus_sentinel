@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import random
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -76,6 +77,11 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def scripted_call_mode() -> bool:
+    """CS_CALL_MODE=scripted: no phone call; the on-screen 911 call is scripted."""
+    return os.environ.get("CS_CALL_MODE", "").strip().lower() == "scripted"
+
+
 def _scripted(rec: Any) -> bool:
     """Demo-panel scenarios are scripted, never a real detection."""
     return any(
@@ -118,6 +124,8 @@ class DemoHub:
     _call_sid: str | None = field(default=None, repr=False)
     _usage_sum: dict[str, float] | None = field(default=None, repr=False)
     camera_ready: Callable[[str], bool] | None = field(default=None, repr=False)
+    # Clip clock of the camera wall, set by the vision bridge.
+    clip_time: Callable[[], float] = field(default=lambda: 0.0, repr=False)
 
     async def publish(self, ev: Any) -> None:
         if isinstance(ev, OverlayBoxes) and self._voice is not None:
@@ -192,6 +200,7 @@ class DemoHub:
     def _voice_agent(self) -> VoiceAgent:
         if self._voice is None:
             self._voice = VoiceAgent(self.publish)
+            self._voice.clock = lambda: self.clip_time()
         return self._voice
 
     async def _on_incident(self, rec: Any) -> None:
@@ -253,7 +262,9 @@ class DemoHub:
             now = _utcnow()
             rec.state = IncidentState.DISPATCHED
             rec.updated_at = now
-            signalwire = provider if _real_weapon_detection(rec) else None
+            signalwire = (
+                provider if _real_weapon_detection(rec) and not scripted_call_mode() else None
+            )
             await self.publish(
                 IncidentStateChange(
                     incident_id=rec.incident_id,
@@ -264,6 +275,11 @@ class DemoHub:
                 )
             )
             await self._publish_brief(brief, "dispatch")
+            if scripted_call_mode():
+                # Demo recording: the whole 911 call is scripted to the clip.
+                await self._voice_agent().start_scripted_call(rec)
+                self._log_call(rec.incident_id, "scripted")
+                return True
             if not signalwire:
                 await self._voice_agent().start_call(rec, brief)
                 self._log_call(rec.incident_id, "simulated")
@@ -605,11 +621,26 @@ class DemoHub:
     async def _usage_tick(self) -> None:
         # Per-window counts since the last tick; nothing sent when idle.
         by_model = usage.swap()
+        self._demo_tokens(by_model)
         if by_model:
             ts = _utcnow()
             await self.publish(UsageTick(window_s=USAGE_WINDOW_S, by_model=by_model, ts=ts))
             self._add_usage_total(ts.isoformat(), by_model)
         await self.broadcast(self.usage_total())
+
+    def _demo_tokens(self, by_model: dict[str, dict[str, Any]]) -> None:
+        """CS_DEMO_TOKEN_RATE=<tokens/s>: synthetic Qwen load for demo recordings,
+        stored like real usage so the title, strip and System graphs agree."""
+        rate = float(os.environ.get("CS_DEMO_TOKEN_RATE", "0") or 0)
+        if rate <= 0:
+            return
+        from services.brain.zrt_client import DEFAULT_MODEL
+
+        tokens = rate * USAGE_WINDOW_S * (0.75 + 0.5 * self._rng.random())
+        row = by_model.setdefault(DEFAULT_MODEL, {})
+        row["tokens_in"] = row.get("tokens_in", 0) + int(tokens * 0.92)
+        row["tokens_out"] = row.get("tokens_out", 0) + int(tokens * 0.08)
+        row["requests"] = row.get("requests", 0) + max(1, int(tokens / 1800))
 
     def _add_usage_total(self, ts: str, by_model: dict[str, dict[str, Any]]) -> None:
         """Persist the window and grow the all-time total (Reset never clears it)."""

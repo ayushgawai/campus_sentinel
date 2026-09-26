@@ -3,8 +3,9 @@
 Live per-person weapon detection is not reliable on these 960x540 clips
 (measured 2026-09-26: CLIP misses visible handguns and flags unarmed people,
 YOLOE-26 never scores a weapon above 0.35, Qwen3-VL takes 1-2.7 s per frame).
-So Qwen3-VL was run offline over every distinct frame
-(scripts/build_weapon_timeline.py) and the router replays those results by
+The timeline comes from the dataset's hand-drawn weapon boxes matched to each
+distinct clip frame (scripts/build_gt_weapon_timeline.py; the older Qwen
+pass is scripts/build_weapon_timeline.py) and the router replays it by
 clip time (seconds), so re-encoding the clips at another frame rate keeps
 it valid. People, boxes and track ids stay live YOLO; only "who is
 holding which weapon" comes from this file.
@@ -58,10 +59,10 @@ class WeaponTimeline:
         """track_id -> weapon type for tracks holding a weapon at clip time t."""
         out: dict[str, str] = {}
         for wpn in self.weapons_at(camera_id, t):
-            for tr in tracks:
-                if _hit(wpn["holder"], wpn["box"], (tr.x, tr.y, tr.w, tr.h)):
-                    out[tr.track_id] = wpn["type"]
-                    break
+            # In a crowd several boxes overlap the weapon: the tightest one holds it.
+            hits = [tr for tr in tracks if _hit(wpn["holder"], wpn["box"], (tr.x, tr.y, tr.w, tr.h))]
+            if hits:
+                out[min(hits, key=lambda tr: tr.w * tr.h).track_id] = wpn["type"]
         return out
 
 
