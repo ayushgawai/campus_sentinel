@@ -71,6 +71,20 @@ def at(t: float) -> dict[str, Any]:
     return rows[i]
 
 
+def steady(t: float, span: int = 4) -> tuple[int, dict[str, int]]:
+    """Peak people and weapons over the last `span` seconds on the current
+    camera: weapons turn out of view for a second, answers should not."""
+    cam = at(t).get("camera")
+    people, weapons = 0, {}
+    for row in seconds()[max(0, int(t) - span + 1): int(t) + 1]:
+        if row.get("camera") != cam:
+            continue
+        people = max(people, int(row.get("people") or 0))
+        for k, n in (row.get("weapons") or {}).items():
+            weapons[k] = max(weapons.get(k, 0), n)
+    return people, weapons
+
+
 def moves(t: float) -> list[tuple[int, str, str]]:
     """Camera changes up to t: (second, from camera, to camera)."""
     out, prev = [], None
@@ -171,7 +185,7 @@ def answer(question: str, t: float) -> str | None:
     if kind is None or not seconds():
         return None
     s = at(t)
-    people, w = int(s.get("people") or 0), s.get("weapons") or {}
+    people, w = steady(t)
     armed = sum(w.values())
     if kind == "identity":
         return (f"This is Sentinel AI, the automated camera security system at {SITE}. "
