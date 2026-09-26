@@ -2,7 +2,7 @@
  * Branded splash. The markup is static in index.html and the reveal is pure
  * CSS (app.css "Splash / intro"), so it starts on first paint, before any
  * JS: logo in, colour sweep over SENTINEL, tagline, Pearl Aqua progress
- * line. With ?nosplash=1, js/boot.js hides it before first paint.
+ * line. It always plays (?nosplash=1 is ignored).
  * This module only times the exit (5.4 s after first paint, then a 0.6 s
  * fade = 6 s total, and never before the app is mounted underneath) and
  * handles skip (click, Space, Enter, Esc).
@@ -22,7 +22,8 @@ function prefersReducedMotion() {
 }
 
 function nosplashRequested() {
-  return new URLSearchParams(location.search).get("nosplash") === "1";
+  // The splash always plays, even on links that carry ?nosplash=1.
+  return false;
 }
 
 /**

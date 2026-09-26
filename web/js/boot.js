@@ -1,13 +1,11 @@
 /*
  * Runs before first paint (classic blocking script in <head>, CSP 'self').
- * ?nosplash=1 is a developer skip: hide the static splash before it paints
- * so it never flashes and gets cut off. Everything else lives in main.js.
+ * ?nosplash=1 used to skip the splash; it is now ignored.
+ * Everything else lives in main.js.
  */
 (function () {
   try {
-    if (new URLSearchParams(location.search).get("nosplash") === "1") {
-      document.documentElement.classList.add("nosplash");
-    }
+    // ?nosplash=1 no longer skips the splash (it always plays).
   } catch (e) {
     /* ignore */
   }
