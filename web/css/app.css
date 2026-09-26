@@ -8134,3 +8134,37 @@ html.nosplash body.has-splash #app {
   margin: 0;
   justify-content: center;
 }
+
+/* ---------- Header fit: clock and actions never leave the screen ---------- */
+.topbar {
+  gap: var(--sp-4);
+  min-width: 0;
+}
+/* Health metrics give up space first (the right block never shrinks). */
+.topbar__health {
+  flex: 0 1 auto;
+  min-width: 0;
+  gap: var(--sp-3);
+  overflow: hidden;
+}
+.topbar__right {
+  flex: none;
+}
+.topbar__clock {
+  width: auto;
+  min-width: 21ch;
+}
+/* Drop lower-priority metrics as the window narrows (order in the header:
+   Cameras, Models, GPU, Latency, Screened, Escalated, Tokens). */
+@media (max-width: 1720px) {
+  .topbar__health > .hm:nth-child(3),
+  .topbar__health > .hm:nth-child(4) {
+    display: none;
+  }
+}
+@media (max-width: 1500px) {
+  .topbar__health > .hm:nth-child(5),
+  .topbar__health > .hm:nth-child(6) {
+    display: none;
+  }
+}
