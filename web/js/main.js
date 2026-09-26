@@ -26,7 +26,7 @@ import { startModelActivity } from "./modelActivity.js?v=pro7";
 import { noteEvent } from "./cameraStatus.js?v=pro7";
 import { subscribeTick } from "./clock.js?v=pro7";
 import * as cameraSources from "./cameraSources.js?v=pro7";
-import { mountActivity, tokenTitle } from "./ui/activity.js?v=pro7";
+import { mountActivity } from "./ui/activity.js?v=pro7";
 
 const store = createStore();
 const layoutCtl = createCameraLayout();
@@ -89,15 +89,8 @@ const sidebarApi = mountSidebar(
 // Live columns: incidents, the single site map, tracking card and call.
 mountLive(document.getElementById("page-live"), store, actions, layoutCtl, cameraWall);
 mountActivity(document.querySelector("[data-live-activity]"), store);
-{
-  // All-time AI tokens in the tab title (never reset; from usage.total).
-  const baseTitle = document.title;
-  let shown = null;
-  store.subscribe(() => {
-    const next = tokenTitle(baseTitle, store.getState().usageTotal);
-    if (next !== shown) document.title = shown = next;
-  });
-}
+// Tab title stays "Sentinel · Security Console" (index.html). All-time
+// tokens show in the Live activity strip, not in the title.
 
 document.addEventListener("sentinel:open-call-panel", () => callPanelApi.open());
 
