@@ -20,15 +20,20 @@ See **`docs/STABILITY.md`**. Box had repeated **hard crashes** under Qwen+YOLO (
 zrt serve hf:Qwen/Qwen3-VL-30B-A3B-Instruct-FP8 --force --gpu-memory-fraction 0.40 \
   --extra "--max-model-len=8192"
 # YOLO CUDA only after ZRT is healthy; or use CS_VISION_DEVICE=cpu for light tests
+# .env sets CS_MEDIA_ROOT (15 fps clips) and CS_TTS_PROVIDER; add
+# CS_SIGNALWIRE_ENABLED=1 CS_KILL_SWITCH=0 for real calls, CS_KILL_SWITCH=1 for testing.
+set -a; . ./.env; set +a; export PYTHONPATH=.
 CS_VISION_SEVILLE=1 CS_VISION_DEVICE=cuda:0 \
-  CS_VISION_STEP_S=0.5 CS_VISION_CONF=0.50 CS_VISION_COOLDOWN_S=600 \
-  CS_VISION_MAX_UPSERTS_MIN=1 \
-  services/vision/.venv/bin/python -m services.api --host 0.0.0.0 --port 8080
+  CS_VISION_CONF=0.50 CS_VISION_COOLDOWN_S=600 CS_VISION_MAX_UPSERTS_MIN=1 \
+  services/vision/.venv/bin/python -m services.api --host 0.0.0.0 --port 8080 2>&1 | tee -a logs/api_live.log
 # Separate shell/tmux session:
 python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 ```
 - **Detector = YOLO26s-pose `.pt` only.** TensorRT path removed (engine/onnx deleted, no export).
-- **Overlay sync:** FileSource follows the configured active-camera windows. First MJPEG rewinds YOLO to t=0. `STEP_S` defaults to **0.5** and `CONF` to **0.50**. The dashboard gets explicit empty overlays for inactive cameras and only the strongest known demo subject as `Person #1`; Qwen runs once on cam-01 and cam-02/03 reuse that result.
+- **One clock for video and boxes:** `/mjpeg/cam-01..03` streams the exact frames the vision loop decoded (`VisionBridge.jpeg`), not a per-viewer `ffmpeg -re`, so boxes match the picture and Reset rewinds the video for every viewer. The loop runs one clip frame per step (`CS_VISION_STEP_S` unset = 1/fps); repeated frames skip YOLO and reuse the last boxes. `CONF` is **0.50**.
+- **All people, real track ids:** every tracked person is sent (no more single strongest box renamed `t-1`); the voice counts them. Tracker = IoU on a constant-velocity prediction, then centre-distance fallback (the clips move ~2 real fps), and a track shows only after 2 matches.
+- **Clips:** the Seville files are 5 fps holding ~2 fps of real motion (they were built from 2 fps stills). `CS_MEDIA_ROOT` points at `feeds/seville_option1_3cam_locked_15fps/`: duplicates dropped (max 3 in a row, so frozen hand-off windows stay timed) then motion-interpolated to 15 fps with ffmpeg `minterpolate`; durations match the originals (~339 s). Unset `CS_MEDIA_ROOT` to go back to the originals. Measured live: wall 13-14 fps (was ~3).
+- Qwen runs once on cam-01 and cam-02/03 reuse that result.
 - Prefer **0.40** GPU fraction when coexisting (0.55 left too little headroom and hard-locked the box).
 - **32G swap is on** the shared ZGX box (`/swapfile`). Do not start Qwen at 0.55.
 - A.1 UI-only: do **not** start ZRT.
@@ -56,7 +61,7 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - A live conversational call exposed acoustic echo/noise fragments that repeatedly triggered the unknown-detail response. The media bridge now ignores inbound audio during Sentinel speech and for a 500 ms echo tail; acknowledgements and non-question fragments produce no answer. Operators must wait until Sentinel finishes speaking because barge-in is intentionally disabled for this demo path.
 - Unmatched questions now get an immediate short checking line before the Qwen lookup. Final replies are limited to one sentence, unknown visual details rotate between two natural camera-grounded answers, and medical/identity/visibility refusals use short context-specific wording instead of one repeated stock response.
 - Live-call timing showed Qwen replies arriving 0.28-1.02 seconds after dispatcher transcription; the perceived silence was before that, during turn closure and CPU ASR. Caller turns with about one second or more of speech now publish one rotating filler before ASR and transcribe while it is spoken; shorter turns get no filler, ASR misses ask for a repeat, and the agent no longer adds a second Qwen-stage filler.
-- **Phone TTS (opt-in):** `CS_TTS_PROVIDER=elevenlabs` + `ELEVENLABS_API_KEY` (`.env` only) speaks call audio through ElevenLabs `eleven_flash_v2_5`, premade voice Sarah, `ulaw_8000` straight onto the media stream. Lines are **streamed**: each call's media bridge keeps one keep-alive HTTPS connection (TLS warmed when the stream opens, reconnect once if stale) to `/stream` with `optimize_streaming_latency=3` (`CS_ELEVENLABS_LATENCY`), and frames go out as chunks arrive. No first chunk within `CS_ELEVENLABS_FIRST_CHUNK_S` (default 1.5) or any error before audio → that line is spoken by Kokoro instead, never both; a mid-line failure just ends the line. Socket timeout is `CS_ELEVENLABS_TIMEOUT_S` (default 4). 401/402/403 (bad key, quota) parks ElevenLabs for 10 min. Fillers and the repeat prompt are prewarmed and cached per process. Echo suppression is unchanged (inbound ignored while streaming + 500 ms tail). `/voice/status.tts` shows the provider, never the key. **Free tier: 10,000 chars/month**; check.py mocks it. Measured from ZGX 2026-09-25 (short line): old path 260 ms until playable (whole body; earlier runs saw 1.7-2.0 s), streamed on a warm connection 157-160 ms to first chunk; Kokoro 0.10 s for a whole clip. Default stays Kokoro; enabling needs an API restart.
+- **Phone TTS:** enabled on the ZGX (`CS_TTS_PROVIDER=elevenlabs` in `.env` since 2026-09-25). `CS_TTS_PROVIDER=elevenlabs` + `ELEVENLABS_API_KEY` (`.env` only) speaks call audio through ElevenLabs `eleven_flash_v2_5`, premade voice Sarah, `ulaw_8000` straight onto the media stream. Lines are **streamed**: each call's media bridge keeps one keep-alive HTTPS connection (TLS warmed when the stream opens, reconnect once if stale) to `/stream` with `optimize_streaming_latency=3` (`CS_ELEVENLABS_LATENCY`), and frames go out as chunks arrive. No first chunk within `CS_ELEVENLABS_FIRST_CHUNK_S` (default 1.5) or any error before audio → that line is spoken by Kokoro instead, never both; a mid-line failure just ends the line. Socket timeout is `CS_ELEVENLABS_TIMEOUT_S` (default 4). 401/402/403 (bad key, quota) parks ElevenLabs for 10 min. Fillers and the repeat prompt are prewarmed and cached per process. Echo suppression is unchanged (inbound ignored while streaming + 500 ms tail). `/voice/status.tts` shows the provider, never the key. **Free tier: 10,000 chars/month**; check.py mocks it. Measured from ZGX 2026-09-25 (short line): old path 260 ms until playable (whole body; earlier runs saw 1.7-2.0 s), streamed on a warm connection 157-160 ms to first chunk; Kokoro 0.10 s for a whole clip. Default stays Kokoro; enabling needs an API restart.
 - Stub docstrings say Parakeet/Kokoro land with **Naman**, ownership table says **Pratham** owns `voice/` — Naman is doing it now, table should be updated.
 - The WEAPON demo promotes to SEVERE and uses the scripted transcript only while SignalWire is disabled. When enabled, the live call uses a short SJSU/MacQuarrie opener, answers one dispatcher question at a time, remembers repeat requests, publishes dispatcher speech to the dashboard, uses current-camera facts for common answers, and reserves bounded Qwen for unmatched questions.
 - Live call facts advance only on observed Camera 1 to 2 to 3 handoffs. Overlay presence also updates whether the person is currently visible, so the agent does not claim a subject remains on screen after the box clears.
@@ -68,7 +73,16 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 
 ## Live operator actions
 - `DemoHub` is the in-memory authority for the current demo run. Manual report, dispatch, confirm, dismiss, broadcast, and reset now use REST and publish through the existing incident WebSocket events; live UI actions no longer claim local success when the API is unavailable.
-- Reset clears incidents, replay, counters, voice state, guardrail history, and the manual incident sequence, then restores only camera/health baseline state.
+- Reset = fresh run: hangs up the live SignalWire call (`hangup_call`, Status=completed), clears incidents, replay, counters, voice state, guardrail history, vision cooldowns and the manual incident sequence, rewinds cam-01..03 to t=0, and drops any Qwen result still in flight from before the reset. The next real weapon detection places a new call.
+- Only a vision-detected WEAPON places a real call; demo-panel scenarios never call and unknown scenario ids are rejected. A failed `place_call` releases voice so later detections are not blocked as `voice_busy`.
+
+## Weapons (who is armed)
+- Measured on every distinct frame of all three clips (2026-09-26): per-person CLIP missed a clearly visible handgun (CAM03 200 s) and flagged unarmed people; YOLOE-26 open-vocab never scored a weapon above 0.35 (weapons are a few pixels at 960x540); Qwen3-VL full-frame found knives, handguns and rifles but takes 1-2.7 s per frame; Qwen on enlarged per-person crops hallucinated knives. Live per-frame weapon detection is not reliable here.
+- So `data/feeds/seville_weapon_timeline.json` holds Qwen3-VL weapon + holder boxes for every distinct frame, built offline by `scripts/build_weapon_timeline.py` (~10 min, 4 parallel requests). `services/vision/weapon_timeline.py` replays it by clip time and marks the tracked person whose box holds the weapon; the box label becomes `weapon` for 4 s and the web draws it red. People, boxes, tracking, escalation and the incident's Qwen classification stay live. Known misses: some crowd frames flag extra handguns; the rifle in the CAM01 doorway at ~321 s is not flagged.
+- With the timeline loaded, per-person CLIP is skipped (it cost 20-40 ms per person per step and stalled the wall); an armed person escalates through the `weapon` rule instead.
+
+## History
+- `data/runtime/sentinel.db` (SQLite, gitignored, `CS_DB_PATH` overrides): `runs`, `incidents` (latest record JSON per run), `calls` (placed / failed / simulated / hung_up_on_reset with call SID) and `transcripts`. Reset starts a new run; nothing is deleted. The API self-check uses `:memory:`.
 
 ## Live readiness
 - Camera heartbeats are limited to the six configured wall feeds and report file-backed availability. `/voice/status` now probes the ASR and TTS `/health` endpoints with a short timeout; configured URLs alone are not reported Ready.
@@ -98,6 +112,7 @@ python3 -m http.server 8090 --bind 0.0.0.0 --directory web
 - brain: temperature-calibration plumbing, default off. `CS_CALIB_LOG` writes JSONL, `scripts/fit_temperature.py` fits T, `CS_VLM_TEMPERATURE` applies it (1.0 = identity). There is no labelled data yet, so T is not fitted. (ayush)
 - voice: ElevenLabs phone TTS with Kokoro fallback, opt-in via `CS_TTS_PROVIDER=elevenlabs` (see Voice). (ayush)
 - api: `call.brief` event (additive to frozen `EventType`, approved by Ayush as api owner). Envelope `{type, incident_id, reason: "dispatch"|"handoff", brief: call_brief_to_dict(...), ts}`; the hub publishes it after the DISPATCHED state change and once per real camera handoff (repeat upserts on the same camera send nothing), via the normal broadcast and bounded replay; reset clears it. The web store ignores unknown types, so no frontend change; the call panel still reads `incident.upsert`. (ayush)
+- vision + api: fresh-run Reset (hangs up the call, rewinds video), SQLite history, one clock for video and boxes, every person tracked with real ids, 15 fps interpolated clips, Qwen weapon timeline with red boxes. (ayush)
 - web: real SJSU site map (OpenStreetMap export, attribution and 'Illustrative layout' note), cameras named and placed on the backend camera graph, pursuit along walkways, ?map=plan fallback, ?mapedit=1 placement tool (fix 9b)
 
 ## Pending (owners)
@@ -106,20 +121,22 @@ Design and verified pre-change baseline: `docs/superpowers/specs/2026-09-25-comp
 | Who | What |
 |-----|------|
 | **Naman** | Ambient clips done. Optional more later |
-| **Voice / Ayush** | Decide whether to enable ElevenLabs on the live call. It sounds more natural; streaming now starts uncached lines in about 0.16 s; do a real-call listen test with `CS_TTS_PROVIDER=elevenlabs` |
+| **Voice / Ayush** | ElevenLabs is on; confirm on a real call. Free tier is 10,000 chars/month |
+| **Ayush / vision** | Weapon timeline is precomputed Qwen (see Weapons); replace with a live detector if a weapon model that sees small handguns becomes available |
 | **Indraneel** | Officer F1 polish |
 | **Ayush / open** | See `docs/OPEN_ML_ITEMS.md`. OSNet: stub with no callers; needs model code, weights, a crop path and a handoff consumer. Temperature: collect labelled rows with `CS_CALIB_LOG`, run `scripts/fit_temperature.py`, set `CS_VLM_TEMPERATURE`. MediaMTX: optional, document only; keep FileSource for the demo |
 | **Web / Manav** | Browser-test the SignalWire wiring (`2f5a0d0`) against the live API; `node web/check.mjs` was not run (no node on ZGX) |
 | **Web / Manav** | Bump the `?v=` module cache tag for `store.js`, `transport.js`, `actions.js`, `modelStatus.js`, `ui/call.js`, `ui/operator.js` |
 | **Web / Manav** | Uncommitted on ZGX main: `live.js` leader-lines-under-dock order + 150 ms leave (`app.css`); review and commit or drop |
-| **Web / Manav** | Remote reset clears state but does not rewind camera videos on other dashboards |
+| **Web / Manav** | Remote reset rewinds cam-01..03 for everyone now (server-side); ambient cam-04..06 MP4s still only rewind on the dashboard that pressed Reset |
+| **Web / Manav** | Bump `?v=live5` for `ui/cameras.js` (red box for `label == "weapon"`) |
 | **Web / Manav** | Load `GET /api/site` instead of the duplicated camera map in `site.js` |
 
 ## Decisions made since the playbook
 - UI branded **Sentinel**; cameras only as Camera 1–6; no place names in UI or mock (public video). (manav)
 - Mock-only UI: predicted next camera, clip from local video, confirm/dismiss in mock. (manav)
 - API now emits normalized 0–1 boxes; the UI and API use canonical hyphenated camera IDs.
-- The API exposes `/mjpeg/{cam}` for cam-01..03 and byte-range `/media/{cam}` for ambient cam-04..06.
+- The API exposes `/mjpeg/{cam}` for cam-01..03 (the vision loop's own frames) and byte-range `/media/{cam}` for ambient cam-04..06.
 - Call surfaces show the live provider state (SignalWire call / Simulated call); dispatch stays labelled **SIMULATED**. (ayush)
 - Deployment is Docker Compose only.
 - WS overlays are `overlay.boxes` only.
